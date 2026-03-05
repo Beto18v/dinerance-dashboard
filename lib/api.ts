@@ -1,0 +1,135 @@
+import { createClient } from "@/lib/supabase/client";
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL!;
+
+export class ApiError extends Error {
+  constructor(
+    public status: number,
+    message: string,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
+async function getAccessToken(): Promise<string> {
+  const supabase = createClient();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session?.access_token) {
+    throw new ApiError(401, "No active session");
+  }
+  return session.access_token;
+}
+
+async function request<T>(
+  path: string,
+  options: RequestInit = {},
+  requiresAuth = true,
+): Promise<T> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(options.headers as Record<string, string>),
+  };
+
+  if (requiresAuth) {
+    const token = await getAccessToken();
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`${API_BASE_URL}${path}`, {
+    ...options,
+    headers,
+  });
+
+  if (!res.ok) {
+    let message = res.statusText;
+    try {
+      const body = await res.json();
+      if (body?.detail) message = body.detail;
+    } catch {
+      // ignore parse errors
+    }
+    throw new ApiError(res.status, message);
+  }
+
+  return res.json() as Promise<T>;
+}
+
+// ── Types ────────────────────────────────────────────────────────────────────
+
+export interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  created_at: string;
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  direction: "income" | "expense";
+  parent_id: string | null;
+}
+
+export interface Transaction {
+  id: string;
+  category_id: string;
+  amount: string;
+  currency: string;
+  description: string | null;
+  merchant_name: string | null;
+  occurred_at: string;
+  status?: string;
+}
+
+// ── Endpoints ────────────────────────────────────────────────────────────────
+
+export const api = {
+  healthz: () => request<{ status: string }>("/healthz", {}, false),
+
+  getProfile: () => request<UserProfile>("/users/me"),
+
+  getCategories: () => request<Category[]>("/categories/"),
+
+  createCategory: (body: {
+    name: string;
+    direction: "income" | "expense";
+    parent_id?: string | null;
+  }) =>
+    request<Category>("/categories/", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  getTransactions: (params?: {
+    category_id?: string;
+    start_date?: string;
+    end_date?: string;
+    limit?: number;
+    offset?: number;
+  }) => {
+    const qs = new URLSearchParams();
+    if (params?.category_id) qs.set("category_id", params.category_id);
+    if (params?.start_date) qs.set("start_date", params.start_date);
+    if (params?.end_date) qs.set("end_date", params.end_date);
+    if (params?.limit != null) qs.set("limit", String(params.limit));
+    if (params?.offset != null) qs.set("offset", String(params.offset));
+    const query = qs.toString() ? `?${qs.toString()}` : "";
+    return request<Transaction[]>(`/transactions/${query}`);
+  },
+
+  createTransaction: (body: {
+    category_id: string;
+    amount: string;
+    currency: string;
+    description?: string | null;
+    merchant_name?: string | null;
+    occurred_at: string;
+  }) =>
+    request<Transaction>("/transactions/", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+};
