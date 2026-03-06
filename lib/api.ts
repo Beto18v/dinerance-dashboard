@@ -54,6 +54,10 @@ async function request<T>(
     throw new ApiError(res.status, message);
   }
 
+  if (res.status === 204) {
+    return undefined as T;
+  }
+
   return res.json() as Promise<T>;
 }
 
@@ -130,4 +134,22 @@ export const api = {
       method: "POST",
       body: JSON.stringify(body),
     }),
+
+  updateTransaction: (
+    id: string,
+    body: {
+      category_id?: string;
+      amount?: string;
+      currency?: string;
+      description?: string | null;
+      occurred_at?: string;
+    },
+  ) =>
+    request<Transaction>(`/transactions/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
+
+  deleteTransaction: (id: string) =>
+    request<void>(`/transactions/${id}`, { method: "DELETE" }),
 };

@@ -13,7 +13,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!loading && !session) {
-      router.replace("/login");
+      router.replace("/auth/login");
     }
   }, [session, loading, router]);
 
@@ -29,7 +29,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   async function handleSignOut() {
     await signOut();
-    router.replace("/login");
+    router.replace("/auth/login");
   }
 
   return (
