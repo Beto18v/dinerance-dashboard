@@ -38,7 +38,6 @@ const schema = z.object({
   currency: z.string().min(1, "Currency is required"),
   occurred_at: z.string().min(1, "Date is required"),
   description: z.string().optional(),
-  merchant_name: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -130,7 +129,6 @@ export default function TransactionsPage() {
         currency: values.currency,
         occurred_at: new Date(values.occurred_at).toISOString(),
         description: values.description || null,
-        merchant_name: values.merchant_name || null,
       });
       toast.success("Transaction created");
       reset({ currency: "COP" });
@@ -227,11 +225,6 @@ export default function TransactionsPage() {
                 <Label htmlFor="description">Description (optional)</Label>
                 <Input id="description" {...register("description")} />
               </div>
-
-              <div className="space-y-1">
-                <Label htmlFor="merchant_name">Merchant (optional)</Label>
-                <Input id="merchant_name" {...register("merchant_name")} />
-              </div>
             </div>
 
             <Button type="submit" disabled={isSubmitting}>
@@ -318,7 +311,6 @@ export default function TransactionsPage() {
               <TableHead>Amount</TableHead>
               <TableHead>Currency</TableHead>
               <TableHead>Description</TableHead>
-              <TableHead>Merchant</TableHead>
               <TableHead>Status</TableHead>
             </TableRow>
           </TableHeader>
@@ -326,7 +318,7 @@ export default function TransactionsPage() {
             {listLoading ? (
               <TableRow>
                 <TableCell
-                  colSpan={7}
+                  colSpan={6}
                   className="text-center text-muted-foreground"
                 >
                   Loading…
@@ -335,7 +327,7 @@ export default function TransactionsPage() {
             ) : transactions.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={7}
+                  colSpan={6}
                   className="text-center text-muted-foreground"
                 >
                   No transactions found.
@@ -351,7 +343,6 @@ export default function TransactionsPage() {
                   <TableCell>{t.amount}</TableCell>
                   <TableCell>{t.currency}</TableCell>
                   <TableCell>{t.description ?? "—"}</TableCell>
-                  <TableCell>{t.merchant_name ?? "—"}</TableCell>
                   <TableCell>{t.status ?? "—"}</TableCell>
                 </TableRow>
               ))

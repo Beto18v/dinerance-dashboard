@@ -79,7 +79,6 @@ export interface Transaction {
   amount: string;
   currency: string;
   description: string | null;
-  merchant_name: string | null;
   occurred_at: string;
   status?: string;
 }
@@ -125,7 +124,6 @@ export const api = {
     amount: string;
     currency: string;
     description?: string | null;
-    merchant_name?: string | null;
     occurred_at: string;
   }) =>
     request<Transaction>("/transactions/", {
