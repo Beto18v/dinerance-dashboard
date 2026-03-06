@@ -94,6 +94,14 @@ export const api = {
 
   getProfile: () => request<UserProfile>("/users/me"),
 
+  updateProfile: (body: { name?: string }) =>
+    request<UserProfile>("/users/me", {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
+
+  deleteAccount: () => request<void>("/users/me", { method: "DELETE" }),
+
   getCategories: () => request<Category[]>("/categories/"),
 
   createCategory: (body: {
@@ -105,6 +113,22 @@ export const api = {
       method: "POST",
       body: JSON.stringify(body),
     }),
+
+  updateCategory: (
+    id: string,
+    body: {
+      name?: string;
+      direction?: "income" | "expense";
+      parent_id?: string | null;
+    },
+  ) =>
+    request<Category>(`/categories/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
+
+  deleteCategory: (id: string) =>
+    request<void>(`/categories/${id}`, { method: "DELETE" }),
 
   getTransactions: (params?: {
     category_id?: string;

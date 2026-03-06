@@ -1,15 +1,21 @@
-"use client";
+﻿"use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "@/components/providers/auth-provider";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
+
+const navLinks = [
+  { href: "/app/transactions", label: "Transactions" },
+  { href: "/app/categories", label: "Categories" },
+  { href: "/app/profile", label: "Profile" },
+];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { session, loading, signOut } = useSession();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     if (!loading && !session) {
@@ -19,8 +25,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <p className="text-muted-foreground">Loading…</p>
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 rounded-full border-[3px] border-primary border-t-transparent animate-spin" />
+          <p className="text-sm text-muted-foreground font-medium">Loading…</p>
+        </div>
       </div>
     );
   }
@@ -33,34 +42,54 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <header className="border-b px-6 py-3 flex items-center gap-4">
-        <nav className="flex items-center gap-4 flex-1">
+    <div className="min-h-screen bg-muted/40 flex flex-col">
+      <header className="bg-background border-b sticky top-0 z-20 shadow-sm">
+        <div className="max-w-6xl mx-auto px-6 h-14 flex items-center gap-6">
+          {/* Brand */}
           <Link
             href="/app/transactions"
-            className="text-sm font-medium hover:underline"
+            className="flex items-center gap-1.5 shrink-0"
           >
-            Transactions
+            <span className="font-bold text-base tracking-tight">
+              finance<span className="text-primary">AI</span>
+            </span>
           </Link>
-          <Link
-            href="/app/categories"
-            className="text-sm font-medium hover:underline"
-          >
-            Categories
-          </Link>
-          <Link
-            href="/app/profile"
-            className="text-sm font-medium hover:underline"
-          >
-            Profile
-          </Link>
-        </nav>
-        <Button variant="outline" size="sm" onClick={handleSignOut}>
-          Sign out
-        </Button>
+
+          {/* Nav */}
+          <nav className="flex items-center gap-1 flex-1">
+            {navLinks.map((link) => {
+              const active = pathname === link.href;
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                    active
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
+          </nav>
+
+          {/* User */}
+          <div className="flex items-center gap-3 shrink-0">
+            <span className="text-xs text-muted-foreground hidden sm:block max-w-45 truncate">
+              {session.user.email}
+            </span>
+            <Button variant="outline" size="sm" onClick={handleSignOut}>
+              Sign out
+            </Button>
+          </div>
+        </div>
       </header>
-      <Separator />
-      <main className="flex-1 p-6">{children}</main>
+
+      <main className="flex-1 max-w-6xl mx-auto w-full px-6 py-8">
+        {children}
+      </main>
     </div>
   );
 }

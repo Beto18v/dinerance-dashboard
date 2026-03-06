@@ -16,7 +16,13 @@ const CACHE_KEY_TXN = "cache:transactions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -35,9 +41,10 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -68,11 +75,17 @@ export default function TransactionsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>(
     () => getCache<Transaction[]>(CACHE_KEY_TXN) ?? [],
   );
-  const [listLoading, setListLoading] = useState(false);
+  const [listLoading, setListLoading] = useState(
+    () => !getCache<Transaction[]>(CACHE_KEY_TXN),
+  );
+
   const [editingTxn, setEditingTxn] = useState<Transaction | null>(null);
+  const [confirmDeleteTxn, setConfirmDeleteTxn] = useState<Transaction | null>(
+    null,
+  );
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  // Filters state
+  // Filters
   const [filterCategoryId, setFilterCategoryId] = useState<string>("");
   const [filterStartDate, setFilterStartDate] = useState("");
   const [filterEndDate, setFilterEndDate] = useState("");
@@ -143,19 +156,17 @@ export default function TransactionsPage() {
     loadCats();
   }, []);
 
-  // Real-time filter effect - fires on mount and whenever a filter changes
+  // Real-time filters
   useEffect(() => {
-    const silent =
-      !filterCategoryId && !filterStartDate && !filterEndDate
-        ? !!getCache(CACHE_KEY_TXN)
-        : false;
+    const hasTxnCache = !!getCache(CACHE_KEY_TXN);
+    const isFiltered = !!(filterCategoryId || filterStartDate || filterEndDate);
     loadTransactions(
       {
         category_id: filterCategoryId || undefined,
         start_date: filterStartDate || undefined,
         end_date: filterEndDate || undefined,
       },
-      silent,
+      hasTxnCache && !isFiltered,
     );
   }, [filterCategoryId, filterStartDate, filterEndDate, loadTransactions]);
 
@@ -170,11 +181,14 @@ export default function TransactionsPage() {
       });
       toast.success("Transaction created");
       reset({ currency: "COP" });
-      loadTransactions({
-        category_id: filterCategoryId || undefined,
-        start_date: filterStartDate || undefined,
-        end_date: filterEndDate || undefined,
-      });
+      loadTransactions(
+        {
+          category_id: filterCategoryId || undefined,
+          start_date: filterStartDate || undefined,
+          end_date: filterEndDate || undefined,
+        },
+        true,
+      );
     } catch (err) {
       if (err instanceof ApiError) toast.error(err.message);
       else toast.error("Failed to create transaction");
@@ -208,27 +222,36 @@ export default function TransactionsPage() {
       });
       toast.success("Transaction updated");
       setEditingTxn(null);
-      loadTransactions({
-        category_id: filterCategoryId || undefined,
-        start_date: filterStartDate || undefined,
-        end_date: filterEndDate || undefined,
-      });
+      loadTransactions(
+        {
+          category_id: filterCategoryId || undefined,
+          start_date: filterStartDate || undefined,
+          end_date: filterEndDate || undefined,
+        },
+        true,
+      );
     } catch (err) {
       if (err instanceof ApiError) toast.error(err.message);
       else toast.error("Failed to update transaction");
     }
   }
 
-  async function handleDelete(id: string) {
+  async function handleDeleteConfirmed() {
+    if (!confirmDeleteTxn) return;
+    const id = confirmDeleteTxn.id;
     setDeletingId(id);
+    setConfirmDeleteTxn(null);
     try {
       await api.deleteTransaction(id);
       toast.success("Transaction deleted");
-      loadTransactions({
-        category_id: filterCategoryId || undefined,
-        start_date: filterStartDate || undefined,
-        end_date: filterEndDate || undefined,
-      });
+      loadTransactions(
+        {
+          category_id: filterCategoryId || undefined,
+          start_date: filterStartDate || undefined,
+          end_date: filterEndDate || undefined,
+        },
+        true,
+      );
     } catch (err) {
       if (err instanceof ApiError) toast.error(err.message);
       else toast.error("Failed to delete transaction");
@@ -246,18 +269,24 @@ export default function TransactionsPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-5xl">
-      <h1 className="text-2xl font-semibold">Transactions</h1>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold">Transactions</h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Track your income and expenses.
+        </p>
+      </div>
 
       {/* Create form */}
       <Card>
         <CardHeader>
-          <CardTitle>New transaction</CardTitle>
+          <CardTitle className="text-base">New transaction</CardTitle>
+          <CardDescription>Record a new income or expense.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="space-y-1">
+              <div className="space-y-1.5">
                 <Label>Category</Label>
                 <Select
                   value={categoryIdValue ?? ""}
@@ -281,7 +310,7 @@ export default function TransactionsPage() {
                 )}
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-1.5">
                 <Label htmlFor="amount">Amount</Label>
                 <Input
                   id="amount"
@@ -295,7 +324,7 @@ export default function TransactionsPage() {
                 )}
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-1.5">
                 <Label htmlFor="currency">Currency</Label>
                 <Input
                   id="currency"
@@ -309,7 +338,7 @@ export default function TransactionsPage() {
                 )}
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-1.5">
                 <Label htmlFor="occurred_at">Date &amp; time</Label>
                 <Input
                   id="occurred_at"
@@ -323,14 +352,14 @@ export default function TransactionsPage() {
                 )}
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-1.5 sm:col-span-2">
                 <Label htmlFor="description">Description (optional)</Label>
                 <Input id="description" {...register("description")} />
               </div>
             </div>
 
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Creating..." : "Create"}
+              {isSubmitting ? "Creating…" : "Create transaction"}
             </Button>
           </form>
         </CardContent>
@@ -340,9 +369,9 @@ export default function TransactionsPage() {
 
       {/* Filters */}
       <div className="space-y-2">
-        <h2 className="text-lg font-medium">Filters</h2>
+        <h2 className="text-base font-semibold">Filters</h2>
         <div className="flex flex-wrap gap-3 items-end">
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             <Label>Category</Label>
             <Select
               value={filterCategoryId || "__all__"}
@@ -364,7 +393,7 @@ export default function TransactionsPage() {
             </Select>
           </div>
 
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             <Label htmlFor="start_date">Start date</Label>
             <Input
               id="start_date"
@@ -375,7 +404,7 @@ export default function TransactionsPage() {
             />
           </div>
 
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             <Label htmlFor="end_date">End date</Label>
             <Input
               id="end_date"
@@ -385,13 +414,32 @@ export default function TransactionsPage() {
               className="w-40"
             />
           </div>
+
+          {(filterCategoryId || filterStartDate || filterEndDate) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setFilterCategoryId("");
+                setFilterStartDate("");
+                setFilterEndDate("");
+              }}
+            >
+              Clear filters
+            </Button>
+          )}
         </div>
       </div>
 
       {/* List */}
       <div>
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="text-lg font-medium">Transactions</h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-base font-semibold">
+            Transactions
+            {listLoading && (
+              <span className="ml-2 inline-block h-3.5 w-3.5 rounded-full border-2 border-primary border-t-transparent animate-spin align-middle" />
+            )}
+          </h2>
           <Button
             variant="outline"
             size="sm"
@@ -407,94 +455,139 @@ export default function TransactionsPage() {
             Refresh
           </Button>
         </div>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Date</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Amount</TableHead>
-              <TableHead>Currency</TableHead>
-              <TableHead>Description</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {listLoading ? (
-              <TableRow>
-                <TableCell
-                  colSpan={8}
-                  className="text-center text-muted-foreground"
-                >
-                  Loading...
-                </TableCell>
+
+        <div className="rounded-lg border bg-card shadow-sm overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/50">
+                <TableHead>Date</TableHead>
+                <TableHead>Category</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Amount</TableHead>
+                <TableHead>Currency</TableHead>
+                <TableHead>Description</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
-            ) : transactions.length === 0 ? (
-              <TableRow>
-                <TableCell
-                  colSpan={8}
-                  className="text-center text-muted-foreground"
-                >
-                  No transactions found.
-                </TableCell>
-              </TableRow>
-            ) : (
-              transactions.map((t) => {
-                const direction = getCategoryDirection(t.category_id);
-                return (
-                  <TableRow key={t.id}>
-                    <TableCell>
-                      {new Date(t.occurred_at).toLocaleString()}
-                    </TableCell>
-                    <TableCell>{getCategoryName(t.category_id)}</TableCell>
-                    <TableCell>
-                      {direction === "income" && (
-                        <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
-                          Income
-                        </Badge>
-                      )}
-                      {direction === "expense" && (
-                        <Badge className="bg-red-100 text-red-800 hover:bg-red-100">
-                          Expense
-                        </Badge>
-                      )}
-                      {direction === null && (
-                        <span className="text-muted-foreground">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell>{t.amount}</TableCell>
-                    <TableCell>{t.currency}</TableCell>
-                    <TableCell>{t.description ?? "-"}</TableCell>
-                    <TableCell>{t.status ?? "-"}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <button
-                          type="button"
-                          onClick={() => openEditDialog(t)}
-                          className="text-muted-foreground hover:text-foreground transition-colors"
-                          title="Edit"
-                        >
-                          <FiEdit2 size={16} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(t.id)}
-                          disabled={deletingId === t.id}
-                          className="text-muted-foreground hover:text-destructive transition-colors disabled:opacity-50"
-                          title="Delete"
-                        >
-                          <FiTrash2 size={16} />
-                        </button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {listLoading && transactions.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={8}
+                    className="text-center py-8 text-muted-foreground"
+                  >
+                    Loading…
+                  </TableCell>
+                </TableRow>
+              ) : transactions.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={8}
+                    className="text-center py-8 text-muted-foreground"
+                  >
+                    No transactions found.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                transactions.map((t) => {
+                  const direction = getCategoryDirection(t.category_id);
+                  return (
+                    <TableRow key={t.id} className="hover:bg-muted/30">
+                      <TableCell className="text-sm">
+                        {new Date(t.occurred_at).toLocaleString()}
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {getCategoryName(t.category_id)}
+                      </TableCell>
+                      <TableCell>
+                        {direction === "income" && (
+                          <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">
+                            Income
+                          </Badge>
+                        )}
+                        {direction === "expense" && (
+                          <Badge className="bg-rose-100 text-rose-800 hover:bg-rose-100">
+                            Expense
+                          </Badge>
+                        )}
+                        {direction === null && (
+                          <span className="text-muted-foreground text-sm">
+                            —
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="font-mono">{t.amount}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {t.currency}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground max-w-40 truncate">
+                        {t.description ?? "—"}
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-xs text-muted-foreground capitalize">
+                          {t.status ?? "—"}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          <button
+                            type="button"
+                            onClick={() => openEditDialog(t)}
+                            className="text-muted-foreground hover:text-foreground transition-colors p-1.5 rounded hover:bg-muted"
+                            title="Edit"
+                          >
+                            <FiEdit2 size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmDeleteTxn(t)}
+                            disabled={deletingId === t.id}
+                            className="text-muted-foreground hover:text-destructive transition-colors p-1.5 rounded hover:bg-muted disabled:opacity-40"
+                            title="Delete"
+                          >
+                            <FiTrash2 size={14} />
+                          </button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
+
+      {/* Confirm delete dialog */}
+      <Dialog
+        open={!!confirmDeleteTxn}
+        onOpenChange={(o) => !o && setConfirmDeleteTxn(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete transaction?</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this transaction of{" "}
+              <strong>
+                {confirmDeleteTxn?.amount} {confirmDeleteTxn?.currency}
+              </strong>
+              {confirmDeleteTxn?.description
+                ? ` — "${confirmDeleteTxn.description}"`
+                : ""}
+              ? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmDeleteTxn(null)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteConfirmed}>
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Dialog */}
       <Dialog
@@ -505,11 +598,8 @@ export default function TransactionsPage() {
           <DialogHeader>
             <DialogTitle>Edit transaction</DialogTitle>
           </DialogHeader>
-          <form
-            onSubmit={handleEditSubmit(onEditSubmit)}
-            className="space-y-4"
-          >
-            <div className="space-y-1">
+          <form onSubmit={handleEditSubmit(onEditSubmit)} className="space-y-4">
+            <div className="space-y-1.5">
               <Label>Category</Label>
               <Select
                 value={editCategoryIdValue ?? ""}
@@ -534,7 +624,7 @@ export default function TransactionsPage() {
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
+              <div className="space-y-1.5">
                 <Label htmlFor="edit_amount">Amount</Label>
                 <Input
                   id="edit_amount"
@@ -548,7 +638,7 @@ export default function TransactionsPage() {
                 )}
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-1.5">
                 <Label htmlFor="edit_currency">Currency</Label>
                 <Input
                   id="edit_currency"
@@ -563,7 +653,7 @@ export default function TransactionsPage() {
               </div>
             </div>
 
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               <Label htmlFor="edit_occurred_at">Date &amp; time</Label>
               <Input
                 id="edit_occurred_at"
@@ -577,7 +667,7 @@ export default function TransactionsPage() {
               )}
             </div>
 
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               <Label htmlFor="edit_description">Description (optional)</Label>
               <Input id="edit_description" {...registerEdit("description")} />
             </div>
@@ -591,7 +681,7 @@ export default function TransactionsPage() {
                 Cancel
               </Button>
               <Button type="submit" disabled={editIsSubmitting}>
-                {editIsSubmitting ? "Saving..." : "Save changes"}
+                {editIsSubmitting ? "Saving…" : "Save changes"}
               </Button>
             </DialogFooter>
           </form>
