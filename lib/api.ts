@@ -84,7 +84,7 @@ export interface Transaction {
   currency: string;
   description: string | null;
   occurred_at: string;
-  status?: string;
+  created_at: string;
 }
 
 // ── Endpoints ────────────────────────────────────────────────────────────────

@@ -466,7 +466,6 @@ export default function TransactionsPage() {
                 <TableHead>Amount</TableHead>
                 <TableHead>Currency</TableHead>
                 <TableHead>Description</TableHead>
-                <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -474,7 +473,7 @@ export default function TransactionsPage() {
               {listLoading && transactions.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={8}
+                    colSpan={7}
                     className="text-center py-8 text-muted-foreground"
                   >
                     Loading…
@@ -483,7 +482,7 @@ export default function TransactionsPage() {
               ) : transactions.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={8}
+                    colSpan={7}
                     className="text-center py-8 text-muted-foreground"
                   >
                     No transactions found.
@@ -523,11 +522,6 @@ export default function TransactionsPage() {
                       </TableCell>
                       <TableCell className="text-muted-foreground max-w-40 truncate">
                         {t.description ?? "—"}
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-xs text-muted-foreground capitalize">
-                          {t.status ?? "—"}
-                        </span>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
