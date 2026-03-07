@@ -9,6 +9,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 
 import { createClient } from "@/lib/supabase/client";
+import { api, ApiError } from "@/lib/api";
 import { useSession } from "@/components/providers/auth-provider";
 import { useSitePreferences } from "@/components/providers/site-preferences-provider";
 import { getSiteText } from "@/lib/site";
@@ -46,15 +47,58 @@ export default function RegisterPage() {
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({ resolver: zodResolver(schema) });
 
+  async function bootstrapProfile(values: { name: string; email: string }) {
+    try {
+      await api.createProfile({ name: values.name, email: values.email });
+      toast.success(t.profileCreatedToast);
+      router.replace("/app/transactions");
+      return true;
+    } catch (err) {
+      // If profile already exists, continue to dashboard.
+      if (err instanceof ApiError && err.status === 409) {
+        router.replace("/app/transactions");
+        return true;
+      }
+      toast.error(
+        err instanceof ApiError ? err.message : site.common.unexpectedError,
+      );
+      return false;
+    }
+  }
+
   useEffect(() => {
     if (!loading && session) {
-      router.replace("/app/transactions");
+      api
+        .getProfile()
+        .then(() => router.replace("/app/transactions"))
+        .catch(async (err) => {
+          if (err instanceof ApiError && err.status === 404) {
+            const bootstrapName =
+              session.user.user_metadata?.full_name ||
+              session.user.user_metadata?.name ||
+              "User";
+            const bootstrapEmail = session.user.email;
+
+            if (bootstrapEmail) {
+              const ok = await bootstrapProfile({
+                name: bootstrapName,
+                email: bootstrapEmail,
+              });
+              if (!ok) await createClient().auth.signOut();
+              return;
+            }
+          }
+
+          if (err instanceof ApiError) toast.error(err.message);
+          else toast.error(site.common.unexpectedError);
+          await createClient().auth.signOut();
+        });
     }
   }, [session, loading, router]);
 
   async function onSubmit(values: FormValues) {
     const supabase = createClient();
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email: values.email,
       password: values.password,
       options: {
@@ -63,12 +107,52 @@ export default function RegisterPage() {
     });
 
     if (error) {
-      toast.error(error.message);
+      const alreadyRegistered =
+        /already registered|already exists|user exists/i.test(error.message);
+
+      if (!alreadyRegistered) {
+        toast.error(error.message);
+        return;
+      }
+
+      const signIn = await supabase.auth.signInWithPassword({
+        email: values.email,
+        password: values.password,
+      });
+
+      if (signIn.error) {
+        toast.error(signIn.error.message);
+        return;
+      }
+
+      if (!(await bootstrapProfile(values))) {
+        await supabase.auth.signOut();
+      }
       return;
     }
 
-    toast.success(t.successToast);
-    router.replace("/auth/login");
+    // If session is already available, bootstrap and continue directly.
+    if (data.session) {
+      if (!(await bootstrapProfile(values))) {
+        await supabase.auth.signOut();
+      }
+      return;
+    }
+
+    // Fallback: try immediate login to avoid email-confirm required UX.
+    const signIn = await supabase.auth.signInWithPassword({
+      email: values.email,
+      password: values.password,
+    });
+
+    if (!signIn.error) {
+      if (!(await bootstrapProfile(values))) {
+        await supabase.auth.signOut();
+      }
+      return;
+    }
+
+    toast.error(signIn.error.message);
   }
 
   return (

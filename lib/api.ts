@@ -68,6 +68,7 @@ export interface UserProfile {
   name: string;
   email: string;
   created_at: string;
+  deleted_at?: string | null;
 }
 
 export interface Category {
@@ -93,6 +94,12 @@ export const api = {
   healthz: () => request<{ status: string }>("/healthz", {}, false),
 
   getProfile: () => request<UserProfile>("/users/me"),
+
+  createProfile: (body: { name: string; email: string }) =>
+    request<UserProfile>("/users/", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
 
   updateProfile: (body: { name?: string }) =>
     request<UserProfile>("/users/me", {

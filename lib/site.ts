@@ -16,6 +16,7 @@ const siteTexts = {
     },
     common: {
       loading: "Cargando...",
+      unexpectedError: "Error inesperado",
       none: "Ninguno",
       all: "Todos",
       clearFilters: "Limpiar filtros",
@@ -52,6 +53,7 @@ const siteTexts = {
         submitting: "Iniciando sesion...",
         noAccount: "No tienes cuenta?",
         register: "Registrate",
+        notRegistered: "El usuario no esta registrado.",
         validations: {
           invalidEmail: "Correo invalido",
           passwordRequired: "La contrasena es obligatoria",
@@ -75,8 +77,8 @@ const siteTexts = {
           confirmRequired: "Confirma tu contrasena",
           passwordsDontMatch: "Las contrasenas no coinciden",
         },
-        successToast:
-          "Cuenta creada. Revisa tu correo para confirmar tu cuenta.",
+        successToast: "Cuenta creada correctamente.",
+        profileCreatedToast: "Usuario creado correctamente.",
       },
     },
     pages: {
@@ -208,6 +210,7 @@ const siteTexts = {
     },
     common: {
       loading: "Loading...",
+      unexpectedError: "Unexpected error",
       none: "None",
       all: "All",
       clearFilters: "Clear filters",
@@ -244,6 +247,7 @@ const siteTexts = {
         submitting: "Signing in...",
         noAccount: "Don't have an account?",
         register: "Register",
+        notRegistered: "User is not registered.",
         validations: {
           invalidEmail: "Invalid email",
           passwordRequired: "Password required",
@@ -267,8 +271,8 @@ const siteTexts = {
           confirmRequired: "Please confirm your password",
           passwordsDontMatch: "Passwords don't match",
         },
-        successToast:
-          "Account created! Please check your email to confirm your account.",
+        successToast: "Account created successfully.",
+        profileCreatedToast: "User profile created successfully.",
       },
     },
     pages: {

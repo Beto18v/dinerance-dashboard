@@ -57,14 +57,7 @@ const schema = z.object({
   parent_id: z.string().optional(),
 });
 
-const editSchema = z.object({
-  name: z.string().min(1, schemaText.validations.nameRequired),
-  direction: z.enum(["income", "expense"]),
-  parent_id: z.string().optional(),
-});
-
 type FormValues = z.infer<typeof schema>;
-type EditFormValues = z.infer<typeof editSchema>;
 
 export default function CategoriesPage() {
   const { site } = useSitePreferences();
@@ -109,7 +102,7 @@ export default function CategoriesPage() {
     reset: resetEdit,
     watch: watchEdit,
     formState: { errors: editErrors, isSubmitting: editIsSubmitting },
-  } = useForm<EditFormValues>({ resolver: zodResolver(editSchema) });
+  } = useForm<FormValues>({ resolver: zodResolver(schema) });
 
   const editDirectionValue = watchEdit("direction");
   const editParentIdValue = watchEdit("parent_id");
@@ -157,7 +150,7 @@ export default function CategoriesPage() {
     });
   }
 
-  async function onEditSubmit(values: EditFormValues) {
+  async function onEditSubmit(values: FormValues) {
     if (!editingCat) return;
     try {
       await api.updateCategory(editingCat.id, {

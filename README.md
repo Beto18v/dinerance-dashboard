@@ -47,30 +47,42 @@ Abre [http://localhost:3000](http://localhost:3000) en el navegador.
 ```
 app/
   page.tsx                  → Redirige a /app/transactions
-  layout.tsx                → Layout raíz: AuthProvider + Toaster
-  login/page.tsx            → Login con email y contraseña
+  layout.tsx                → Layout raíz: providers (Auth, Theme, SitePreferences) + Toaster
+  auth/
+    login/page.tsx          → Login con email y contraseña
+    register/page.tsx       → Registro con creación de perfil en backend
   app/
-    layout.tsx              → Layout protegido con navegación y logout
-    transactions/page.tsx   → Crear y listar transacciones con filtros
-    categories/page.tsx     → Crear y listar categorías
-    profile/page.tsx        → Ver perfil del usuario autenticado
+    layout.tsx              → Layout protegido con navegación, guard de perfil y logout
+    transactions/page.tsx   → CRUD de transacciones con filtros (categoría, rango de fechas)
+    categories/page.tsx     → CRUD de categorías (nombre, dirección, padre opcional)
+    profile/
+      page.tsx              → Perfil del usuario (edición de nombre, eliminación de cuenta)
+      components/
+        preferences-card.tsx → Selector de idioma y tema
 lib/
-  api.ts                    → Cliente HTTP tipado (agrega Bearer token, parsea errores)
+  api.ts                    → Cliente HTTP tipado (agrega Bearer token, parsea errores como ApiError)
   cache.ts                  → Utilidad de caché con localStorage (stale-while-revalidate)
+  site.ts                   → Textos i18n (es/en) y helpers de locale
+  utils.ts                  → Utilidades generales (cn para clases Tailwind)
   supabase/client.ts        → Singleton del cliente Supabase browser
 components/
-  providers/auth-provider.tsx  → Contexto de sesión + hook useSession()
-  ui/                          → Componentes shadcn/ui generados
+  providers/
+    auth-provider.tsx       → Contexto de sesión + hook useSession() + clearUserCache en signOut
+    site-preferences-provider.tsx → Contexto de idioma/locale + hook useSitePreferences()
+    theme-provider.tsx      → Wrapper de next-themes
+  ui/                       → Componentes shadcn/ui generados
 ```
 
 ## Funcionalidades
 
-- **Login / Logout** con Supabase Auth (email + contraseña).
-- **Rutas protegidas**: todo bajo `/app/*` requiere sesión activa; redirige a `/login` si no la hay.
-- **Perfil**: sincroniza datos del usuario desde `GET /users/me`.
-- **Categorías**: crear (nombre, dirección, categoría padre opcional) y listar.
-- **Transacciones**: crear y listar con filtros por categoría, fecha inicio y fecha fin.
-- **Caché local**: los datos se muestran instantáneamente desde `localStorage` y se actualizan en background en cada visita. Al usar otro dispositivo se carga desde el backend y se guarda el nuevo caché.
+- **Registro / Login / Logout** con Supabase Auth (email + contraseña).
+- **Rutas protegidas**: todo bajo `/app/*` requiere sesión activa y perfil existente en backend; redirige a `/auth/login` si no hay sesión o a `/auth/register` si no hay perfil.
+- **Perfil**: sincroniza datos del usuario desde `GET /users/me`, edición de nombre con auto-save, eliminación de cuenta (soft delete en backend + signOut).
+- **Categorías**: CRUD completo (crear, listar, editar, eliminar) con soporte de categoría padre y filtros por dirección.
+- **Transacciones**: CRUD completo con filtros por categoría, fecha inicio y fecha fin.
+- **Internacionalización (i18n)**: español e inglés, configurable desde Preferencias del perfil. Los textos se centralizan en `lib/site.ts`.
+- **Tema**: claro, oscuro o sistema, configurable desde Preferencias.
+- **Caché local**: los datos se muestran instantáneamente desde `localStorage` y se actualizan en background en cada visita. Al cambiar de usuario se limpia automáticamente.
 
 ## Build de producción
 

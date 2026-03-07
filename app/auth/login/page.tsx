@@ -9,6 +9,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 
 import { createClient } from "@/lib/supabase/client";
+import { api, ApiError } from "@/lib/api";
 import { useSession } from "@/components/providers/auth-provider";
 import { useSitePreferences } from "@/components/providers/site-preferences-provider";
 import { getSiteText } from "@/lib/site";
@@ -54,6 +55,23 @@ export default function LoginPage() {
 
     if (error) {
       toast.error(error.message);
+      return;
+    }
+
+    try {
+      await api.getProfile();
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 404) {
+        await supabase.auth.signOut();
+        toast.error(t.notRegistered);
+        router.replace("/auth/register");
+        return;
+      }
+
+      await supabase.auth.signOut();
+      toast.error(
+        err instanceof ApiError ? err.message : site.common.unexpectedError,
+      );
       return;
     }
 

@@ -1,10 +1,11 @@
 ﻿"use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "@/components/providers/auth-provider";
 import { useSitePreferences } from "@/components/providers/site-preferences-provider";
+import { api, ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -12,6 +13,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { site } = useSitePreferences();
   const router = useRouter();
   const pathname = usePathname();
+  const [profileReady, setProfileReady] = useState(false);
   const navLinks = [
     { href: "/app/transactions", label: site.appLayout.nav.transactions },
     { href: "/app/categories", label: site.appLayout.nav.categories },
@@ -21,10 +23,32 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!loading && !session) {
       router.replace("/auth/login");
+      return;
     }
-  }, [session, loading, router]);
 
-  if (loading) {
+    if (!loading && session) {
+      api
+        .getProfile()
+        .then(() => setProfileReady(true))
+        .catch(async (err) => {
+          if (err instanceof ApiError && err.status === 404) {
+            await signOut();
+            router.replace("/auth/register");
+            return;
+          }
+
+          if (err instanceof ApiError && err.status === 401) {
+            await signOut();
+            router.replace("/auth/login");
+            return;
+          }
+
+          setProfileReady(true);
+        });
+    }
+  }, [session, loading, router, signOut]);
+
+  if (loading || (session && !profileReady)) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3">

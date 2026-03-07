@@ -5,9 +5,8 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { api, ApiError, type UserProfile } from "@/lib/api";
-import { getCache, setCache, clearUserCache } from "@/lib/cache";
+import { getCache, setCache } from "@/lib/cache";
 import { useSession } from "@/components/providers/auth-provider";
-import { createClient } from "@/lib/supabase/client";
 import { useSitePreferences } from "@/components/providers/site-preferences-provider";
 import { PreferencesCard } from "./components/preferences-card";
 
@@ -98,9 +97,6 @@ export default function ProfilePage() {
     setDeleting(true);
     try {
       await api.deleteAccount();
-      clearUserCache();
-      const supabase = createClient();
-      await supabase.auth.signOut();
       await signOut();
       toast.success(t.deleted);
       router.replace("/auth/register");

@@ -11,11 +11,6 @@ import { api, ApiError, type Category, type Transaction } from "@/lib/api";
 import { getCache, setCache } from "@/lib/cache";
 import { useSitePreferences } from "@/components/providers/site-preferences-provider";
 import { getSiteText } from "@/lib/site";
-
-const CACHE_KEY_CATS = "cache:categories";
-const CACHE_KEY_TXN = "cache:transactions";
-const schemaText = getSiteText().pages.transactions;
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -52,6 +47,10 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 
+const CACHE_KEY_CATS = "cache:categories";
+const CACHE_KEY_TXN = "cache:transactions";
+const schemaText = getSiteText().pages.transactions;
+
 const schema = z.object({
   category_id: z.string().min(1, schemaText.validations.categoryRequired),
   amount: z.string().min(1, schemaText.validations.amountRequired),
@@ -60,16 +59,7 @@ const schema = z.object({
   description: z.string().optional(),
 });
 
-const editSchema = z.object({
-  category_id: z.string().min(1, schemaText.validations.categoryRequired),
-  amount: z.string().min(1, schemaText.validations.amountRequired),
-  currency: z.string().min(1, schemaText.validations.currencyRequired),
-  occurred_at: z.string().min(1, schemaText.validations.dateRequired),
-  description: z.string().optional(),
-});
-
 type FormValues = z.infer<typeof schema>;
-type EditFormValues = z.infer<typeof editSchema>;
 
 export default function TransactionsPage() {
   const { site } = useSitePreferences();
@@ -95,6 +85,15 @@ export default function TransactionsPage() {
   const [filterStartDate, setFilterStartDate] = useState("");
   const [filterEndDate, setFilterEndDate] = useState("");
 
+  const filterParams = useMemo(
+    () => ({
+      category_id: filterCategoryId || undefined,
+      start_date: filterStartDate || undefined,
+      end_date: filterEndDate || undefined,
+    }),
+    [filterCategoryId, filterStartDate, filterEndDate],
+  );
+
   const {
     register,
     handleSubmit,
@@ -116,7 +115,7 @@ export default function TransactionsPage() {
     reset: resetEdit,
     watch: watchEdit,
     formState: { errors: editErrors, isSubmitting: editIsSubmitting },
-  } = useForm<EditFormValues>({ resolver: zodResolver(editSchema) });
+  } = useForm<FormValues>({ resolver: zodResolver(schema) });
 
   const editCategoryIdValue = watchEdit("category_id");
 
@@ -164,16 +163,13 @@ export default function TransactionsPage() {
   // Real-time filters
   useEffect(() => {
     const hasTxnCache = !!getCache(CACHE_KEY_TXN);
-    const isFiltered = !!(filterCategoryId || filterStartDate || filterEndDate);
-    loadTransactions(
-      {
-        category_id: filterCategoryId || undefined,
-        start_date: filterStartDate || undefined,
-        end_date: filterEndDate || undefined,
-      },
-      hasTxnCache && !isFiltered,
+    const isFiltered = !!(
+      filterParams.category_id ||
+      filterParams.start_date ||
+      filterParams.end_date
     );
-  }, [filterCategoryId, filterStartDate, filterEndDate, loadTransactions]);
+    loadTransactions(filterParams, hasTxnCache && !isFiltered);
+  }, [filterParams, loadTransactions]);
 
   async function onSubmit(values: FormValues) {
     try {
@@ -186,14 +182,7 @@ export default function TransactionsPage() {
       });
       toast.success(t.created);
       reset({ currency: "COP" });
-      loadTransactions(
-        {
-          category_id: filterCategoryId || undefined,
-          start_date: filterStartDate || undefined,
-          end_date: filterEndDate || undefined,
-        },
-        true,
-      );
+      loadTransactions(filterParams, true);
     } catch (err) {
       if (err instanceof ApiError) toast.error(err.message);
       else toast.error(t.failedCreate);
@@ -215,7 +204,7 @@ export default function TransactionsPage() {
     });
   }
 
-  async function onEditSubmit(values: EditFormValues) {
+  async function onEditSubmit(values: FormValues) {
     if (!editingTxn) return;
     try {
       await api.updateTransaction(editingTxn.id, {
@@ -227,14 +216,7 @@ export default function TransactionsPage() {
       });
       toast.success(t.updated);
       setEditingTxn(null);
-      loadTransactions(
-        {
-          category_id: filterCategoryId || undefined,
-          start_date: filterStartDate || undefined,
-          end_date: filterEndDate || undefined,
-        },
-        true,
-      );
+      loadTransactions(filterParams, true);
     } catch (err) {
       if (err instanceof ApiError) toast.error(err.message);
       else toast.error(t.failedUpdate);
@@ -249,14 +231,7 @@ export default function TransactionsPage() {
     try {
       await api.deleteTransaction(id);
       toast.success(t.deleted);
-      loadTransactions(
-        {
-          category_id: filterCategoryId || undefined,
-          start_date: filterStartDate || undefined,
-          end_date: filterEndDate || undefined,
-        },
-        true,
-      );
+      loadTransactions(filterParams, true);
     } catch (err) {
       if (err instanceof ApiError) toast.error(err.message);
       else toast.error(t.failedDelete);
@@ -452,13 +427,7 @@ export default function TransactionsPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() =>
-              loadTransactions({
-                category_id: filterCategoryId || undefined,
-                start_date: filterStartDate || undefined,
-                end_date: filterEndDate || undefined,
-              })
-            }
+            onClick={() => loadTransactions(filterParams)}
             disabled={listLoading}
           >
             {site.common.refresh}
