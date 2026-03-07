@@ -164,7 +164,8 @@ const siteTexts = {
         title: "Perfil",
         subtitle: "Administra la informacion de tu cuenta.",
         preferencesTitle: "Preferencias",
-        preferencesDescription: "Configura idioma y apariencia de la aplicacion.",
+        preferencesDescription:
+          "Configura idioma y apariencia de la aplicacion.",
         languageLabel: "Idioma",
         appearanceLabel: "Apariencia",
         languageEs: "Espanol",
