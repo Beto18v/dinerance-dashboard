@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -260,12 +260,18 @@ export default function TransactionsPage() {
     }
   }
 
+  const categoryMap = useMemo(() => {
+    const map = new Map<string, Category>();
+    for (const c of categories) map.set(c.id, c);
+    return map;
+  }, [categories]);
+
   function getCategoryName(id: string) {
-    return categories.find((c) => c.id === id)?.name ?? id;
+    return categoryMap.get(id)?.name ?? id;
   }
 
   function getCategoryDirection(id: string) {
-    return categories.find((c) => c.id === id)?.direction ?? null;
+    return categoryMap.get(id)?.direction ?? null;
   }
 
   return (

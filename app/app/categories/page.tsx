@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -73,7 +73,9 @@ export default function CategoriesPage() {
 
   // Editing / deleting
   const [editingCat, setEditingCat] = useState<Category | null>(null);
-  const [confirmDeleteCat, setConfirmDeleteCat] = useState<Category | null>(null);
+  const [confirmDeleteCat, setConfirmDeleteCat] = useState<Category | null>(
+    null,
+  );
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // Filters
@@ -184,9 +186,15 @@ export default function CategoriesPage() {
     }
   }
 
+  const categoryMap = useMemo(() => {
+    const map = new Map<string, Category>();
+    for (const c of categories) map.set(c.id, c);
+    return map;
+  }, [categories]);
+
   function getParentName(id: string | null) {
     if (!id) return "—";
-    return categories.find((c) => c.id === id)?.name ?? "—";
+    return categoryMap.get(id)?.name ?? "—";
   }
 
   // Derived: filtered view
@@ -218,9 +226,15 @@ export default function CategoriesPage() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="space-y-1.5">
                 <Label htmlFor="name">Name</Label>
-                <Input id="name" {...register("name")} placeholder="e.g. Groceries" />
+                <Input
+                  id="name"
+                  {...register("name")}
+                  placeholder="e.g. Groceries"
+                />
                 {errors.name && (
-                  <p className="text-sm text-destructive">{errors.name.message}</p>
+                  <p className="text-sm text-destructive">
+                    {errors.name.message}
+                  </p>
                 )}
               </div>
 
@@ -301,9 +315,7 @@ export default function CategoriesPage() {
             <Label>Category</Label>
             <Select
               value={filterNameId || "__all__"}
-              onValueChange={(v) =>
-                setFilterNameId(v === "__all__" ? "" : v)
-              }
+              onValueChange={(v) => setFilterNameId(v === "__all__" ? "" : v)}
             >
               <SelectTrigger className="w-44">
                 <SelectValue placeholder="All" />
@@ -368,13 +380,19 @@ export default function CategoriesPage() {
             <TableBody>
               {listLoading ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                  <TableCell
+                    colSpan={4}
+                    className="text-center py-8 text-muted-foreground"
+                  >
                     Loading…
                   </TableCell>
                 </TableRow>
               ) : visibleCategories.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                  <TableCell
+                    colSpan={4}
+                    className="text-center py-8 text-muted-foreground"
+                  >
                     No categories found.
                   </TableCell>
                 </TableRow>
@@ -426,7 +444,10 @@ export default function CategoriesPage() {
       </div>
 
       {/* Edit dialog */}
-      <Dialog open={!!editingCat} onOpenChange={(o) => !o && setEditingCat(null)}>
+      <Dialog
+        open={!!editingCat}
+        onOpenChange={(o) => !o && setEditingCat(null)}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit category</DialogTitle>
@@ -436,7 +457,9 @@ export default function CategoriesPage() {
               <Label htmlFor="edit_name">Name</Label>
               <Input id="edit_name" {...registerEdit("name")} />
               {editErrors.name && (
-                <p className="text-sm text-destructive">{editErrors.name.message}</p>
+                <p className="text-sm text-destructive">
+                  {editErrors.name.message}
+                </p>
               )}
             </div>
 
@@ -483,7 +506,11 @@ export default function CategoriesPage() {
             </div>
 
             <DialogFooter>
-              <Button variant="outline" type="button" onClick={() => setEditingCat(null)}>
+              <Button
+                variant="outline"
+                type="button"
+                onClick={() => setEditingCat(null)}
+              >
                 Cancel
               </Button>
               <Button type="submit" disabled={editIsSubmitting}>
