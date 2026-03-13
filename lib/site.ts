@@ -37,6 +37,8 @@ const siteTexts = {
       expense: "Gasto",
     },
     appLayout: {
+      mobileMenuTitle: "Menu",
+      mobileMenuDescription: "Navega por tu panel y administra tu sesion.",
       nav: {
         balance: "Balance",
         transactions: "Transacciones",
@@ -252,6 +254,8 @@ const siteTexts = {
       expense: "Expense",
     },
     appLayout: {
+      mobileMenuTitle: "Menu",
+      mobileMenuDescription: "Navigate your dashboard and manage your session.",
       nav: {
         balance: "Balance",
         transactions: "Transactions",
