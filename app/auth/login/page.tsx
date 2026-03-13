@@ -10,6 +10,7 @@ import { toast } from "sonner";
 
 import { createClient } from "@/lib/supabase/client";
 import { api, ApiError } from "@/lib/api";
+import { GoogleAuthButton } from "@/components/auth/google-auth-button";
 import { useSession } from "@/components/providers/auth-provider";
 import { useSitePreferences } from "@/components/providers/site-preferences-provider";
 import { getSiteText } from "@/lib/site";
@@ -18,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import Image from "next/image";
 
 const schemaText = getSiteText().auth.login;
@@ -94,6 +96,21 @@ export default function LoginPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <GoogleAuthButton
+              label={t.google}
+              loadingLabel={t.googleSubmitting}
+              disabled={isSubmitting}
+            />
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <Separator />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">
+                  {t.orContinueWithEmail}
+                </span>
+              </div>
+            </div>
             <div className="space-y-1">
               <Label htmlFor="email">{t.email}</Label>
               <Input id="email" type="email" {...register("email")} />

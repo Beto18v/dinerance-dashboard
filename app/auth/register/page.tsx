@@ -8,8 +8,10 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 
+import { bootstrapAuthenticatedProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/client";
 import { api, ApiError } from "@/lib/api";
+import { GoogleAuthButton } from "@/components/auth/google-auth-button";
 import { useSession } from "@/components/providers/auth-provider";
 import { useSitePreferences } from "@/components/providers/site-preferences-provider";
 import { getSiteText } from "@/lib/site";
@@ -18,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import Image from "next/image";
 
 const schemaText = getSiteText().auth.register;
@@ -49,18 +52,13 @@ export default function RegisterPage() {
   } = useForm<FormValues>({ resolver: zodResolver(schema) });
 
   const bootstrapProfile = useCallback(
-    async (values: { name: string; email: string }) => {
+    async (name?: string) => {
       try {
-        await api.createProfile({ name: values.name, email: values.email });
+        await bootstrapAuthenticatedProfile(name);
         toast.success(t.profileCreatedToast);
         router.replace("/app/balance");
         return true;
       } catch (err) {
-        // If profile already exists, continue to dashboard.
-        if (err instanceof ApiError && err.status === 409) {
-          router.replace("/app/balance");
-          return true;
-        }
         toast.error(
           err instanceof ApiError ? err.message : site.common.unexpectedError,
         );
@@ -81,16 +79,10 @@ export default function RegisterPage() {
               session.user.user_metadata?.full_name ||
               session.user.user_metadata?.name ||
               "User";
-            const bootstrapEmail = session.user.email;
 
-            if (bootstrapEmail) {
-              const ok = await bootstrapProfile({
-                name: bootstrapName,
-                email: bootstrapEmail,
-              });
-              if (!ok) await createClient().auth.signOut();
-              return;
-            }
+            const ok = await bootstrapProfile(bootstrapName);
+            if (!ok) await createClient().auth.signOut();
+            return;
           }
 
           if (err instanceof ApiError) toast.error(err.message);
@@ -129,7 +121,7 @@ export default function RegisterPage() {
         return;
       }
 
-      if (!(await bootstrapProfile(values))) {
+      if (!(await bootstrapProfile(values.name))) {
         await supabase.auth.signOut();
       }
       return;
@@ -137,7 +129,7 @@ export default function RegisterPage() {
 
     // If session is already available, bootstrap and continue directly.
     if (data.session) {
-      if (!(await bootstrapProfile(values))) {
+      if (!(await bootstrapProfile(values.name))) {
         await supabase.auth.signOut();
       }
       return;
@@ -150,7 +142,7 @@ export default function RegisterPage() {
     });
 
     if (!signIn.error) {
-      if (!(await bootstrapProfile(values))) {
+      if (!(await bootstrapProfile(values.name))) {
         await supabase.auth.signOut();
       }
       return;
@@ -173,6 +165,21 @@ export default function RegisterPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <GoogleAuthButton
+              label={t.google}
+              loadingLabel={t.googleSubmitting}
+              disabled={isSubmitting}
+            />
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <Separator />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">
+                  {t.orContinueWithEmail}
+                </span>
+              </div>
+            </div>
             <div className="space-y-1">
               <Label htmlFor="name">{t.name}</Label>
               <Input id="name" type="text" {...register("name")} />

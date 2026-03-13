@@ -107,6 +107,12 @@ export const api = {
 
   getProfile: () => request<UserProfile>("/users/me"),
 
+  bootstrapProfile: (body?: { name?: string }) =>
+    request<UserProfile>("/users/me/bootstrap", {
+      method: "POST",
+      body: body ? JSON.stringify(body) : undefined,
+    }),
+
   createProfile: (body: { name: string; email: string }) =>
     request<UserProfile>("/users/", {
       method: "POST",
