@@ -13,22 +13,34 @@ Frontend del proyecto Dinerance. Construido con Next.js 16 App Router, shadcn/ui
 
 ## Variables de entorno
 
-Crea `.env` o `.env.local` en la raiz del proyecto:
+Crea `.env.local` en la raiz del proyecto para desarrollo local. Se parte
+de `.env.local.example`. Usa `.env.example` solo como referencia de las
+variables requeridas para despliegue. Deja las variables de produccion
+configuradas en Vercel.
 
 ```env
-# Obligatoria: URL base del backend FastAPI
-NEXT_PUBLIC_API_BASE_URL=https://dinerance-api-prod.azurewebsites.net
+# Desarrollo local: backend FastAPI corriendo en maquina
+NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000
 
 # Obligatorias: proyecto Supabase -> Settings -> API
 NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon-public-key>
 
-# Opcional/recomendada: URL publica canonica del dashboard
-# NEXT_PUBLIC_SITE_URL=https://tu-dashboard.vercel.app
+# Recomendada en local para OAuth
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ```
 
 La `anon key` es publica. No uses `service_role` en el frontend.
 `NEXT_PUBLIC_SITE_URL` ya no es obligatoria para Google OAuth: el frontend usa primero el origen real del navegador para evitar redirects a `localhost` en Vercel.
+
+Para produccion configurar estas variables en Vercel:
+
+```env
+NEXT_PUBLIC_API_BASE_URL=https://your-api.example.com
+NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon-public-key>
+NEXT_PUBLIC_SITE_URL=https://tu-dashboard.vercel.app
+```
 
 ## Instalacion y ejecucion
 
@@ -39,7 +51,11 @@ npm run dev
 
 Abre `http://localhost:3000`.
 
-Requisito previo: el backend `dinerance-api` debe estar corriendo en la URL configurada en `NEXT_PUBLIC_API_BASE_URL`.
+`npm run dev` usa Webpack en local para evitar el panic de Turbopack que se
+esta presentando en algunos entornos Windows con Next 16. Si quieres volver a
+probar Turbopack de forma explicita, usa `npm run dev:turbopack`.
+
+Requisito previo: el backend `dinerance-api` debe estar corriendo en la URL configurada en `NEXT_PUBLIC_API_BASE_URL`. Con la configuracion local de arriba, el backend esperado es `http://127.0.0.1:8000`.
 
 ## Estructura
 
@@ -124,5 +140,5 @@ Si usas Google via Supabase, en Google Cloud el redirect URI autorizado debe ser
 
 ```bash
 npm run build
-npm run start
+npm run dev
 ```
