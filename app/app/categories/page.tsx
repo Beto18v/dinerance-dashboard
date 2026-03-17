@@ -142,7 +142,10 @@ export default function CategoriesPage() {
       toast.success(t.deleted);
       loadCategories(true);
     } catch (err) {
-      if (err instanceof ApiError) toast.error(err.message);
+      if (err instanceof ApiError) {
+        if (err.status === 409) toast.error(t.deleteBlockedByTransactions);
+        else toast.error(err.message);
+      }
       else toast.error(t.failedDelete);
     } finally {
       setDeletingId(null);

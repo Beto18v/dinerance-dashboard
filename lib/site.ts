@@ -133,7 +133,7 @@ const siteTexts = {
         parentOptional: "Categoria padre (opcional)",
         parentHelpTitle: "Para que sirve?",
         parentHelpDescription:
-          "Si eliges una categoria padre, esta categoria se convierte en una subcategoria. Te ayuda a detallar mejor en que se fue tu dinero o de donde vino, por ejemplo: Hogar > Mercado.",
+          "Si eliges una categoría padre, la nueva categoría creada se convierte en una subcategoría. Esto te ayuda a detallar mejor en qué gastaste tu dinero o de dónde provino, por ejemplo: Categoría padre: Hogar > Subcategoría: Mercado.",
         namePlaceholder: "Ej: Mercado",
         addCategory: "Agregar categoria",
         create: "Crear categoria",
@@ -155,6 +155,8 @@ const siteTexts = {
         failedCreate: "No se pudo crear la categoria",
         failedUpdate: "No se pudo actualizar la categoria",
         failedDelete: "No se pudo eliminar la categoria",
+        deleteBlockedByTransactions:
+          "No puedes eliminar esta categoria porque tiene transacciones asociadas. Primero elimina esas transacciones o cambialas a otra categoria.",
         ofTotal: (visible: number, total: number) => `(${visible} de ${total})`,
         validations: {
           nameRequired: "El nombre es obligatorio",
@@ -394,6 +396,8 @@ const siteTexts = {
         failedCreate: "Failed to create category",
         failedUpdate: "Failed to update category",
         failedDelete: "Failed to delete category",
+        deleteBlockedByTransactions:
+          "You cannot delete this category because it has related transactions. First delete those transactions or move them to another category.",
         ofTotal: (visible: number, total: number) => `(${visible} of ${total})`,
         validations: {
           nameRequired: "Name is required",
