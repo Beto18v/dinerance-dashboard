@@ -78,6 +78,8 @@ export function CreateCategoryModal({
   });
 
   useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+
     const mediaQuery = window.matchMedia("(hover: hover) and (pointer: fine)");
 
     function syncInteractionMode() {
@@ -87,10 +89,18 @@ export function CreateCategoryModal({
 
     syncInteractionMode();
 
-    mediaQuery.addEventListener("change", syncInteractionMode);
+    if (typeof mediaQuery.addEventListener === "function") {
+      mediaQuery.addEventListener("change", syncInteractionMode);
+    } else {
+      mediaQuery.addListener(syncInteractionMode);
+    }
 
     return () => {
-      mediaQuery.removeEventListener("change", syncInteractionMode);
+      if (typeof mediaQuery.removeEventListener === "function") {
+        mediaQuery.removeEventListener("change", syncInteractionMode);
+      } else {
+        mediaQuery.removeListener(syncInteractionMode);
+      }
     };
   }, []);
 

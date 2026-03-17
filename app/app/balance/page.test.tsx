@@ -1,13 +1,16 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import BalancePage from "./page";
 import { getSiteText } from "@/lib/site";
 
-const { getMonthlyBalanceMock, toastErrorMock } = vi.hoisted(() => ({
+const { getMonthlyBalanceMock, getCategoriesMock, toastErrorMock } = vi.hoisted(
+  () => ({
   getMonthlyBalanceMock: vi.fn(),
+  getCategoriesMock: vi.fn(),
   toastErrorMock: vi.fn(),
-}));
+}),
+);
 
 vi.mock("@/lib/api", () => ({
   ApiError: class ApiError extends Error {
@@ -20,6 +23,7 @@ vi.mock("@/lib/api", () => ({
   },
   api: {
     getMonthlyBalance: getMonthlyBalanceMock,
+    getCategories: getCategoriesMock,
   },
 }));
 
@@ -38,10 +42,19 @@ vi.mock("sonner", () => ({
 describe("BalancePage", () => {
   beforeEach(() => {
     getMonthlyBalanceMock.mockReset();
+    getCategoriesMock.mockReset();
     toastErrorMock.mockReset();
   });
 
   it("loads and renders the current balance overview", async () => {
+    getCategoriesMock.mockResolvedValue([
+      {
+        id: "cat-1",
+        name: "Salario",
+        direction: "income",
+        parent_id: null,
+      },
+    ]);
     getMonthlyBalanceMock.mockResolvedValue({
       current: {
         month_start: "2026-03-01",
@@ -76,6 +89,14 @@ describe("BalancePage", () => {
   });
 
   it("refetches balance when the selected month changes", async () => {
+    getCategoriesMock.mockResolvedValue([
+      {
+        id: "cat-1",
+        name: "Salario",
+        direction: "income",
+        parent_id: null,
+      },
+    ]);
     getMonthlyBalanceMock
       .mockResolvedValueOnce({
         current: {
@@ -109,5 +130,29 @@ describe("BalancePage", () => {
     });
 
     expect(screen.getByDisplayValue("2026-02")).toBeInTheDocument();
+  });
+
+  it("shows onboarding when there are no categories or transactions", async () => {
+    getCategoriesMock.mockResolvedValue([]);
+    getMonthlyBalanceMock.mockResolvedValue({
+      current: {
+        month_start: "2026-03-01",
+        income: "0.00",
+        expense: "0.00",
+        balance: "0.00",
+      },
+      series: [],
+    });
+
+    const { container } = render(<BalancePage />);
+    const scoped = within(container);
+
+    expect(
+      await scoped.findByText("Empieza a usar tu balance"),
+    ).toBeInTheDocument();
+    expect(scoped.getByText("Crear una categoria")).toBeInTheDocument();
+    expect(
+      scoped.getByRole("button", { name: "Agregar categoria" }),
+    ).toBeInTheDocument();
   });
 });

@@ -100,6 +100,23 @@ const siteTexts = {
           "Si no eliges un mes, se muestra el ultimo mes con movimientos.",
         currentCardDescription:
           "Vista consolidada de ingresos, gastos y balance.",
+        onboardingTitle: "Empieza a usar tu balance",
+        onboardingDescription:
+          "Para ver resultados aqui, primero crea una categoria y luego registra una transaccion.",
+        onboardingCategoryStepTitle: "Crear una categoria",
+        onboardingCategoryStepDescription:
+          "Organiza tus ingresos o gastos antes de registrar movimientos.",
+        onboardingTransactionStepTitle: "Registrar una transaccion",
+        onboardingTransactionStepDescription:
+          "Agrega tu primer movimiento para que el balance empiece a calcularse.",
+        onboardingCompleted: "Completado",
+        onboardingPending: "Pendiente",
+        onboardingCategoryPromptTitle: "Tu primer paso",
+        onboardingCategoryPromptDescription:
+          "Aun no tienes categorias. Crea una para empezar a organizar tus movimientos.",
+        onboardingTransactionPromptTitle: "Siguiente paso",
+        onboardingTransactionPromptDescription:
+          "Ya tienes categorias. Ahora registra tu primera transaccion para ver el balance.",
         historyTitle: "Balance mensual",
         historyDescription: "Todos los meses con movimientos registrados.",
         noHistory: "Todavia no hay movimientos para calcular el balance.",
@@ -322,6 +339,23 @@ const siteTexts = {
           "Without a filter, the latest month with activity is shown.",
         currentCardDescription:
           "Consolidated view of income, expenses, and balance.",
+        onboardingTitle: "Get started with your balance",
+        onboardingDescription:
+          "To see results here, first create a category and then record a transaction.",
+        onboardingCategoryStepTitle: "Create a category",
+        onboardingCategoryStepDescription:
+          "Organize your income or expenses before recording transactions.",
+        onboardingTransactionStepTitle: "Record a transaction",
+        onboardingTransactionStepDescription:
+          "Add your first movement so the balance can start calculating.",
+        onboardingCompleted: "Completed",
+        onboardingPending: "Pending",
+        onboardingCategoryPromptTitle: "Your first step",
+        onboardingCategoryPromptDescription:
+          "You do not have categories yet. Create one to start organizing your activity.",
+        onboardingTransactionPromptTitle: "Next step",
+        onboardingTransactionPromptDescription:
+          "Your categories are ready. Now record your first transaction to see your balance.",
         historyTitle: "Monthly balance",
         historyDescription: "Every month with recorded activity.",
         noHistory: "There is no activity yet to calculate the balance.",

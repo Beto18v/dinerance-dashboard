@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
-import { api, ApiError, type BalanceOverview } from "@/lib/api";
+import { api, ApiError, type BalanceOverview, type Category } from "@/lib/api";
+import { getCache, setCache } from "@/lib/cache";
 import { useSitePreferences } from "@/components/providers/site-preferences-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { BalanceOnboardingCard } from "./components/balance-onboarding-card";
 
 const moneyFormatter = new Intl.NumberFormat("es-CO", {
   style: "currency",
@@ -39,11 +41,18 @@ const monthFormatters = {
     year: "numeric",
   }),
 };
+const CACHE_KEY_CATS = "cache:categories";
 
 export default function BalancePage() {
   const { site } = useSitePreferences();
   const t = site.pages.balance;
   const [overview, setOverview] = useState<BalanceOverview | null>(null);
+  const [categories, setCategories] = useState<Category[]>(
+    () => getCache<Category[]>(CACHE_KEY_CATS) ?? [],
+  );
+  const [categoriesReady, setCategoriesReady] = useState(
+    () => !!getCache<Category[]>(CACHE_KEY_CATS),
+  );
   const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState("");
 
@@ -64,12 +73,37 @@ export default function BalancePage() {
     [site.common.unexpectedError],
   );
 
+  const loadCategories = useCallback(async () => {
+    try {
+      const data = await api.getCategories();
+      setCategories(data);
+      setCache(CACHE_KEY_CATS, data);
+    } catch (err) {
+      if (err instanceof ApiError) toast.error(err.message);
+      else toast.error(site.common.unexpectedError);
+    } finally {
+      setCategoriesReady(true);
+    }
+  }, [site.common.unexpectedError]);
+
+  const refreshSelectedMonth = useCallback(() => {
+    if (!selectedMonth) {
+      loadBalance();
+      return;
+    }
+
+    const [year, month] = selectedMonth.split("-").map(Number);
+    loadBalance(year && month ? { year, month } : undefined);
+  }, [loadBalance, selectedMonth]);
+
   useEffect(() => {
     loadBalance();
-  }, [loadBalance]);
+    loadCategories();
+  }, [loadBalance, loadCategories]);
 
   const current = overview?.current;
   const history = overview?.series ?? [];
+  const showOnboarding = categoriesReady && overview !== null && history.length === 0;
   const monthHeadingDate =
     current?.month_start ?? `${selectedMonth || getCurrentMonthValue()}-01`;
 
@@ -113,13 +147,7 @@ export default function BalancePage() {
           <Button
             variant="outline"
             onClick={() => {
-              if (!selectedMonth) {
-                loadBalance();
-                return;
-              }
-
-              const [year, month] = selectedMonth.split("-").map(Number);
-              loadBalance(year && month ? { year, month } : undefined);
+              refreshSelectedMonth();
             }}
             disabled={loading}
           >
@@ -127,6 +155,14 @@ export default function BalancePage() {
           </Button>
         </div>
       </div>
+
+      {showOnboarding && (
+        <BalanceOnboardingCard
+          categories={categories}
+          onCategoryCreated={loadCategories}
+          onTransactionCreated={refreshSelectedMonth}
+        />
+      )}
 
       <Card>
         <CardHeader>
