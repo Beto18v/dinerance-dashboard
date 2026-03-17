@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import { api, ApiError, type BalanceOverview, type Category } from "@/lib/api";
 import { getCache, setCache } from "@/lib/cache";
 import { useSitePreferences } from "@/components/providers/site-preferences-provider";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Card,
@@ -103,7 +102,8 @@ export default function BalancePage() {
 
   const current = overview?.current;
   const history = overview?.series ?? [];
-  const showOnboarding = categoriesReady && overview !== null && history.length === 0;
+  const showOnboarding =
+    categoriesReady && overview !== null && history.length === 0;
   const monthHeadingDate =
     current?.month_start ?? `${selectedMonth || getCurrentMonthValue()}-01`;
 
@@ -125,7 +125,7 @@ export default function BalancePage() {
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
           <div className="space-y-1.5">
-            <label className="text-sm font-medium" htmlFor="balance-month">
+            <label className="text-sm font-medium px-2" htmlFor="balance-month">
               {t.monthLabel}
             </label>
             <Input
@@ -143,16 +143,6 @@ export default function BalancePage() {
               className="w-44"
             />
           </div>
-
-          <Button
-            variant="outline"
-            onClick={() => {
-              refreshSelectedMonth();
-            }}
-            disabled={loading}
-          >
-            {site.common.refresh}
-          </Button>
         </div>
       </div>
 
