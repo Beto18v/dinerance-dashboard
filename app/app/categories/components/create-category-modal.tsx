@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -53,6 +53,7 @@ export function CreateCategoryModal({
   const t = site.pages.categories;
   const [open, setOpen] = useState(false);
   const [parentHelpOpen, setParentHelpOpen] = useState(false);
+  const [parentHelpUsesHover, setParentHelpUsesHover] = useState(false);
 
   const {
     register,
@@ -75,6 +76,23 @@ export function CreateCategoryModal({
     control,
     name: "parent_id",
   });
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(hover: hover) and (pointer: fine)");
+
+    function syncInteractionMode() {
+      setParentHelpUsesHover(mediaQuery.matches);
+      setParentHelpOpen(false);
+    }
+
+    syncInteractionMode();
+
+    mediaQuery.addEventListener("change", syncInteractionMode);
+
+    return () => {
+      mediaQuery.removeEventListener("change", syncInteractionMode);
+    };
+  }, []);
 
   async function onSubmit(values: FormValues) {
     try {
@@ -157,11 +175,28 @@ export function CreateCategoryModal({
             </div>
 
             <div className="space-y-1.5">
-              <div className="relative flex items-center gap-2">
+              <div
+                className="relative flex items-center gap-2"
+                onMouseEnter={() => {
+                  if (parentHelpUsesHover) setParentHelpOpen(true);
+                }}
+                onMouseLeave={() => {
+                  if (parentHelpUsesHover) setParentHelpOpen(false);
+                }}
+              >
                 <Label>{t.parentOptional}</Label>
                 <button
                   type="button"
-                  onClick={() => setParentHelpOpen((current) => !current)}
+                  onClick={() => {
+                    if (!parentHelpUsesHover) {
+                      setParentHelpOpen((current) => !current);
+                    }
+                  }}
+                  onFocus={() => setParentHelpOpen(true)}
+                  onBlur={() => {
+                    if (!parentHelpUsesHover) return;
+                    setParentHelpOpen(false);
+                  }}
                   aria-label={t.parentHelpTitle}
                   aria-expanded={parentHelpOpen}
                   className="inline-flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
