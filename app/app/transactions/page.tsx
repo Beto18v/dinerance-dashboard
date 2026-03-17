@@ -1,7 +1,7 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -14,13 +14,6 @@ import { getSiteText } from "@/lib/site";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -45,7 +38,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
+import { CreateTransactionModal } from "./components/create-transaction-modal";
 
 const CACHE_KEY_CATS = "cache:categories";
 const CACHE_KEY_TXN = "cache:transactions";
@@ -80,7 +73,6 @@ export default function TransactionsPage() {
   );
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  // Filters
   const [filterCategoryId, setFilterCategoryId] = useState<string>("");
   const [filterStartDate, setFilterStartDate] = useState("");
   const [filterEndDate, setFilterEndDate] = useState("");
@@ -95,29 +87,18 @@ export default function TransactionsPage() {
   );
 
   const {
-    register,
-    handleSubmit,
-    setValue,
-    reset,
-    watch,
-    formState: { errors, isSubmitting },
-  } = useForm<FormValues>({
-    resolver: zodResolver(schema),
-    defaultValues: { currency: "COP" },
-  });
-
-  const categoryIdValue = watch("category_id");
-
-  const {
     register: registerEdit,
     handleSubmit: handleEditSubmit,
+    control: editControl,
     setValue: setEditValue,
     reset: resetEdit,
-    watch: watchEdit,
     formState: { errors: editErrors, isSubmitting: editIsSubmitting },
   } = useForm<FormValues>({ resolver: zodResolver(schema) });
 
-  const editCategoryIdValue = watchEdit("category_id");
+  const editCategoryIdValue = useWatch({
+    control: editControl,
+    name: "category_id",
+  });
 
   const loadTransactions = useCallback(
     async (
@@ -145,7 +126,6 @@ export default function TransactionsPage() {
     [t.failedLoad],
   );
 
-  // Load categories on mount
   useEffect(() => {
     async function loadCats() {
       const silent = !!getCache(CACHE_KEY_CATS);
@@ -160,7 +140,6 @@ export default function TransactionsPage() {
     loadCats();
   }, []);
 
-  // Real-time filters
   useEffect(() => {
     const hasTxnCache = !!getCache(CACHE_KEY_TXN);
     const isFiltered = !!(
@@ -170,24 +149,6 @@ export default function TransactionsPage() {
     );
     loadTransactions(filterParams, hasTxnCache && !isFiltered);
   }, [filterParams, loadTransactions]);
-
-  async function onSubmit(values: FormValues) {
-    try {
-      await api.createTransaction({
-        category_id: values.category_id,
-        amount: values.amount,
-        currency: values.currency,
-        occurred_at: new Date(values.occurred_at).toISOString(),
-        description: values.description || null,
-      });
-      toast.success(t.created);
-      reset({ currency: "COP" });
-      loadTransactions(filterParams, true);
-    } catch (err) {
-      if (err instanceof ApiError) toast.error(err.message);
-      else toast.error(t.failedCreate);
-    }
-  }
 
   function openEditDialog(txn: Transaction) {
     setEditingTxn(txn);
@@ -261,97 +222,6 @@ export default function TransactionsPage() {
         <p className="text-sm text-muted-foreground mt-1">{t.subtitle}</p>
       </div>
 
-      {/* Create form */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">{t.newCardTitle}</CardTitle>
-          <CardDescription>{t.newCardDescription}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label>{t.category}</Label>
-                <Select
-                  value={categoryIdValue ?? ""}
-                  onValueChange={(v) => setValue("category_id", v)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={t.categoryPlaceholder} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {errors.category_id && (
-                  <p className="text-sm text-destructive">
-                    {errors.category_id.message}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="amount">{t.amount}</Label>
-                <Input
-                  id="amount"
-                  {...register("amount")}
-                  placeholder={t.amountPlaceholder}
-                />
-                {errors.amount && (
-                  <p className="text-sm text-destructive">
-                    {errors.amount.message}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="currency">{t.currency}</Label>
-                <Input
-                  id="currency"
-                  {...register("currency")}
-                  placeholder={t.currencyPlaceholder}
-                />
-                {errors.currency && (
-                  <p className="text-sm text-destructive">
-                    {errors.currency.message}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="occurred_at">{t.dateTime}</Label>
-                <Input
-                  id="occurred_at"
-                  type="datetime-local"
-                  {...register("occurred_at")}
-                />
-                {errors.occurred_at && (
-                  <p className="text-sm text-destructive">
-                    {errors.occurred_at.message}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-1.5 sm:col-span-2">
-                <Label htmlFor="description">{t.descriptionOptional}</Label>
-                <Input id="description" {...register("description")} />
-              </div>
-            </div>
-
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? t.creating : t.create}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-
-      <Separator />
-
-      {/* Filters */}
       <div className="space-y-2">
         <h2 className="text-base font-semibold">{t.filters}</h2>
         <div className="flex flex-wrap gap-3 items-end">
@@ -415,26 +285,23 @@ export default function TransactionsPage() {
         </div>
       </div>
 
-      {/* List */}
       <div>
-        <div className="flex items-center justify-between mb-3">
+        <div className="mb-3 flex items-center justify-between gap-3">
           <h2 className="text-base font-semibold">
             {t.listTitle}
             {listLoading && (
-              <span className="ml-2 inline-block h-3.5 w-3.5 rounded-full border-2 border-primary border-t-transparent animate-spin align-middle" />
+              <span className="ml-2 inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary border-t-transparent align-middle" />
             )}
           </h2>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => loadTransactions(filterParams)}
-            disabled={listLoading}
-          >
-            {site.common.refresh}
-          </Button>
+          <div className="flex items-center gap-2">
+            <CreateTransactionModal
+              categories={categories}
+              onCreated={() => loadTransactions(filterParams, true)}
+            />
+          </div>
         </div>
 
-        <div className="rounded-lg border bg-card shadow-sm overflow-hidden">
+        <div className="overflow-hidden rounded-lg border bg-card shadow-sm">
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
@@ -454,7 +321,7 @@ export default function TransactionsPage() {
                 <TableRow>
                   <TableCell
                     colSpan={7}
-                    className="text-center py-8 text-muted-foreground"
+                    className="py-8 text-center text-muted-foreground"
                   >
                     {t.loading}
                   </TableCell>
@@ -463,7 +330,7 @@ export default function TransactionsPage() {
                 <TableRow>
                   <TableCell
                     colSpan={7}
-                    className="text-center py-8 text-muted-foreground"
+                    className="py-8 text-center text-muted-foreground"
                   >
                     {t.empty}
                   </TableCell>
@@ -493,7 +360,7 @@ export default function TransactionsPage() {
                           </Badge>
                         )}
                         {direction === null && (
-                          <span className="text-muted-foreground text-sm">
+                          <span className="text-sm text-muted-foreground">
                             {site.common.dash}
                           </span>
                         )}
@@ -502,7 +369,7 @@ export default function TransactionsPage() {
                       <TableCell className="text-muted-foreground">
                         {t.currency}
                       </TableCell>
-                      <TableCell className="text-muted-foreground max-w-40 truncate">
+                      <TableCell className="max-w-40 truncate text-muted-foreground">
                         {t.description ?? site.common.dash}
                       </TableCell>
                       <TableCell className="text-right">
@@ -510,7 +377,7 @@ export default function TransactionsPage() {
                           <button
                             type="button"
                             onClick={() => openEditDialog(t)}
-                            className="text-muted-foreground hover:text-foreground transition-colors p-1.5 rounded hover:bg-muted"
+                            className="rounded p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                             title={site.common.edit}
                           >
                             <FiEdit2 size={14} />
@@ -519,7 +386,7 @@ export default function TransactionsPage() {
                             type="button"
                             onClick={() => setConfirmDeleteTxn(t)}
                             disabled={deletingId === t.id}
-                            className="text-muted-foreground hover:text-destructive transition-colors p-1.5 rounded hover:bg-muted disabled:opacity-40"
+                            className="rounded p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-destructive disabled:opacity-40"
                             title={site.common.delete}
                           >
                             <FiTrash2 size={14} />
@@ -535,7 +402,6 @@ export default function TransactionsPage() {
         </div>
       </div>
 
-      {/* Confirm delete dialog */}
       <Dialog
         open={!!confirmDeleteTxn}
         onOpenChange={(o) => !o && setConfirmDeleteTxn(null)}
@@ -562,7 +428,6 @@ export default function TransactionsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Dialog */}
       <Dialog
         open={!!editingTxn}
         onOpenChange={(open) => !open && setEditingTxn(null)}
