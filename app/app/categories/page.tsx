@@ -16,13 +16,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -46,7 +39,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
+import { CreateCategoryModal } from "./components/create-category-modal";
 
 const CACHE_KEY = "cache:categories";
 const schemaText = getSiteText().pages.categories;
@@ -81,21 +74,6 @@ export default function CategoriesPage() {
   const [filterNameId, setFilterNameId] = useState<string>("");
 
   const {
-    register,
-    handleSubmit,
-    setValue,
-    reset,
-    watch,
-    formState: { errors, isSubmitting },
-  } = useForm<FormValues>({
-    resolver: zodResolver(schema),
-    defaultValues: { direction: "expense" },
-  });
-
-  const directionValue = watch("direction");
-  const parentIdValue = watch("parent_id");
-
-  const {
     register: registerEdit,
     handleSubmit: handleEditSubmit,
     setValue: setEditValue,
@@ -127,22 +105,6 @@ export default function CategoriesPage() {
   useEffect(() => {
     loadCategories(!!getCache(CACHE_KEY));
   }, [loadCategories]);
-
-  async function onSubmit(values: FormValues) {
-    try {
-      await api.createCategory({
-        name: values.name,
-        direction: values.direction,
-        parent_id: values.parent_id || null,
-      });
-      toast.success(t.created);
-      reset({ direction: "expense" });
-      loadCategories(true);
-    } catch (err) {
-      if (err instanceof ApiError) toast.error(err.message);
-      else toast.error(t.failedCreate);
-    }
-  }
 
   function openEditDialog(cat: Category) {
     setEditingCat(cat);
@@ -211,81 +173,6 @@ export default function CategoriesPage() {
         <h1 className="text-2xl font-bold">{t.title}</h1>
         <p className="text-sm text-muted-foreground mt-1">{t.subtitle}</p>
       </div>
-
-      {/* Create form */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">{t.newCardTitle}</CardTitle>
-          <CardDescription>{t.newCardDescription}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="name">{t.name}</Label>
-                <Input
-                  id="name"
-                  {...register("name")}
-                  placeholder={t.namePlaceholder}
-                />
-                {errors.name && (
-                  <p className="text-sm text-destructive">
-                    {errors.name.message}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-1.5">
-                <Label>{t.direction}</Label>
-                <Select
-                  value={directionValue}
-                  onValueChange={(v) =>
-                    setValue("direction", v as "income" | "expense")
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="income">{site.common.income}</SelectItem>
-                    <SelectItem value="expense">
-                      {site.common.expense}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label>{t.parentOptional}</Label>
-                <Select
-                  value={parentIdValue ?? "__none__"}
-                  onValueChange={(v) =>
-                    setValue("parent_id", v === "__none__" ? undefined : v)
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={site.common.none} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">{site.common.none}</SelectItem>
-                    {categories.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? t.creating : t.create}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-
-      <Separator />
 
       {/* Filters */}
       <div className="space-y-2">
@@ -356,14 +243,10 @@ export default function CategoriesPage() {
               </span>
             )}
           </h2>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => loadCategories(false)}
-            disabled={listLoading}
-          >
-            {site.common.refresh}
-          </Button>
+          <CreateCategoryModal
+            categories={categories}
+            onCreated={() => loadCategories(true)}
+          />
         </div>
 
         <div className="rounded-lg border bg-card shadow-sm overflow-hidden">

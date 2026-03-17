@@ -114,7 +114,11 @@ const siteTexts = {
         name: "Nombre",
         direction: "Direccion",
         parentOptional: "Categoria padre (opcional)",
+        parentHelpTitle: "Para que sirve?",
+        parentHelpDescription:
+          "Si eliges una categoria padre, esta categoria se convierte en una subcategoria. Te ayuda a detallar mejor en que se fue tu dinero o de donde vino, por ejemplo: Hogar > Mercado.",
         namePlaceholder: "Ej: Mercado",
+        addCategory: "Agregar categoria",
         create: "Crear categoria",
         creating: "Creando...",
         filters: "Filtros",
@@ -331,7 +335,11 @@ const siteTexts = {
         name: "Name",
         direction: "Direction",
         parentOptional: "Parent (optional)",
+        parentHelpTitle: "What is this for?",
+        parentHelpDescription:
+          "If you choose a parent category, this category becomes a subcategory. Use it to break down where your money went or where it came from, for example: Home > Groceries.",
         namePlaceholder: "e.g. Groceries",
+        addCategory: "Add category",
         create: "Create category",
         creating: "Creating...",
         filters: "Filters",
