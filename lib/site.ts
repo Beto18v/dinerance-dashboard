@@ -7,11 +7,72 @@ export function isSiteLocale(value: string): value is SiteLocale {
   return siteLocales.includes(value as SiteLocale);
 }
 
+const mainPageContent = {
+  es: {
+    seo: {
+      title: "Dinerance | Finanzas personales, ingresos y gastos",
+      description:
+        "Dinerance es una app de finanzas personales para registrar ingresos y gastos con fecha real, organizar movimientos y entender tu balance mensual.",
+    },
+    header: {
+      brand: "Dinerance",
+      subtitle: "Finanzas personales",
+      dashboard: "Dashboard",
+      signIn: "Iniciar sesion",
+      logoAlt: "Dinerance",
+    },
+    hero: {
+      badge: "Finanzas personales",
+      title: "Controla tus finanzas",
+      accent: "con claridad total",
+      description: "Ve exactamente en qué se va tu dinero, sin complicaciones.",
+      ctaAuthenticated: "Ir al dashboard",
+      ctaGuest: "Empieza a controlar tu dinero hoy",
+      supporting: "App para ingresos, gastos y balance en un solo lugar.",
+      logoAlt: "Logo de Dinerance",
+    },
+    background: {
+      billCode: "DNR",
+      billAmounts: ["120", "480", "260", "720", "90"],
+      currencySymbol: "$",
+    },
+  },
+  en: {
+    seo: {
+      title: "Dinerance | Personal finance, income and expenses",
+      description:
+        "Dinerance is a personal finance app to track income and expenses with real dates, organize transactions, and understand your monthly balance.",
+    },
+    header: {
+      brand: "Dinerance",
+      subtitle: "Personal finance",
+      dashboard: "Dashboard",
+      signIn: "Sign in",
+      logoAlt: "Dinerance",
+    },
+    hero: {
+      badge: "Personal finance",
+      title: "Control your finances",
+      accent: "with total clarity",
+      description: "See exactly where your money goes, without the hassle.",
+      ctaAuthenticated: "Go to dashboard",
+      ctaGuest: "Start managing your money today",
+      supporting: "Income, expenses, and balance in one place.",
+      logoAlt: "Dinerance logo",
+    },
+    background: {
+      billCode: "DNR",
+      billAmounts: ["120", "480", "260", "720", "90"],
+      currencySymbol: "$",
+    },
+  },
+} as const;
+
 const siteTexts = {
   es: {
     metadata: {
-      title: "Dinerance",
-      description: "Panel de Dinerance",
+      title: mainPageContent.es.seo.title,
+      description: mainPageContent.es.seo.description,
       htmlLang: "es",
     },
     common: {
@@ -92,6 +153,7 @@ const siteTexts = {
       },
     },
     pages: {
+      main: mainPageContent.es,
       balance: {
         title: "Balance",
         subtitle: "Resumen financiero del mes seleccionado y su historico.",
@@ -252,8 +314,8 @@ const siteTexts = {
   },
   en: {
     metadata: {
-      title: "Dinerance",
-      description: "Dinerance Dashboard",
+      title: mainPageContent.en.seo.title,
+      description: mainPageContent.en.seo.description,
       htmlLang: "en",
     },
     common: {
@@ -334,6 +396,7 @@ const siteTexts = {
       },
     },
     pages: {
+      main: mainPageContent.en,
       balance: {
         title: "Balance",
         subtitle: "Financial summary for the selected month and full history.",
