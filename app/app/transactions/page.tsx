@@ -77,11 +77,23 @@ export default function TransactionsPage() {
   const [filterStartDate, setFilterStartDate] = useState("");
   const [filterEndDate, setFilterEndDate] = useState("");
 
+  function toDayBoundaryIso(
+    date: string,
+    boundary: "start" | "end",
+  ): string {
+    const time = boundary === "start" ? "00:00:00.000" : "23:59:59.999";
+    return new Date(`${date}T${time}`).toISOString();
+  }
+
   const filterParams = useMemo(
     () => ({
       category_id: filterCategoryId || undefined,
-      start_date: filterStartDate || undefined,
-      end_date: filterEndDate || undefined,
+      start_date: filterStartDate
+        ? toDayBoundaryIso(filterStartDate, "start")
+        : undefined,
+      end_date: filterEndDate
+        ? toDayBoundaryIso(filterEndDate, "end")
+        : undefined,
     }),
     [filterCategoryId, filterStartDate, filterEndDate],
   );
