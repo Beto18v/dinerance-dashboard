@@ -253,7 +253,7 @@ export default function CategoriesPage() {
         </div>
 
         <div className="rounded-lg border bg-card shadow-sm overflow-hidden">
-          <Table>
+          <Table showMobileScrollHint>
             <TableHeader>
               <TableRow className="bg-muted/50">
                 <TableHead>{t.name}</TableHead>

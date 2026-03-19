@@ -17,6 +17,7 @@ const siteTexts = {
     common: {
       loading: "Cargando...",
       unexpectedError: "Error inesperado",
+      mobileTableScrollHint: "Desliza para ver mas columnas.",
       none: "Ninguno",
       all: "Todos",
       clearFilters: "Limpiar filtros",
@@ -258,6 +259,7 @@ const siteTexts = {
     common: {
       loading: "Loading...",
       unexpectedError: "Unexpected error",
+      mobileTableScrollHint: "Swipe to view more columns.",
       none: "None",
       all: "All",
       clearFilters: "Clear filters",

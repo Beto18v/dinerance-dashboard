@@ -302,7 +302,7 @@ export default function TransactionsPage() {
         </div>
 
         <div className="overflow-hidden rounded-lg border bg-card shadow-sm">
-          <Table>
+          <Table showMobileScrollHint>
             <TableHeader>
               <TableRow className="bg-muted/50">
                 <TableHead>{site.common.date}</TableHead>

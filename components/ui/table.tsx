@@ -2,19 +2,39 @@
 
 import * as React from "react";
 
+import { useSitePreferences } from "@/components/providers/site-preferences-provider";
 import { cn } from "@/lib/utils";
 
-function Table({ className, ...props }: React.ComponentProps<"table">) {
+type TableProps = React.ComponentProps<"table"> & {
+  showMobileScrollHint?: boolean;
+};
+
+function Table({
+  className,
+  showMobileScrollHint = false,
+  ...props
+}: TableProps) {
+  const { site } = useSitePreferences();
+
   return (
-    <div
-      data-slot="table-container"
-      className="relative w-full overflow-x-auto"
-    >
-      <table
-        data-slot="table"
-        className={cn("w-full caption-bottom text-sm", className)}
-        {...props}
-      />
+    <div className="w-full">
+      {showMobileScrollHint ? (
+        <div className="px-4 pt-2 md:hidden">
+          <p className="mx-auto w-fit max-w-full whitespace-nowrap text-center text-[11px] leading-4 text-muted-foreground/75">
+            {site.common.mobileTableScrollHint}
+          </p>
+        </div>
+      ) : null}
+      <div
+        data-slot="table-container"
+        className="relative w-full overflow-x-auto"
+      >
+        <table
+          data-slot="table"
+          className={cn("w-full caption-bottom text-sm", className)}
+          {...props}
+        />
+      </div>
     </div>
   );
 }
