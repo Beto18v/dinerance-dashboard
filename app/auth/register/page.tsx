@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useCallback } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
@@ -23,6 +24,14 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import Image from "next/image";
 
+const MoneyRainBackground = dynamic(
+  () =>
+    import("@/components/backgrounds/money-rain").then(
+      (mod) => mod.MoneyRainBackground,
+    ),
+  { ssr: false },
+);
+
 const schemaText = getSiteText().auth.register;
 
 const schema = z
@@ -44,6 +53,7 @@ export default function RegisterPage() {
   const { session, loading } = useSession();
   const { site } = useSitePreferences();
   const t = site.auth.register;
+  const background = site.pages.main.background;
 
   const {
     register,
@@ -152,86 +162,101 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4">
-      <Card className="w-full max-w-sm">
-        <CardHeader>
-          <Image
-            src="/logo_Dinerance-removebg.png"
-            alt="Dinerance Logo"
-            width={100}
-            height={100}
-            className="mx-auto"
-          />
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <GoogleAuthButton
-              label={t.google}
-              loadingLabel={t.googleSubmitting}
-              disabled={isSubmitting}
-            />
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <Separator />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-2 text-muted-foreground">
-                  {t.orContinueWithEmail}
-                </span>
-              </div>
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="name">{t.name}</Label>
-              <Input id="name" type="text" {...register("name")} />
-              {errors.name && (
-                <p className="text-sm text-destructive">
-                  {errors.name.message}
-                </p>
-              )}
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="email">{t.email}</Label>
-              <Input id="email" type="email" {...register("email")} />
-              {errors.email && (
-                <p className="text-sm text-destructive">
-                  {errors.email.message}
-                </p>
-              )}
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="password">{t.password}</Label>
-              <Input id="password" type="password" {...register("password")} />
-              {errors.password && (
-                <p className="text-sm text-destructive">
-                  {errors.password.message}
-                </p>
-              )}
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="confirmPassword">{t.confirmPassword}</Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                {...register("confirmPassword")}
+    <div className="relative min-h-screen overflow-hidden bg-[#05010d]">
+      <MoneyRainBackground
+        billAmounts={background.billAmounts}
+        billCode={background.billCode}
+        currencySymbol={background.currencySymbol}
+      />
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(2,6,23,0.18),rgba(2,6,23,0.72)_72%,rgba(2,6,23,0.92))]" />
+
+      <div className="relative z-10 flex min-h-screen items-center justify-center p-4">
+        <Card className="w-full max-w-sm">
+          <CardHeader>
+            <Link href="/" className="mx-auto block w-fit">
+              <Image
+                src="/logo_Dinerance-removebg.png"
+                alt="Dinerance Logo"
+                width={100}
+                height={100}
+                className="mx-auto"
               />
-              {errors.confirmPassword && (
-                <p className="text-sm text-destructive">
-                  {errors.confirmPassword.message}
-                </p>
-              )}
-            </div>
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
-              {isSubmitting ? t.submitting : t.submit}
-            </Button>
-            <p className="text-center text-sm text-muted-foreground">
-              {t.hasAccount}{" "}
-              <Link href="/auth/login" className="underline">
-                {t.signIn}
-              </Link>
-            </p>
-          </form>
-        </CardContent>
-      </Card>
+            </Link>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+              <GoogleAuthButton
+                label={t.google}
+                loadingLabel={t.googleSubmitting}
+                disabled={isSubmitting}
+              />
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <Separator />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-card px-2 text-muted-foreground">
+                    {t.orContinueWithEmail}
+                  </span>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="name">{t.name}</Label>
+                <Input id="name" type="text" {...register("name")} />
+                {errors.name && (
+                  <p className="text-sm text-destructive">
+                    {errors.name.message}
+                  </p>
+                )}
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="email">{t.email}</Label>
+                <Input id="email" type="email" {...register("email")} />
+                {errors.email && (
+                  <p className="text-sm text-destructive">
+                    {errors.email.message}
+                  </p>
+                )}
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="password">{t.password}</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  {...register("password")}
+                />
+                {errors.password && (
+                  <p className="text-sm text-destructive">
+                    {errors.password.message}
+                  </p>
+                )}
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="confirmPassword">{t.confirmPassword}</Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  {...register("confirmPassword")}
+                />
+                {errors.confirmPassword && (
+                  <p className="text-sm text-destructive">
+                    {errors.confirmPassword.message}
+                  </p>
+                )}
+              </div>
+              <Button type="submit" className="w-full" disabled={isSubmitting}>
+                {isSubmitting ? t.submitting : t.submit}
+              </Button>
+              <p className="text-center text-sm text-muted-foreground">
+                {t.hasAccount}{" "}
+                <Link href="/auth/login" className="underline">
+                  {t.signIn}
+                </Link>
+              </p>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
