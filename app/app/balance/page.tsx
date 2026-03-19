@@ -199,7 +199,7 @@ export default function BalancePage() {
         </CardHeader>
         <CardContent>
           <div className="overflow-hidden rounded-lg border bg-card shadow-sm">
-            <Table>
+            <Table showMobileScrollHint>
               <TableHeader>
                 <TableRow className="bg-muted/50">
                   <TableHead>{t.monthLabel}</TableHead>
