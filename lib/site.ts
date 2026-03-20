@@ -291,8 +291,6 @@ const siteTexts = {
         fullName: "Nombre completo",
         fullNamePlaceholder: "Tu nombre",
         email: "Correo",
-        emailHint:
-          "El correo se administra desde autenticacion y no se puede cambiar aqui.",
         memberSince: "Miembro desde",
         saving: "Guardando...",
         saved: "Guardado",
@@ -532,8 +530,6 @@ const siteTexts = {
         fullName: "Full name",
         fullNamePlaceholder: "Your name",
         email: "Email",
-        emailHint:
-          "Email is managed via authentication and cannot be changed here.",
         memberSince: "Member since",
         saving: "Saving...",
         saved: "Saved",

@@ -123,7 +123,6 @@ export function AccountInfoCard() {
             readOnly
             className="cursor-not-allowed bg-muted text-muted-foreground"
           />
-          <p className="text-xs text-muted-foreground">{t.emailHint}</p>
         </div>
 
         <div className="space-y-1.5">
