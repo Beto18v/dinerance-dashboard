@@ -12,7 +12,6 @@ import {
   Sheet,
   SheetContent,
   SheetDescription,
-  SheetFooter,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
@@ -76,12 +75,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   if (!session) return null;
 
-  async function handleSignOut() {
-    setMobileNavOpen(false);
-    await signOut();
-    router.replace("/auth/login");
-  }
-
   return (
     <div className="flex min-h-screen flex-col bg-muted/40">
       <header className="sticky top-0 z-20 border-b bg-background shadow-sm">
@@ -118,9 +111,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <span className="max-w-45 truncate text-xs text-cyan-500">
               {session.user.email}
             </span>
-            <Button variant="outline" size="sm" onClick={handleSignOut}>
-              {site.appLayout.signOut}
-            </Button>
           </div>
 
           <div className="ml-auto md:hidden">
@@ -169,16 +159,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     );
                   })}
                 </nav>
-
-                <SheetFooter className="border-t pt-4">
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={handleSignOut}
-                  >
-                    {site.appLayout.signOut}
-                  </Button>
-                </SheetFooter>
               </SheetContent>
             </Sheet>
           </div>
