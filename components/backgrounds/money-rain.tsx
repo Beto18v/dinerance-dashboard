@@ -142,7 +142,7 @@ function BillGraphic({
   return (
     <svg
       viewBox="0 0 176 96"
-      className="h-auto w-32 drop-shadow-[0_18px_35px_rgba(1,12,20,0.34)] sm:w-36"
+      className="h-auto w-32 drop-shadow-[0_18px_35px_rgba(92,125,163,0.18)] dark:drop-shadow-[0_18px_35px_rgba(1,12,20,0.34)] sm:w-36"
       role="presentation"
     >
       <rect
@@ -214,7 +214,7 @@ function CoinGraphic({ currencySymbol }: { currencySymbol: string }) {
   return (
     <svg
       viewBox="0 0 72 72"
-      className="h-auto w-11 drop-shadow-[0_16px_30px_rgba(252,188,16,0.16)] sm:w-12"
+      className="h-auto w-11 drop-shadow-[0_16px_30px_rgba(214,160,18,0.14)] dark:drop-shadow-[0_16px_30px_rgba(252,188,16,0.16)] sm:w-12"
       role="presentation"
     >
       <circle cx="36" cy="36" r="33" fill="#ffd84a" />
@@ -267,10 +267,11 @@ export function MoneyRainBackground({
       aria-hidden="true"
       className="pointer-events-none absolute inset-0 overflow-hidden"
     >
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_0%,rgba(124,255,142,0.16),transparent_26%),radial-gradient(circle_at_84%_12%,rgba(76,175,255,0.16),transparent_30%),radial-gradient(circle_at_50%_100%,rgba(55,214,195,0.08),transparent_34%)]" />
-      <div className="absolute inset-0 opacity-30 bg-[linear-gradient(to_right,rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-size-[72px_72px]" />
-      <div className="absolute inset-x-[8%] top-[8%] h-44 rounded-full bg-[radial-gradient(circle,rgba(126,255,163,0.16),transparent_70%)] blur-3xl" />
-      <div className="absolute inset-x-[35%] bottom-[6%] h-52 rounded-full bg-[radial-gradient(circle,rgba(77,169,255,0.08),transparent_72%)] blur-3xl" />
+      <div className="absolute inset-0 bg-[#edf4ff] dark:bg-[#05010d]" />
+      <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.18),rgba(233,243,255,0.8)_72%,rgba(223,236,252,0.96))] dark:bg-[linear-gradient(to_bottom,rgba(2,6,23,0.05),rgba(2,6,23,0.74)_72%,rgba(2,6,23,0.94))]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_0%,rgba(82,170,255,0.18),transparent_28%),radial-gradient(circle_at_84%_12%,rgba(56,214,195,0.14),transparent_32%),radial-gradient(circle_at_50%_100%,rgba(124,255,142,0.1),transparent_36%)] dark:bg-[radial-gradient(circle_at_15%_0%,rgba(124,255,142,0.16),transparent_26%),radial-gradient(circle_at_84%_12%,rgba(76,175,255,0.16),transparent_30%),radial-gradient(circle_at_50%_100%,rgba(55,214,195,0.08),transparent_34%)]" />
+      <div className="absolute inset-x-[8%] top-[8%] h-44 rounded-full bg-[radial-gradient(circle,rgba(126,255,163,0.12),transparent_70%)] blur-3xl dark:bg-[radial-gradient(circle,rgba(126,255,163,0.16),transparent_70%)]" />
+      <div className="absolute inset-x-[35%] bottom-[6%] h-52 rounded-full bg-[radial-gradient(circle,rgba(77,169,255,0.12),transparent_72%)] blur-3xl dark:bg-[radial-gradient(circle,rgba(77,169,255,0.08),transparent_72%)]" />
 
       {billPresets.map((preset, index) => {
         const amount = billAmounts[index % billAmounts.length] ?? "100";

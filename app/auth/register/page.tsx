@@ -162,13 +162,12 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#05010d]">
+    <div className="relative min-h-screen overflow-hidden">
       <MoneyRainBackground
         billAmounts={background.billAmounts}
         billCode={background.billCode}
         currencySymbol={background.currencySymbol}
       />
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(2,6,23,0.18),rgba(2,6,23,0.72)_72%,rgba(2,6,23,0.92))]" />
 
       <div className="relative z-10 flex min-h-screen items-center justify-center p-4">
         <Card className="w-full max-w-sm">
