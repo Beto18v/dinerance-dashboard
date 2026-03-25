@@ -29,9 +29,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { CreateTransactionModal } from "./components/create-transaction-modal";
-import { TransactionsFilters } from "./components/transactions-filters";
-import { TransactionsTable } from "./components/transactions-table";
+import {
+  CreateTransactionModal,
+  TransactionsFilters,
+  TransactionsView,
+} from "./components";
 
 const CACHE_KEY_CATS = "cache:categories";
 const CACHE_KEY_TXN = "cache:transactions";
@@ -47,6 +49,7 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 type QuickRange = "today" | "last7" | "thisMonth";
+type TransactionsDisplayMode = "desktop" | "mobile";
 
 export default function TransactionsPage() {
   const { site } = useSitePreferences();
@@ -73,6 +76,8 @@ export default function TransactionsPage() {
   const [activeQuickRange, setActiveQuickRange] = useState<QuickRange | null>(
     null,
   );
+  const [displayMode, setDisplayMode] =
+    useState<TransactionsDisplayMode>("desktop");
   const [currentPage, setCurrentPage] = useState(1);
 
   const filterParams = useMemo(
@@ -320,6 +325,7 @@ export default function TransactionsPage() {
         filterStartDate={filterStartDate}
         filterEndDate={filterEndDate}
         activeQuickRange={activeQuickRange}
+        displayMode={displayMode}
         onFilterCategoryChange={setFilterCategoryId}
         onFilterParentCategoryChange={setFilterParentCategoryId}
         onFilterStartDateChange={(value) => {
@@ -336,6 +342,7 @@ export default function TransactionsPage() {
           setFilterStartDate(quickRange.startDate);
           setFilterEndDate(quickRange.endDate);
         }}
+        onDisplayModeChange={setDisplayMode}
         onClearFilters={() => {
           setActiveQuickRange(null);
           setFilterParentCategoryId("");
@@ -377,7 +384,7 @@ export default function TransactionsPage() {
           </div>
         </div>
 
-        <TransactionsTable
+        <TransactionsView
           categories={categories}
           transactions={visibleTransactions}
           listLoading={listLoading}
@@ -386,6 +393,7 @@ export default function TransactionsPage() {
           onEdit={openEditDialog}
           onDelete={setConfirmDeleteTxn}
           deletingId={deletingId}
+          displayMode={displayMode}
           formatAmount={(value, currency) =>
             formatTransactionAmount(value, currency, displayLocale)
           }

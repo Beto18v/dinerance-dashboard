@@ -5,6 +5,7 @@ import { useSitePreferences } from "@/components/providers/site-preferences-prov
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 import {
   Select,
   SelectContent,
@@ -21,11 +22,13 @@ interface TransactionsFiltersProps {
   filterStartDate: string;
   filterEndDate: string;
   activeQuickRange: "today" | "last7" | "thisMonth" | null;
+  displayMode: "desktop" | "mobile";
   onFilterCategoryChange: (value: string) => void;
   onFilterParentCategoryChange: (value: string) => void;
   onFilterStartDateChange: (value: string) => void;
   onFilterEndDateChange: (value: string) => void;
   onQuickRangeChange: (range: "today" | "last7" | "thisMonth") => void;
+  onDisplayModeChange: (value: "desktop" | "mobile") => void;
   onClearFilters: () => void;
 }
 
@@ -37,11 +40,13 @@ export function TransactionsFilters({
   filterStartDate,
   filterEndDate,
   activeQuickRange,
+  displayMode,
   onFilterCategoryChange,
   onFilterParentCategoryChange,
   onFilterStartDateChange,
   onFilterEndDateChange,
   onQuickRangeChange,
+  onDisplayModeChange,
   onClearFilters,
 }: TransactionsFiltersProps) {
   const { site } = useSitePreferences();
@@ -85,6 +90,41 @@ export function TransactionsFilters({
             {site.common.clearFilters}
           </Button>
         ) : null}
+        <div className="relative hidden h-9 min-w-40 items-center rounded-lg border bg-muted/60 p-1 md:ml-auto md:grid md:grid-cols-2">
+          <span
+            aria-hidden="true"
+            className={cn(
+              "absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-md bg-background shadow-sm transition-transform duration-200 ease-out",
+              displayMode === "mobile" && "translate-x-full",
+            )}
+          />
+          <button
+            type="button"
+            onClick={() => onDisplayModeChange("desktop")}
+            className={cn(
+              "relative z-10 rounded-md px-3 text-sm font-medium transition-colors",
+              displayMode === "desktop"
+                ? "text-foreground"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+            aria-pressed={displayMode === "desktop"}
+          >
+            {t.desktopView}
+          </button>
+          <button
+            type="button"
+            onClick={() => onDisplayModeChange("mobile")}
+            className={cn(
+              "relative z-10 rounded-md px-3 text-sm font-medium transition-colors",
+              displayMode === "mobile"
+                ? "text-foreground"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+            aria-pressed={displayMode === "mobile"}
+          >
+            {t.mobileView}
+          </button>
+        </div>
       </div>
 
       <details className="rounded-lg border bg-card/40 px-3 py-2">

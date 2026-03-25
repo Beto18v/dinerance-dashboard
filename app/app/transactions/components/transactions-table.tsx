@@ -17,6 +17,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { TransactionsMobileList } from "./transactions-mobile-list";
 
 const TRANSACTIONS_PAGE_SIZE = 12;
 
@@ -29,7 +30,7 @@ type TransactionTableRow =
       occurredAt: Date;
     };
 
-interface TransactionsTableProps {
+interface TransactionsViewProps {
   categories: Category[];
   transactions: Transaction[];
   listLoading: boolean;
@@ -38,10 +39,11 @@ interface TransactionsTableProps {
   onEdit: (transaction: Transaction) => void;
   onDelete: (transaction: Transaction) => void;
   deletingId: string | null;
+  displayMode: "desktop" | "mobile";
   formatAmount: (value: string, currency: string) => string;
 }
 
-export function TransactionsTable({
+export function TransactionsView({
   categories,
   transactions,
   listLoading,
@@ -50,8 +52,9 @@ export function TransactionsTable({
   onEdit,
   onDelete,
   deletingId,
+  displayMode,
   formatAmount,
-}: TransactionsTableProps) {
+}: TransactionsViewProps) {
   const { site } = useSitePreferences();
   const t = site.pages.transactions;
   const displayLocale = site.metadata.htmlLang === "en" ? "en-US" : "es-CO";
@@ -247,107 +250,25 @@ export function TransactionsTable({
 
   return (
     <div className="space-y-3">
-      <div className="space-y-3 md:hidden">
-        {listLoading && transactions.length === 0 ? (
-          <div className="rounded-lg border bg-card px-4 py-8 text-center text-muted-foreground shadow-sm">
-            {t.loading}
-          </div>
-        ) : transactions.length === 0 ? (
-          <div className="rounded-lg border bg-card px-4 py-8 text-center text-muted-foreground shadow-sm">
-            {t.empty}
-          </div>
-        ) : (
-          paginatedRows.map((row) => {
-            if (row.type === "separator") {
-              return (
-                <div
-                  key={row.key}
-                  className="rounded-lg border bg-muted/15 px-4 py-2 text-xs font-semibold text-muted-foreground shadow-sm"
-                >
-                  {row.label}
-                </div>
-              );
-            }
+      <TransactionsMobileList
+        categories={categories}
+        rows={paginatedRows}
+        transactionsCount={transactions.length}
+        listLoading={listLoading}
+        deletingId={deletingId}
+        onEdit={onEdit}
+        onDelete={onDelete}
+        formatAmount={formatAmount}
+        formatTime={(value) => transactionDateFormatters.time.format(value)}
+        className={displayMode === "mobile" ? "md:block" : "md:hidden"}
+      />
 
-            const transaction = row.transaction;
-            const direction = getCategoryDirection(transaction.category_id);
-            const description = getTransactionDescription(transaction);
-
-            return (
-              <div
-                key={row.key}
-                className="rounded-lg border bg-card px-4 py-3 shadow-sm"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <time
-                      dateTime={transaction.occurred_at}
-                      className="block text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground"
-                    >
-                      {transactionDateFormatters.time.format(row.occurredAt)}
-                    </time>
-                    <p className="mt-1 wrap-break-word font-semibold">
-                      {getCategoryName(transaction.category_id)}
-                    </p>
-                  </div>
-
-                  <div className="shrink-0 text-right">
-                    <p
-                      className={cn(
-                        "text-base font-semibold",
-                        getAmountClassName(direction),
-                      )}
-                    >
-                      {formatAmount(transaction.amount, transaction.currency)}
-                    </p>
-                    <p className="mt-1 text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">
-                      {transaction.currency}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-3 flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    {renderDirectionBadge(direction)}
-                  </div>
-                  <div className="flex shrink-0 justify-end gap-1">
-                    <button
-                      type="button"
-                      onClick={() => onEdit(transaction)}
-                      className="rounded p-1.5 text-cyan-600 transition-colors hover:bg-cyan-500/10 hover:text-cyan-500 dark:text-cyan-300 dark:hover:bg-cyan-400/10 dark:hover:text-cyan-200"
-                      title={site.common.edit}
-                    >
-                      <FiEdit2 size={14} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onDelete(transaction)}
-                      disabled={deletingId === transaction.id}
-                      className="rounded p-1.5 text-rose-600 transition-colors hover:bg-rose-500/10 hover:text-rose-500 disabled:opacity-40 dark:text-rose-300 dark:hover:bg-rose-400/10 dark:hover:text-rose-200"
-                      title={site.common.delete}
-                    >
-                      <FiTrash2 size={14} />
-                    </button>
-                  </div>
-                </div>
-
-                {description ? (
-                  <div className="mt-3 border-t pt-3">
-                    <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
-                      {site.common.description}
-                    </p>
-                    <p className="mt-1 wrap-break-word text-sm text-muted-foreground">
-                      {description}
-                    </p>
-                  </div>
-                ) : null}
-              </div>
-            );
-          })
+      <div
+        className={cn(
+          "hidden overflow-hidden rounded-lg border bg-card shadow-sm",
+          displayMode === "desktop" && "md:block",
         )}
-      </div>
-
-      <div className="hidden overflow-hidden rounded-lg border bg-card shadow-sm md:block">
+      >
         <Table showMobileScrollHint>
           <TableHeader>
             <TableRow className="bg-muted/50">
