@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -10,6 +10,8 @@ import { api, ApiError, type Category } from "@/lib/api";
 import { getCache, setCache } from "@/lib/cache";
 import {
   findDuplicateCategory,
+  getTopLevelCategoryOptions,
+  isGroupCategory,
   normalizeCategoryName,
 } from "@/lib/category-utils";
 import { useSitePreferences } from "@/components/providers/site-preferences-provider";
@@ -75,6 +77,30 @@ export default function CategoriesPage() {
 
   const editDirectionValue = watchEdit("direction");
   const editParentIdValue = watchEdit("parent_id");
+  const editingCatHasChildren = editingCat
+    ? isGroupCategory(categories, editingCat.id)
+    : false;
+  const groupOptions = useMemo(
+    () =>
+      getTopLevelCategoryOptions(
+        categories,
+        editingCat?.id,
+        editDirectionValue ?? editingCat?.direction,
+      ),
+    [categories, editDirectionValue, editingCat?.direction, editingCat?.id],
+  );
+
+  useEffect(() => {
+    if (!editParentIdValue || editParentIdValue === "__none__") return;
+
+    const parentStillAvailable = groupOptions.some(
+      (category) => category.id === editParentIdValue,
+    );
+
+    if (!parentStillAvailable) {
+      setEditValue("parent_id", undefined);
+    }
+  }, [editParentIdValue, groupOptions, setEditValue]);
 
   const loadCategories = useCallback(
     async (silent = false) => {
@@ -110,6 +136,10 @@ export default function CategoriesPage() {
     if (!editingCat) return;
 
     const normalizedName = normalizeCategoryName(values.name);
+    const selectedParentId =
+      values.parent_id === "__none__" ? undefined : values.parent_id;
+    const parentChanged = selectedParentId !== (editingCat.parent_id ?? undefined);
+    const directionChanged = values.direction !== editingCat.direction;
     const duplicateCategory = findDuplicateCategory(
       categories,
       normalizedName,
@@ -121,20 +151,73 @@ export default function CategoriesPage() {
       return;
     }
 
+    if (editingCatHasChildren && directionChanged) {
+      toast.error(t.groupDirectionCannotChange);
+      return;
+    }
+
+    if (
+      parentChanged &&
+      selectedParentId &&
+      isGroupCategory(categories, editingCat.id)
+    ) {
+      toast.error(t.groupCannotBecomeSubcategory);
+      return;
+    }
+
+    if (
+      selectedParentId &&
+      !groupOptions.some((category) => category.id === selectedParentId)
+    ) {
+      toast.error(t.groupMustMatchDirection);
+      return;
+    }
+
     try {
-      await api.updateCategory(editingCat.id, {
+      const updatePayload: {
+        name: string;
+        direction: "income" | "expense";
+        parent_id?: string | null;
+      } = {
         name: normalizedName,
         direction: values.direction,
-        parent_id:
-          values.parent_id === "__none__" ? null : values.parent_id || null,
-      });
+      };
+
+      if (parentChanged) {
+        updatePayload.parent_id = selectedParentId || null;
+      }
+
+      await api.updateCategory(editingCat.id, updatePayload);
       toast.success(t.updated);
       setEditingCat(null);
       loadCategories(true);
     } catch (err) {
       if (err instanceof ApiError) {
-        if (err.status === 409) toast.error(t.duplicateCategory(normalizedName));
-        else toast.error(err.message);
+        if (err.status === 409 && err.message === "Category already exists") {
+          toast.error(t.duplicateCategory(normalizedName));
+        } else if (
+          err.status === 409 &&
+          err.message === "Category already acts as a group"
+        ) {
+          toast.error(t.groupCannotBecomeSubcategory);
+        } else if (
+          err.status === 409 &&
+          err.message === "Parent category must be top-level"
+        ) {
+          toast.error(t.groupMustBeTopLevel);
+        } else if (
+          err.status === 409 &&
+          err.message === "Parent category must have same direction"
+        ) {
+          toast.error(t.groupMustMatchDirection);
+        } else if (
+          err.status === 409 &&
+          err.message === "Group direction cannot change while it has subcategories"
+        ) {
+          toast.error(t.groupDirectionCannotChange);
+        } else {
+          toast.error(err.message);
+        }
       } else {
         toast.error(t.failedUpdate);
       }
@@ -290,6 +373,7 @@ export default function CategoriesPage() {
                 onValueChange={(value) =>
                   setEditValue("direction", value as "income" | "expense")
                 }
+                disabled={editingCatHasChildren}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -308,19 +392,18 @@ export default function CategoriesPage() {
                 onValueChange={(value) =>
                   setEditValue("parent_id", value === "__none__" ? undefined : value)
                 }
+                disabled={editingCatHasChildren}
               >
                 <SelectTrigger>
                   <SelectValue placeholder={site.common.none} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none__">{site.common.none}</SelectItem>
-                  {categories
-                    .filter((category) => category.id !== editingCat?.id)
-                    .map((category) => (
-                      <SelectItem key={category.id} value={category.id}>
-                        {category.name}
-                      </SelectItem>
-                    ))}
+                  {groupOptions.map((category) => (
+                    <SelectItem key={category.id} value={category.id}>
+                      {category.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

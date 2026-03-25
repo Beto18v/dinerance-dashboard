@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -10,6 +10,7 @@ import { FiHelpCircle, FiPlus } from "react-icons/fi";
 import { api, ApiError, type Category } from "@/lib/api";
 import {
   findDuplicateCategory,
+  getTopLevelCategoryOptions,
   normalizeCategoryName,
 } from "@/lib/category-utils";
 import { useSitePreferences } from "@/components/providers/site-preferences-provider";
@@ -80,6 +81,22 @@ export function CreateCategoryModal({
     control,
     name: "parent_id",
   });
+  const groupOptions = useMemo(
+    () => getTopLevelCategoryOptions(categories, undefined, directionValue),
+    [categories, directionValue],
+  );
+
+  useEffect(() => {
+    if (!parentIdValue) return;
+
+    const parentStillAvailable = groupOptions.some(
+      (category) => category.id === parentIdValue,
+    );
+
+    if (!parentStillAvailable) {
+      setValue("parent_id", undefined);
+    }
+  }, [groupOptions, parentIdValue, setValue]);
 
   useEffect(() => {
     if (typeof window.matchMedia !== "function") return;
@@ -110,10 +127,18 @@ export function CreateCategoryModal({
 
   async function onSubmit(values: FormValues) {
     const normalizedName = normalizeCategoryName(values.name);
+    const selectedParent = groupOptions.find(
+      (category) => category.id === values.parent_id,
+    );
     const duplicateCategory = findDuplicateCategory(categories, normalizedName);
 
     if (duplicateCategory) {
       toast.error(t.duplicateCategory(normalizedName));
+      return;
+    }
+
+    if (values.parent_id && !selectedParent) {
+      toast.error(t.groupMustMatchDirection);
       return;
     }
 
@@ -130,10 +155,24 @@ export function CreateCategoryModal({
       onCreated();
     } catch (err) {
       if (err instanceof ApiError) {
-        if (err.status === 409) toast.error(t.duplicateCategory(normalizedName));
-        else toast.error(err.message);
+        if (err.status === 409 && err.message === "Category already exists") {
+          toast.error(t.duplicateCategory(normalizedName));
+        } else if (
+          err.status === 409 &&
+          err.message === "Parent category must be top-level"
+        ) {
+          toast.error(t.groupMustBeTopLevel);
+        } else if (
+          err.status === 409 &&
+          err.message === "Parent category must have same direction"
+        ) {
+          toast.error(t.groupMustMatchDirection);
+        } else {
+          toast.error(err.message);
+        }
+      } else {
+        toast.error(t.failedCreate);
       }
-      else toast.error(t.failedCreate);
     }
   }
 
@@ -249,7 +288,7 @@ export function CreateCategoryModal({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none__">{site.common.none}</SelectItem>
-                  {categories.map((c) => (
+                  {groupOptions.map((c) => (
                     <SelectItem key={c.id} value={c.id}>
                       {c.name}
                     </SelectItem>

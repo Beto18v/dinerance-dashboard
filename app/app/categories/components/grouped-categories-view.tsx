@@ -163,7 +163,7 @@ export function GroupedCategoriesView({
                     {t.subcategoriesCount(group.children.length)}
                   </p>
                 </div>
-                {group.parent && group.parentVisible ? (
+                {group.parent ? (
                   <CategoryRowActions
                     category={group.parent}
                     deletingId={deletingId}
