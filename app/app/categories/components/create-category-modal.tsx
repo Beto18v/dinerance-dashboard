@@ -8,6 +8,10 @@ import { toast } from "sonner";
 import { FiHelpCircle, FiPlus } from "react-icons/fi";
 
 import { api, ApiError, type Category } from "@/lib/api";
+import {
+  findDuplicateCategory,
+  normalizeCategoryName,
+} from "@/lib/category-utils";
 import { useSitePreferences } from "@/components/providers/site-preferences-provider";
 import { getSiteText } from "@/lib/site";
 
@@ -105,9 +109,17 @@ export function CreateCategoryModal({
   }, []);
 
   async function onSubmit(values: FormValues) {
+    const normalizedName = normalizeCategoryName(values.name);
+    const duplicateCategory = findDuplicateCategory(categories, normalizedName);
+
+    if (duplicateCategory) {
+      toast.error(t.duplicateCategory(normalizedName));
+      return;
+    }
+
     try {
       await api.createCategory({
-        name: values.name,
+        name: normalizedName,
         direction: values.direction,
         parent_id: values.parent_id || null,
       });
@@ -117,7 +129,10 @@ export function CreateCategoryModal({
       setOpen(false);
       onCreated();
     } catch (err) {
-      if (err instanceof ApiError) toast.error(err.message);
+      if (err instanceof ApiError) {
+        if (err.status === 409) toast.error(t.duplicateCategory(normalizedName));
+        else toast.error(err.message);
+      }
       else toast.error(t.failedCreate);
     }
   }

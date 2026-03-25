@@ -214,6 +214,7 @@ const siteTexts = {
         deleted: "Categoria eliminada",
         created: "Categoria creada",
         updated: "Categoria actualizada",
+        duplicateCategory: (name: string) => `Tu categoria ${name} ya existe`,
         failedLoad: "No se pudieron cargar las categorias",
         failedCreate: "No se pudo crear la categoria",
         failedUpdate: "No se pudo actualizar la categoria",
@@ -470,6 +471,8 @@ const siteTexts = {
         deleted: "Category deleted",
         created: "Category created",
         updated: "Category updated",
+        duplicateCategory: (name: string) =>
+          `Your category ${name} already exists`,
         failedLoad: "Failed to load categories",
         failedCreate: "Failed to create category",
         failedUpdate: "Failed to update category",

@@ -9,6 +9,10 @@ import { FiEdit2, FiTrash2 } from "react-icons/fi";
 
 import { api, ApiError, type Category } from "@/lib/api";
 import { getCache, setCache } from "@/lib/cache";
+import {
+  findDuplicateCategory,
+  normalizeCategoryName,
+} from "@/lib/category-utils";
 import { useSitePreferences } from "@/components/providers/site-preferences-provider";
 import { getSiteText } from "@/lib/site";
 import { getPaginationSummary } from "@/lib/pagination";
@@ -126,9 +130,21 @@ export default function CategoriesPage() {
 
   async function onEditSubmit(values: FormValues) {
     if (!editingCat) return;
+    const normalizedName = normalizeCategoryName(values.name);
+    const duplicateCategory = findDuplicateCategory(
+      categories,
+      normalizedName,
+      editingCat.id,
+    );
+
+    if (duplicateCategory) {
+      toast.error(t.duplicateCategory(normalizedName));
+      return;
+    }
+
     try {
       await api.updateCategory(editingCat.id, {
-        name: values.name,
+        name: normalizedName,
         direction: values.direction,
         parent_id:
           values.parent_id === "__none__" ? null : values.parent_id || null,
@@ -137,7 +153,10 @@ export default function CategoriesPage() {
       setEditingCat(null);
       loadCategories(true);
     } catch (err) {
-      if (err instanceof ApiError) toast.error(err.message);
+      if (err instanceof ApiError) {
+        if (err.status === 409) toast.error(t.duplicateCategory(normalizedName));
+        else toast.error(err.message);
+      }
       else toast.error(t.failedUpdate);
     }
   }
