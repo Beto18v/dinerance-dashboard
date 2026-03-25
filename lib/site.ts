@@ -221,6 +221,12 @@ const siteTexts = {
         deleteBlockedByTransactions:
           "No puedes eliminar esta categoria porque tiene transacciones asociadas. Primero elimina esas transacciones o cambialas a otra categoria.",
         ofTotal: (visible: number, total: number) => `(${visible} de ${total})`,
+        pageOf: (page: number, total: number) => `Pagina ${page} de ${total}`,
+        showingOfTotal: (visible: number, total: number) =>
+          `Mostrando ${visible} de ${total}`,
+        pageSizeLabel: (count: number) => `${count} por pagina`,
+        previousPage: "Anterior",
+        nextPage: "Siguiente",
         validations: {
           nameRequired: "El nombre es obligatorio",
         },
@@ -241,6 +247,7 @@ const siteTexts = {
         currencyPlaceholder: "COP",
         create: "Crear transaccion",
         creating: "Creando...",
+        time: "Hora",
         filters: "Filtros",
         startDate: "Fecha inicial",
         endDate: "Fecha final",
@@ -248,16 +255,23 @@ const siteTexts = {
         loading: "Cargando...",
         empty: "No se encontraron transacciones.",
         type: "Tipo",
+        today: "Hoy",
+        yesterday: "Ayer",
+        pageOf: (page: number, total: number) => `Pagina ${page} de ${total}`,
+        showingOfTotal: (visible: number, total: number) =>
+          `Mostrando ${visible} de ${total}`,
+        pageSizeLabel: (count: number) => `${count} por pagina`,
+        previousPage: "Anterior",
+        nextPage: "Siguiente",
         editTitle: "Editar transaccion",
         save: "Guardar cambios",
         saving: "Guardando...",
         deleteTitle: "Eliminar transaccion?",
         deleteDescription: (
           amount: string,
-          currency: string,
           description?: string,
         ) =>
-          `Seguro que quieres eliminar esta transaccion de ${amount} ${currency}${description ? ` - \"${description}\"` : ""}? Esta accion no se puede deshacer.`,
+          `Seguro que quieres eliminar esta transaccion de ${amount}${description ? ` - \"${description}\"` : ""}? Esta accion no se puede deshacer.`,
         created: "Transaccion creada",
         updated: "Transaccion actualizada",
         deleted: "Transaccion eliminada",
@@ -268,6 +282,7 @@ const siteTexts = {
         validations: {
           categoryRequired: "La categoria es obligatoria",
           amountRequired: "El monto es obligatorio",
+          amountInvalid: "El monto solo puede contener numeros",
           currencyRequired: "La moneda es obligatoria",
           dateRequired: "La fecha es obligatoria",
         },
@@ -462,6 +477,12 @@ const siteTexts = {
         deleteBlockedByTransactions:
           "You cannot delete this category because it has related transactions. First delete those transactions or move them to another category.",
         ofTotal: (visible: number, total: number) => `(${visible} of ${total})`,
+        pageOf: (page: number, total: number) => `Page ${page} of ${total}`,
+        showingOfTotal: (visible: number, total: number) =>
+          `Showing ${visible} of ${total}`,
+        pageSizeLabel: (count: number) => `${count} per page`,
+        previousPage: "Previous",
+        nextPage: "Next",
         validations: {
           nameRequired: "Name is required",
         },
@@ -482,6 +503,7 @@ const siteTexts = {
         currencyPlaceholder: "COP",
         create: "Create transaction",
         creating: "Creating...",
+        time: "Time",
         filters: "Filters",
         startDate: "Start date",
         endDate: "End date",
@@ -489,16 +511,23 @@ const siteTexts = {
         loading: "Loading...",
         empty: "No transactions found.",
         type: "Type",
+        today: "Today",
+        yesterday: "Yesterday",
+        pageOf: (page: number, total: number) => `Page ${page} of ${total}`,
+        showingOfTotal: (visible: number, total: number) =>
+          `Showing ${visible} of ${total}`,
+        pageSizeLabel: (count: number) => `${count} per page`,
+        previousPage: "Previous",
+        nextPage: "Next",
         editTitle: "Edit transaction",
         save: "Save changes",
         saving: "Saving...",
         deleteTitle: "Delete transaction?",
         deleteDescription: (
           amount: string,
-          currency: string,
           description?: string,
         ) =>
-          `Are you sure you want to delete this transaction of ${amount} ${currency}${description ? ` - \"${description}\"` : ""}? This action cannot be undone.`,
+          `Are you sure you want to delete this transaction of ${amount}${description ? ` - \"${description}\"` : ""}? This action cannot be undone.`,
         created: "Transaction created",
         updated: "Transaction updated",
         deleted: "Transaction deleted",
@@ -509,6 +538,7 @@ const siteTexts = {
         validations: {
           categoryRequired: "Category is required",
           amountRequired: "Amount is required",
+          amountInvalid: "Amount can only contain numbers",
           currencyRequired: "Currency is required",
           dateRequired: "Date is required",
         },

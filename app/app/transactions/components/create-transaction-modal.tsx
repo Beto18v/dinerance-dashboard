@@ -30,10 +30,15 @@ import {
 } from "@/components/ui/dialog";
 
 const schemaText = getSiteText().pages.transactions;
+const AMOUNT_PATTERN = /^\d+([.,]\d{0,2})?$/;
 
 const schema = z.object({
   category_id: z.string().min(1, schemaText.validations.categoryRequired),
-  amount: z.string().min(1, schemaText.validations.amountRequired),
+  amount: z
+    .string()
+    .trim()
+    .min(1, schemaText.validations.amountRequired)
+    .regex(AMOUNT_PATTERN, schemaText.validations.amountInvalid),
   currency: z.string().min(1, schemaText.validations.currencyRequired),
   occurred_at: z.string().min(1, schemaText.validations.dateRequired),
   description: z.string().optional(),
@@ -70,12 +75,17 @@ export function CreateTransactionModal({
     control,
     name: "category_id",
   });
+  const amountField = register("amount", {
+    onChange: (event) => {
+      event.target.value = sanitizeAmountInput(event.target.value);
+    },
+  });
 
   async function onSubmit(values: FormValues) {
     try {
       await api.createTransaction({
         category_id: values.category_id,
-        amount: values.amount,
+        amount: normalizeAmountForApi(values.amount),
         currency: values.currency,
         occurred_at: new Date(values.occurred_at).toISOString(),
         description: values.description || null,
@@ -140,8 +150,10 @@ export function CreateTransactionModal({
                 <Label htmlFor="create_amount">{t.amount}</Label>
                 <Input
                   id="create_amount"
-                  {...register("amount")}
+                  {...amountField}
                   placeholder={t.amountPlaceholder}
+                  inputMode="decimal"
+                  autoComplete="off"
                 />
                 {errors.amount && (
                   <p className="text-sm text-destructive">
@@ -206,4 +218,25 @@ export function CreateTransactionModal({
       </Dialog>
     </>
   );
+}
+
+function sanitizeAmountInput(value: string) {
+  const sanitizedValue = value.replace(/[^\d.,]/g, "");
+  const separatorIndex = sanitizedValue.search(/[.,]/);
+
+  if (separatorIndex === -1) return sanitizedValue;
+
+  const separator = sanitizedValue[separatorIndex];
+  const integerPart = sanitizedValue
+    .slice(0, separatorIndex)
+    .replace(/[^\d]/g, "");
+  const decimalPart = sanitizedValue
+    .slice(separatorIndex + 1)
+    .replace(/[^\d]/g, "");
+
+  return `${integerPart || "0"}${separator}${decimalPart}`;
+}
+
+function normalizeAmountForApi(value: string) {
+  return value.replace(",", ".");
 }

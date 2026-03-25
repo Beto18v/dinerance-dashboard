@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { FiEdit2, FiTrash2 } from "react-icons/fi";
 
 import { api, ApiError, type Category, type Transaction } from "@/lib/api";
 import { getCache, setCache } from "@/lib/cache";
@@ -22,14 +21,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -37,8 +28,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
 import { CreateTransactionModal } from "./components/create-transaction-modal";
+import { TransactionsFilters } from "./components/transactions-filters";
+import { TransactionsTable } from "./components/transactions-table";
 
 const CACHE_KEY_CATS = "cache:categories";
 const CACHE_KEY_TXN = "cache:transactions";
@@ -57,6 +49,7 @@ type FormValues = z.infer<typeof schema>;
 export default function TransactionsPage() {
   const { site } = useSitePreferences();
   const t = site.pages.transactions;
+  const displayLocale = getDisplayLocale(site.metadata.htmlLang);
   const [categories, setCategories] = useState<Category[]>(
     () => getCache<Category[]>(CACHE_KEY_CATS) ?? [],
   );
@@ -66,21 +59,15 @@ export default function TransactionsPage() {
   const [listLoading, setListLoading] = useState(
     () => !getCache<Transaction[]>(CACHE_KEY_TXN),
   );
-
   const [editingTxn, setEditingTxn] = useState<Transaction | null>(null);
   const [confirmDeleteTxn, setConfirmDeleteTxn] = useState<Transaction | null>(
     null,
   );
   const [deletingId, setDeletingId] = useState<string | null>(null);
-
   const [filterCategoryId, setFilterCategoryId] = useState<string>("");
   const [filterStartDate, setFilterStartDate] = useState("");
   const [filterEndDate, setFilterEndDate] = useState("");
-
-  function toDayBoundaryIso(date: string, boundary: "start" | "end"): string {
-    const time = boundary === "start" ? "00:00:00.000" : "23:59:59.999";
-    return new Date(`${date}T${time}`).toISOString();
-  }
+  const [currentPage, setCurrentPage] = useState(1);
 
   const filterParams = useMemo(
     () => ({
@@ -92,7 +79,7 @@ export default function TransactionsPage() {
         ? toDayBoundaryIso(filterEndDate, "end")
         : undefined,
     }),
-    [filterCategoryId, filterStartDate, filterEndDate],
+    [filterCategoryId, filterEndDate, filterStartDate],
   );
 
   const {
@@ -115,6 +102,7 @@ export default function TransactionsPage() {
       silent = false,
     ) => {
       if (!silent) setListLoading(true);
+
       try {
         const data = await api.getTransactions({
           category_id: params?.category_id || undefined,
@@ -122,6 +110,7 @@ export default function TransactionsPage() {
           end_date: params?.end_date || undefined,
         });
         setTransactions(data);
+
         if (!params?.category_id && !params?.start_date && !params?.end_date) {
           setCache(CACHE_KEY_TXN, data);
         }
@@ -136,17 +125,19 @@ export default function TransactionsPage() {
   );
 
   useEffect(() => {
-    async function loadCats() {
+    async function loadCategories() {
       const silent = !!getCache(CACHE_KEY_CATS);
+
       try {
-        const cats = await api.getCategories();
-        setCategories(cats);
-        setCache(CACHE_KEY_CATS, cats);
+        const data = await api.getCategories();
+        setCategories(data);
+        setCache(CACHE_KEY_CATS, data);
       } catch (err) {
         if (!silent && err instanceof ApiError) toast.error(err.message);
       }
     }
-    loadCats();
+
+    loadCategories();
   }, []);
 
   useEffect(() => {
@@ -156,26 +147,34 @@ export default function TransactionsPage() {
       filterParams.start_date ||
       filterParams.end_date
     );
+
     loadTransactions(filterParams, hasTxnCache && !isFiltered);
   }, [filterParams, loadTransactions]);
 
-  function openEditDialog(txn: Transaction) {
-    setEditingTxn(txn);
-    const dt = new Date(txn.occurred_at);
-    const localDt = new Date(dt.getTime() - dt.getTimezoneOffset() * 60000)
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterParams]);
+
+  function openEditDialog(transaction: Transaction) {
+    setEditingTxn(transaction);
+
+    const date = new Date(transaction.occurred_at);
+    const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
       .toISOString()
       .slice(0, 16);
+
     resetEdit({
-      category_id: txn.category_id,
-      amount: String(txn.amount),
-      currency: txn.currency,
-      occurred_at: localDt,
-      description: txn.description ?? "",
+      category_id: transaction.category_id,
+      amount: String(transaction.amount),
+      currency: transaction.currency,
+      occurred_at: localDate,
+      description: transaction.description ?? "",
     });
   }
 
   async function onEditSubmit(values: FormValues) {
     if (!editingTxn) return;
+
     try {
       await api.updateTransaction(editingTxn.id, {
         category_id: values.category_id,
@@ -195,9 +194,11 @@ export default function TransactionsPage() {
 
   async function handleDeleteConfirmed() {
     if (!confirmDeleteTxn) return;
+
     const id = confirmDeleteTxn.id;
     setDeletingId(id);
     setConfirmDeleteTxn(null);
+
     try {
       await api.deleteTransaction(id);
       toast.success(t.deleted);
@@ -210,218 +211,76 @@ export default function TransactionsPage() {
     }
   }
 
-  const categoryMap = useMemo(() => {
-    const map = new Map<string, Category>();
-    for (const c of categories) map.set(c.id, c);
-    return map;
-  }, [categories]);
-
-  function getCategoryName(id: string) {
-    return categoryMap.get(id)?.name ?? id;
-  }
-
-  function getCategoryDirection(id: string) {
-    return categoryMap.get(id)?.direction ?? null;
-  }
-
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">{t.title}</h1>
-        <p className="text-sm text-muted-foreground mt-1">{t.subtitle}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{t.subtitle}</p>
       </div>
 
-      <div className="space-y-2">
-        <h2 className="text-base font-semibold">{t.filters}</h2>
-        <div className="flex flex-wrap gap-3 items-end">
-          <div className="space-y-1.5">
-            <Label>{t.category}</Label>
-            <Select
-              value={filterCategoryId || "__all__"}
-              onValueChange={(v) =>
-                setFilterCategoryId(v === "__all__" ? "" : v)
-              }
-            >
-              <SelectTrigger className="w-44">
-                <SelectValue placeholder={site.common.all} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__all__">{site.common.all}</SelectItem>
-                {categories.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="start_date">{t.startDate}</Label>
-            <Input
-              id="start_date"
-              type="date"
-              value={filterStartDate}
-              onChange={(e) => setFilterStartDate(e.target.value)}
-              className="w-40"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="end_date">{t.endDate}</Label>
-            <Input
-              id="end_date"
-              type="date"
-              value={filterEndDate}
-              onChange={(e) => setFilterEndDate(e.target.value)}
-              className="w-40"
-            />
-          </div>
-
-          {(filterCategoryId || filterStartDate || filterEndDate) && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setFilterCategoryId("");
-                setFilterStartDate("");
-                setFilterEndDate("");
-              }}
-            >
-              {site.common.clearFilters}
-            </Button>
-          )}
-        </div>
-      </div>
+      <TransactionsFilters
+        categories={categories}
+        filterCategoryId={filterCategoryId}
+        filterStartDate={filterStartDate}
+        filterEndDate={filterEndDate}
+        onFilterCategoryChange={setFilterCategoryId}
+        onFilterStartDateChange={setFilterStartDate}
+        onFilterEndDateChange={setFilterEndDate}
+        onClearFilters={() => {
+          setFilterCategoryId("");
+          setFilterStartDate("");
+          setFilterEndDate("");
+        }}
+      />
 
       <div>
         <div className="mb-3 flex items-center justify-between gap-3">
           <h2 className="text-base font-semibold">
             {t.listTitle}
-            {listLoading && (
+            {listLoading ? (
               <span className="ml-2 inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary border-t-transparent align-middle" />
-            )}
+            ) : null}
           </h2>
           <div className="flex items-center gap-2">
             <CreateTransactionModal
               categories={categories}
-              onCreated={() => loadTransactions(filterParams, true)}
+              onCreated={() => {
+                setCurrentPage(1);
+                loadTransactions(filterParams, true);
+              }}
             />
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-lg border bg-card shadow-sm">
-          <Table showMobileScrollHint>
-            <TableHeader>
-              <TableRow className="bg-muted/50">
-                <TableHead>{site.common.date}</TableHead>
-                <TableHead>{t.category}</TableHead>
-                <TableHead>{t.type}</TableHead>
-                <TableHead>{t.amount}</TableHead>
-                <TableHead>{t.currency}</TableHead>
-                <TableHead>{site.common.description}</TableHead>
-                <TableHead className="text-right">
-                  {site.common.actions}
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {listLoading && transactions.length === 0 ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={7}
-                    className="py-8 text-center text-muted-foreground"
-                  >
-                    {t.loading}
-                  </TableCell>
-                </TableRow>
-              ) : transactions.length === 0 ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={7}
-                    className="py-8 text-center text-muted-foreground"
-                  >
-                    {t.empty}
-                  </TableCell>
-                </TableRow>
-              ) : (
-                transactions.map((t) => {
-                  const direction = getCategoryDirection(t.category_id);
-                  return (
-                    <TableRow key={t.id} className="hover:bg-muted/30">
-                      <TableCell className="text-sm">
-                        {new Date(t.occurred_at).toLocaleString(
-                          site.metadata.htmlLang,
-                        )}
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        {getCategoryName(t.category_id)}
-                      </TableCell>
-                      <TableCell>
-                        {direction === "income" && (
-                          <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">
-                            {site.common.income}
-                          </Badge>
-                        )}
-                        {direction === "expense" && (
-                          <Badge className="bg-rose-100 text-rose-800 hover:bg-rose-100">
-                            {site.common.expense}
-                          </Badge>
-                        )}
-                        {direction === null && (
-                          <span className="text-sm text-muted-foreground">
-                            {site.common.dash}
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell className="font-mono">{t.amount}</TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {t.currency}
-                      </TableCell>
-                      <TableCell className="max-w-40 truncate text-muted-foreground">
-                        {t.description ?? site.common.dash}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          <button
-                            type="button"
-                            onClick={() => openEditDialog(t)}
-                            className="rounded p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                            title={site.common.edit}
-                          >
-                            <FiEdit2 size={14} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setConfirmDeleteTxn(t)}
-                            disabled={deletingId === t.id}
-                            className="rounded p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-destructive disabled:opacity-40"
-                            title={site.common.delete}
-                          >
-                            <FiTrash2 size={14} />
-                          </button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
-        </div>
+        <TransactionsTable
+          categories={categories}
+          transactions={transactions}
+          listLoading={listLoading}
+          currentPage={currentPage}
+          onPageChange={setCurrentPage}
+          onEdit={openEditDialog}
+          onDelete={setConfirmDeleteTxn}
+          deletingId={deletingId}
+          formatAmount={(value, currency) =>
+            formatTransactionAmount(value, currency, displayLocale)
+          }
+        />
       </div>
 
       <Dialog
         open={!!confirmDeleteTxn}
-        onOpenChange={(o) => !o && setConfirmDeleteTxn(null)}
+        onOpenChange={(open) => !open && setConfirmDeleteTxn(null)}
       >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t.deleteTitle}</DialogTitle>
             <DialogDescription>
               {t.deleteDescription(
-                confirmDeleteTxn?.amount ?? "",
-                confirmDeleteTxn?.currency ?? "",
+                formatTransactionAmount(
+                  confirmDeleteTxn?.amount ?? "",
+                  confirmDeleteTxn?.currency ?? "COP",
+                  displayLocale,
+                ),
                 confirmDeleteTxn?.description ?? undefined,
               )}
             </DialogDescription>
@@ -450,24 +309,24 @@ export default function TransactionsPage() {
               <Label>{t.category}</Label>
               <Select
                 value={editCategoryIdValue ?? ""}
-                onValueChange={(v) => setEditValue("category_id", v)}
+                onValueChange={(value) => setEditValue("category_id", value)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder={t.categoryPlaceholder} />
                 </SelectTrigger>
                 <SelectContent>
-                  {categories.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
+                  {categories.map((category) => (
+                    <SelectItem key={category.id} value={category.id}>
+                      {category.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              {editErrors.category_id && (
+              {editErrors.category_id ? (
                 <p className="text-sm text-destructive">
                   {editErrors.category_id.message}
                 </p>
-              )}
+              ) : null}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -478,11 +337,11 @@ export default function TransactionsPage() {
                   {...registerEdit("amount")}
                   placeholder={t.amountPlaceholder}
                 />
-                {editErrors.amount && (
+                {editErrors.amount ? (
                   <p className="text-sm text-destructive">
                     {editErrors.amount.message}
                   </p>
-                )}
+                ) : null}
               </div>
 
               <div className="space-y-1.5">
@@ -492,11 +351,11 @@ export default function TransactionsPage() {
                   {...registerEdit("currency")}
                   placeholder={t.currencyPlaceholder}
                 />
-                {editErrors.currency && (
+                {editErrors.currency ? (
                   <p className="text-sm text-destructive">
                     {editErrors.currency.message}
                   </p>
-                )}
+                ) : null}
               </div>
             </div>
 
@@ -507,11 +366,11 @@ export default function TransactionsPage() {
                 type="datetime-local"
                 {...registerEdit("occurred_at")}
               />
-              {editErrors.occurred_at && (
+              {editErrors.occurred_at ? (
                 <p className="text-sm text-destructive">
                   {editErrors.occurred_at.message}
                 </p>
-              )}
+              ) : null}
             </div>
 
             <div className="space-y-1.5">
@@ -536,4 +395,32 @@ export default function TransactionsPage() {
       </Dialog>
     </div>
   );
+}
+
+function toDayBoundaryIso(date: string, boundary: "start" | "end") {
+  const time = boundary === "start" ? "00:00:00.000" : "23:59:59.999";
+  return new Date(`${date}T${time}`).toISOString();
+}
+
+function getDisplayLocale(language: string) {
+  return language === "en" ? "en-US" : "es-CO";
+}
+
+function formatTransactionAmount(
+  value: string,
+  currency: string,
+  locale: string,
+) {
+  const normalizedCurrency = (currency || "COP").toUpperCase();
+  const amount = Number(value || 0);
+
+  return new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency: normalizedCurrency,
+    ...(normalizedCurrency === "COP"
+      ? { minimumFractionDigits: 0, maximumFractionDigits: 0 }
+      : {}),
+  })
+    .format(amount)
+    .replace(/\s+/g, "");
 }

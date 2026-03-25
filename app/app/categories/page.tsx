@@ -11,6 +11,8 @@ import { api, ApiError, type Category } from "@/lib/api";
 import { getCache, setCache } from "@/lib/cache";
 import { useSitePreferences } from "@/components/providers/site-preferences-provider";
 import { getSiteText } from "@/lib/site";
+import { getPaginationSummary } from "@/lib/pagination";
+import { cn } from "@/lib/utils";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +32,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { PaginationFooter } from "@/components/ui/pagination-footer";
 import {
   Dialog,
   DialogContent,
@@ -42,6 +45,7 @@ import { Badge } from "@/components/ui/badge";
 import { CreateCategoryModal } from "./components/create-category-modal";
 
 const CACHE_KEY = "cache:categories";
+const CATEGORIES_PAGE_SIZE = 12;
 const schemaText = getSiteText().pages.categories;
 
 const schema = z.object({
@@ -51,6 +55,10 @@ const schema = z.object({
 });
 
 type FormValues = z.infer<typeof schema>;
+
+type CategoryTableRow =
+  | { type: "separator"; key: string; label: string }
+  | { type: "category"; key: string; category: Category };
 
 export default function CategoriesPage() {
   const { site } = useSitePreferences();
@@ -72,6 +80,7 @@ export default function CategoriesPage() {
   // Filters
   const [filterDirection, setFilterDirection] = useState<string>("");
   const [filterNameId, setFilterNameId] = useState<string>("");
+  const [currentPage, setCurrentPage] = useState(1);
 
   const {
     register: registerEdit,
@@ -170,6 +179,72 @@ export default function CategoriesPage() {
     return true;
   });
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterDirection, filterNameId]);
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(visibleCategories.length / CATEGORIES_PAGE_SIZE),
+  );
+  const activePage = Math.min(currentPage, totalPages);
+
+  useEffect(() => {
+    if (currentPage !== activePage) {
+      setCurrentPage(activePage);
+    }
+  }, [activePage, currentPage]);
+
+  const paginatedCategories = useMemo(() => {
+    const start = (activePage - 1) * CATEGORIES_PAGE_SIZE;
+    return visibleCategories.slice(start, start + CATEGORIES_PAGE_SIZE);
+  }, [activePage, visibleCategories]);
+
+  const paginationSummary = getPaginationSummary({
+    itemCount: visibleCategories.length,
+    pageSize: CATEGORIES_PAGE_SIZE,
+    currentPage: activePage,
+    totalPages,
+    pageOf: t.pageOf,
+    showingOfTotal: t.showingOfTotal,
+  });
+
+  const groupedCategoryRows = useMemo(() => {
+    const directions = filterDirection
+      ? [filterDirection as "income" | "expense"]
+      : (["income", "expense"] as const);
+
+    return directions.flatMap<CategoryTableRow>((direction) => {
+      const rows = paginatedCategories
+        .filter((category) => category.direction === direction)
+        .map((category) => ({
+          type: "category" as const,
+          key: category.id,
+          category,
+        }));
+
+      if (rows.length === 0) return [];
+
+      return [
+        {
+          type: "separator" as const,
+          key: `separator-${direction}`,
+          label: direction === "income" ? site.common.income : site.common.expense,
+        },
+        ...rows,
+      ];
+    });
+  }, [
+    filterDirection,
+    paginatedCategories,
+    site.common.expense,
+    site.common.income,
+  ]);
+
+  const rowPaddingClass = "py-2";
+  const parentWidthClass = "max-w-44";
+  const nameCellWidthClass = "min-w-[14rem]";
+
   return (
     <div className="space-y-6">
       <div>
@@ -257,7 +332,6 @@ export default function CategoriesPage() {
             <TableHeader>
               <TableRow className="bg-muted/50">
                 <TableHead>{t.name}</TableHead>
-                <TableHead>{t.direction}</TableHead>
                 <TableHead>{t.parentOptional}</TableHead>
                 <TableHead className="text-right">
                   {site.common.actions}
@@ -268,7 +342,7 @@ export default function CategoriesPage() {
               {listLoading ? (
                 <TableRow>
                   <TableCell
-                    colSpan={4}
+                    colSpan={3}
                     className="text-center py-8 text-muted-foreground"
                   >
                     {t.loading}
@@ -277,56 +351,103 @@ export default function CategoriesPage() {
               ) : visibleCategories.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={4}
+                    colSpan={3}
                     className="text-center py-8 text-muted-foreground"
                   >
                     {t.empty}
                   </TableCell>
                 </TableRow>
               ) : (
-                visibleCategories.map((c) => (
-                  <TableRow key={c.id} className="hover:bg-muted/30">
-                    <TableCell className="font-medium">{c.name}</TableCell>
-                    <TableCell>
-                      {c.direction === "income" ? (
-                        <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">
-                          {site.common.income}
-                        </Badge>
-                      ) : (
-                        <Badge className="bg-rose-100 text-rose-800 hover:bg-rose-100">
-                          {site.common.expense}
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {getParentName(c.parent_id)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <button
-                          type="button"
-                          onClick={() => openEditDialog(c)}
-                          className="text-muted-foreground hover:text-foreground transition-colors p-1"
-                          title={site.common.edit}
+                groupedCategoryRows.map((row) => {
+                  if (row.type === "separator") {
+                    return (
+                      <TableRow
+                        key={row.key}
+                        className="bg-muted/15 hover:bg-muted/15"
+                      >
+                        <TableCell
+                          colSpan={3}
+                          className="border-y py-1.5 text-xs font-semibold text-muted-foreground"
                         >
-                          <FiEdit2 size={15} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setConfirmDeleteCat(c)}
-                          disabled={deletingId === c.id}
-                          className="text-muted-foreground hover:text-destructive transition-colors p-1 disabled:opacity-40"
-                          title={site.common.delete}
+                          {row.label}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  }
+
+                  const category = row.category;
+
+                  return (
+                    <TableRow key={row.key} className="hover:bg-muted/30">
+                      <TableCell className={cn(rowPaddingClass, "font-medium")}>
+                        <div
+                          className={cn(
+                            nameCellWidthClass,
+                            "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3",
+                          )}
                         >
-                          <FiTrash2 size={15} />
-                        </button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
+                          <span className="truncate">{category.name}</span>
+                          <Badge
+                            className={cn(
+                              "shrink-0",
+                              category.direction === "income"
+                                ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-100"
+                                : "bg-rose-100 text-rose-800 hover:bg-rose-100",
+                            )}
+                          >
+                            {category.direction === "income"
+                              ? site.common.income
+                              : site.common.expense}
+                          </Badge>
+                        </div>
+                      </TableCell>
+                      <TableCell
+                        className={cn(
+                          rowPaddingClass,
+                          parentWidthClass,
+                          "truncate text-muted-foreground",
+                        )}
+                      >
+                        {getParentName(category.parent_id)}
+                      </TableCell>
+                      <TableCell className={cn(rowPaddingClass, "text-right")}>
+                        <div className="flex justify-end gap-1">
+                          <button
+                            type="button"
+                            onClick={() => openEditDialog(category)}
+                            className="rounded p-1.5 text-cyan-600 transition-colors hover:bg-cyan-500/10 hover:text-cyan-500 dark:text-cyan-300 dark:hover:bg-cyan-400/10 dark:hover:text-cyan-200"
+                            title={site.common.edit}
+                          >
+                            <FiEdit2 size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmDeleteCat(category)}
+                            disabled={deletingId === category.id}
+                            className="rounded p-1.5 text-rose-600 transition-colors hover:bg-rose-500/10 hover:text-rose-500 disabled:opacity-40 dark:text-rose-300 dark:hover:bg-rose-400/10 dark:hover:text-rose-200"
+                            title={site.common.delete}
+                          >
+                            <FiTrash2 size={14} />
+                          </button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>
+          {visibleCategories.length > 0 ? (
+            <PaginationFooter
+              currentPage={activePage}
+              totalPages={totalPages}
+              pageSizeLabel={t.pageSizeLabel(CATEGORIES_PAGE_SIZE)}
+              summaryLabel={paginationSummary}
+              previousLabel={t.previousPage}
+              nextLabel={t.nextPage}
+              onPageChange={setCurrentPage}
+            />
+          ) : null}
         </div>
       </div>
 
