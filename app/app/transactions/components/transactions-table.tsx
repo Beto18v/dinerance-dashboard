@@ -197,6 +197,10 @@ export function TransactionsTable({
   const separatorPaddingClass = "py-1.5";
   const timeWidthClass = "min-w-[5rem]";
   const descriptionWidthClass = "max-w-32";
+  const hasVisibleDescriptions = transactions.some((transaction) =>
+    getTransactionDescription(transaction),
+  );
+  const desktopColumnCount = hasVisibleDescriptions ? 7 : 6;
 
   function getCategoryName(id: string) {
     return categoryMap.get(id)?.name ?? id;
@@ -206,152 +210,281 @@ export function TransactionsTable({
     return categoryMap.get(id)?.direction ?? null;
   }
 
+  function getTransactionDescription(transaction: Transaction) {
+    const description = transaction.description?.trim();
+    return description?.length ? description : null;
+  }
+
+  function renderDirectionBadge(direction: Category["direction"] | null) {
+    if (direction === "income") {
+      return (
+        <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">
+          {site.common.income}
+        </Badge>
+      );
+    }
+
+    if (direction === "expense") {
+      return (
+        <Badge className="bg-rose-100 text-rose-800 hover:bg-rose-100">
+          {site.common.expense}
+        </Badge>
+      );
+    }
+
+    return (
+      <span className="text-sm text-muted-foreground">{site.common.dash}</span>
+    );
+  }
+
+  function getAmountClassName(direction: Category["direction"] | null) {
+    return cn(
+      "font-medium tabular-nums whitespace-nowrap",
+      direction === "income" && "text-emerald-700 dark:text-emerald-300",
+      direction === "expense" && "text-rose-700 dark:text-rose-300",
+    );
+  }
+
   return (
-    <div className="overflow-hidden rounded-lg border bg-card shadow-sm">
-      <Table showMobileScrollHint>
-        <TableHeader>
-          <TableRow className="bg-muted/50">
-            <TableHead>{t.time}</TableHead>
-            <TableHead>{t.category}</TableHead>
-            <TableHead>{t.type}</TableHead>
-            <TableHead>{t.amount}</TableHead>
-            <TableHead>{t.currency}</TableHead>
-            <TableHead>{site.common.description}</TableHead>
-            <TableHead className="text-right">{site.common.actions}</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {listLoading && transactions.length === 0 ? (
-            <TableRow>
-              <TableCell
-                colSpan={7}
-                className="py-8 text-center text-muted-foreground"
-              >
-                {t.loading}
-              </TableCell>
-            </TableRow>
-          ) : transactions.length === 0 ? (
-            <TableRow>
-              <TableCell
-                colSpan={7}
-                className="py-8 text-center text-muted-foreground"
-              >
-                {t.empty}
-              </TableCell>
-            </TableRow>
-          ) : (
-            paginatedRows.map((row) => {
-              if (row.type === "separator") {
-                return (
-                  <TableRow
-                    key={row.key}
-                    className="bg-muted/15 hover:bg-muted/15"
-                  >
-                    <TableCell
-                      colSpan={7}
-                      className={cn(
-                        "border-y text-xs font-semibold text-muted-foreground",
-                        separatorPaddingClass,
-                      )}
-                    >
-                      {row.label}
-                    </TableCell>
-                  </TableRow>
-                );
-              }
-
-              const transaction = row.transaction;
-              const direction = getCategoryDirection(transaction.category_id);
-
+    <div className="space-y-3">
+      <div className="space-y-3 md:hidden">
+        {listLoading && transactions.length === 0 ? (
+          <div className="rounded-lg border bg-card px-4 py-8 text-center text-muted-foreground shadow-sm">
+            {t.loading}
+          </div>
+        ) : transactions.length === 0 ? (
+          <div className="rounded-lg border bg-card px-4 py-8 text-center text-muted-foreground shadow-sm">
+            {t.empty}
+          </div>
+        ) : (
+          paginatedRows.map((row) => {
+            if (row.type === "separator") {
               return (
-                <TableRow key={row.key} className="hover:bg-muted/30">
-                  <TableCell
-                    className={cn(rowPaddingClass, "text-sm tabular-nums")}
-                  >
+                <div
+                  key={row.key}
+                  className="rounded-lg border bg-muted/15 px-4 py-2 text-xs font-semibold text-muted-foreground shadow-sm"
+                >
+                  {row.label}
+                </div>
+              );
+            }
+
+            const transaction = row.transaction;
+            const direction = getCategoryDirection(transaction.category_id);
+            const description = getTransactionDescription(transaction);
+
+            return (
+              <div
+                key={row.key}
+                className="rounded-lg border bg-card px-4 py-3 shadow-sm"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
                     <time
                       dateTime={transaction.occurred_at}
-                      className={cn(
-                        "block whitespace-nowrap font-medium",
-                        timeWidthClass,
-                      )}
+                      className="block text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground"
                     >
                       {transactionDateFormatters.time.format(row.occurredAt)}
                     </time>
-                  </TableCell>
-                  <TableCell className={cn(rowPaddingClass, "font-medium")}>
-                    {getCategoryName(transaction.category_id)}
-                  </TableCell>
-                  <TableCell className={rowPaddingClass}>
-                    {direction === "income" ? (
-                      <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">
-                        {site.common.income}
-                      </Badge>
-                    ) : direction === "expense" ? (
-                      <Badge className="bg-rose-100 text-rose-800 hover:bg-rose-100">
-                        {site.common.expense}
-                      </Badge>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">
-                        {site.common.dash}
-                      </span>
-                    )}
-                  </TableCell>
-                  <TableCell
-                    className={cn(
-                      rowPaddingClass,
-                      "font-medium tabular-nums whitespace-nowrap",
-                      direction === "income" &&
-                        "text-emerald-700 dark:text-emerald-300",
-                      direction === "expense" &&
-                        "text-rose-700 dark:text-rose-300",
-                    )}
-                  >
-                    {formatAmount(transaction.amount, transaction.currency)}
-                  </TableCell>
-                  <TableCell
-                    className={cn(
-                      rowPaddingClass,
-                      "text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground",
-                    )}
-                  >
-                    {transaction.currency}
-                  </TableCell>
-                  <TableCell
-                    className={cn(
-                      rowPaddingClass,
-                      descriptionWidthClass,
-                      "truncate text-muted-foreground",
-                    )}
-                  >
-                    {transaction.description ?? site.common.dash}
-                  </TableCell>
-                  <TableCell className={cn(rowPaddingClass, "text-right")}>
-                    <div className="flex justify-end gap-1">
-                      <button
-                        type="button"
-                        onClick={() => onEdit(transaction)}
-                        className="rounded p-1.5 text-cyan-600 transition-colors hover:bg-cyan-500/10 hover:text-cyan-500 dark:text-cyan-300 dark:hover:bg-cyan-400/10 dark:hover:text-cyan-200"
-                        title={site.common.edit}
+                    <p className="mt-1 wrap-break-word font-semibold">
+                      {getCategoryName(transaction.category_id)}
+                    </p>
+                  </div>
+
+                  <div className="shrink-0 text-right">
+                    <p
+                      className={cn(
+                        "text-base font-semibold",
+                        getAmountClassName(direction),
+                      )}
+                    >
+                      {formatAmount(transaction.amount, transaction.currency)}
+                    </p>
+                    <p className="mt-1 text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">
+                      {transaction.currency}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-3 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    {renderDirectionBadge(direction)}
+                  </div>
+                  <div className="flex shrink-0 justify-end gap-1">
+                    <button
+                      type="button"
+                      onClick={() => onEdit(transaction)}
+                      className="rounded p-1.5 text-cyan-600 transition-colors hover:bg-cyan-500/10 hover:text-cyan-500 dark:text-cyan-300 dark:hover:bg-cyan-400/10 dark:hover:text-cyan-200"
+                      title={site.common.edit}
+                    >
+                      <FiEdit2 size={14} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onDelete(transaction)}
+                      disabled={deletingId === transaction.id}
+                      className="rounded p-1.5 text-rose-600 transition-colors hover:bg-rose-500/10 hover:text-rose-500 disabled:opacity-40 dark:text-rose-300 dark:hover:bg-rose-400/10 dark:hover:text-rose-200"
+                      title={site.common.delete}
+                    >
+                      <FiTrash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+
+                {description ? (
+                  <div className="mt-3 border-t pt-3">
+                    <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
+                      {site.common.description}
+                    </p>
+                    <p className="mt-1 wrap-break-word text-sm text-muted-foreground">
+                      {description}
+                    </p>
+                  </div>
+                ) : null}
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      <div className="hidden overflow-hidden rounded-lg border bg-card shadow-sm md:block">
+        <Table showMobileScrollHint>
+          <TableHeader>
+            <TableRow className="bg-muted/50">
+              <TableHead>{t.time}</TableHead>
+              <TableHead>{t.category}</TableHead>
+              <TableHead>{t.type}</TableHead>
+              <TableHead>{t.amount}</TableHead>
+              <TableHead>{t.currency}</TableHead>
+              {hasVisibleDescriptions ? (
+                <TableHead>{site.common.description}</TableHead>
+              ) : null}
+              <TableHead className="text-right">
+                {site.common.actions}
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {listLoading && transactions.length === 0 ? (
+              <TableRow>
+                <TableCell
+                  colSpan={desktopColumnCount}
+                  className="py-8 text-center text-muted-foreground"
+                >
+                  {t.loading}
+                </TableCell>
+              </TableRow>
+            ) : transactions.length === 0 ? (
+              <TableRow>
+                <TableCell
+                  colSpan={desktopColumnCount}
+                  className="py-8 text-center text-muted-foreground"
+                >
+                  {t.empty}
+                </TableCell>
+              </TableRow>
+            ) : (
+              paginatedRows.map((row) => {
+                if (row.type === "separator") {
+                  return (
+                    <TableRow
+                      key={row.key}
+                      className="bg-muted/15 hover:bg-muted/15"
+                    >
+                      <TableCell
+                        colSpan={desktopColumnCount}
+                        className={cn(
+                          "border-y text-xs font-semibold text-muted-foreground",
+                          separatorPaddingClass,
+                        )}
                       >
-                        <FiEdit2 size={14} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onDelete(transaction)}
-                        disabled={deletingId === transaction.id}
-                        className="rounded p-1.5 text-rose-600 transition-colors hover:bg-rose-500/10 hover:text-rose-500 disabled:opacity-40 dark:text-rose-300 dark:hover:bg-rose-400/10 dark:hover:text-rose-200"
-                        title={site.common.delete}
+                        {row.label}
+                      </TableCell>
+                    </TableRow>
+                  );
+                }
+
+                const transaction = row.transaction;
+                const direction = getCategoryDirection(transaction.category_id);
+                const description = getTransactionDescription(transaction);
+
+                return (
+                  <TableRow key={row.key} className="hover:bg-muted/30">
+                    <TableCell
+                      className={cn(rowPaddingClass, "text-sm tabular-nums")}
+                    >
+                      <time
+                        dateTime={transaction.occurred_at}
+                        className={cn(
+                          "block whitespace-nowrap font-medium",
+                          timeWidthClass,
+                        )}
                       >
-                        <FiTrash2 size={14} />
-                      </button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              );
-            })
-          )}
-        </TableBody>
-      </Table>
+                        {transactionDateFormatters.time.format(row.occurredAt)}
+                      </time>
+                    </TableCell>
+                    <TableCell className={cn(rowPaddingClass, "font-medium")}>
+                      {getCategoryName(transaction.category_id)}
+                    </TableCell>
+                    <TableCell className={rowPaddingClass}>
+                      {renderDirectionBadge(direction)}
+                    </TableCell>
+                    <TableCell
+                      className={cn(
+                        rowPaddingClass,
+                        getAmountClassName(direction),
+                      )}
+                    >
+                      {formatAmount(transaction.amount, transaction.currency)}
+                    </TableCell>
+                    <TableCell
+                      className={cn(
+                        rowPaddingClass,
+                        "text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground",
+                      )}
+                    >
+                      {transaction.currency}
+                    </TableCell>
+                    {hasVisibleDescriptions ? (
+                      <TableCell
+                        className={cn(
+                          rowPaddingClass,
+                          descriptionWidthClass,
+                          "truncate text-muted-foreground",
+                        )}
+                      >
+                        {description ?? ""}
+                      </TableCell>
+                    ) : null}
+                    <TableCell className={cn(rowPaddingClass, "text-right")}>
+                      <div className="flex justify-end gap-1">
+                        <button
+                          type="button"
+                          onClick={() => onEdit(transaction)}
+                          className="rounded p-1.5 text-cyan-600 transition-colors hover:bg-cyan-500/10 hover:text-cyan-500 dark:text-cyan-300 dark:hover:bg-cyan-400/10 dark:hover:text-cyan-200"
+                          title={site.common.edit}
+                        >
+                          <FiEdit2 size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onDelete(transaction)}
+                          disabled={deletingId === transaction.id}
+                          className="rounded p-1.5 text-rose-600 transition-colors hover:bg-rose-500/10 hover:text-rose-500 disabled:opacity-40 dark:text-rose-300 dark:hover:bg-rose-400/10 dark:hover:text-rose-200"
+                          title={site.common.delete}
+                        >
+                          <FiTrash2 size={14} />
+                        </button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
       {transactions.length > 0 ? (
         <PaginationFooter
           currentPage={activePage}
