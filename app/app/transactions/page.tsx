@@ -29,7 +29,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CreateTransactionModal } from "./components/create-transaction-modal";
 import { TransactionsFilters } from "./components/transactions-filters";
 import { TransactionsTable } from "./components/transactions-table";
@@ -47,7 +46,6 @@ const schema = z.object({
 });
 
 type FormValues = z.infer<typeof schema>;
-type TransactionsView = "recent" | "history";
 type QuickRange = "today" | "last7" | "thisMonth";
 
 export default function TransactionsPage() {
@@ -75,8 +73,6 @@ export default function TransactionsPage() {
   const [activeQuickRange, setActiveQuickRange] = useState<QuickRange | null>(
     null,
   );
-  const [transactionsView, setTransactionsView] =
-    useState<TransactionsView>("recent");
   const [currentPage, setCurrentPage] = useState(1);
 
   const filterParams = useMemo(
@@ -181,26 +177,19 @@ export default function TransactionsPage() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [filterParams, filterParentCategoryId, transactionsView]);
+  }, [filterParams, filterParentCategoryId]);
 
   const visibleTransactions = useMemo(() => {
-    const recentWindowStart = getRecentTransactionsStart();
-
     return transactions.filter((transaction) => {
       const category = categoryMap.get(transaction.category_id);
-      const occurredAt = new Date(transaction.occurred_at);
       const matchesParentCategory =
         !filterParentCategoryId ||
         transaction.category_id === filterParentCategoryId ||
         category?.parent_id === filterParentCategoryId;
-      const matchesView =
-        transactionsView === "recent"
-          ? occurredAt >= recentWindowStart
-          : occurredAt < recentWindowStart;
 
-      return matchesParentCategory && matchesView;
+      return matchesParentCategory;
     });
-  }, [categoryMap, filterParentCategoryId, transactions, transactionsView]);
+  }, [categoryMap, filterParentCategoryId, transactions]);
 
   const summaryItems = useMemo(() => {
     const incomeTotals = new Map<string, number>();
@@ -323,17 +312,6 @@ export default function TransactionsPage() {
         <p className="mt-1 text-sm text-muted-foreground">{t.subtitle}</p>
       </div>
 
-      <Tabs
-        value={transactionsView}
-        onValueChange={(value) => setTransactionsView(value as TransactionsView)}
-        className="gap-3"
-      >
-        <TabsList>
-          <TabsTrigger value="recent">{t.recentView}</TabsTrigger>
-          <TabsTrigger value="history">{t.historyView}</TabsTrigger>
-        </TabsList>
-      </Tabs>
-
       <TransactionsFilters
         categories={categories}
         parentCategories={parentCategories}
@@ -383,7 +361,7 @@ export default function TransactionsPage() {
       <div>
         <div className="mb-3 flex items-center justify-between gap-3">
           <h2 className="text-base font-semibold">
-            {transactionsView === "recent" ? t.recentListTitle : t.historyListTitle}
+            {t.listTitle}
             {listLoading ? (
               <span className="ml-2 inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary border-t-transparent align-middle" />
             ) : null}
@@ -547,14 +525,6 @@ export default function TransactionsPage() {
 function toDayBoundaryIso(date: string, boundary: "start" | "end") {
   const time = boundary === "start" ? "00:00:00.000" : "23:59:59.999";
   return new Date(`${date}T${time}`).toISOString();
-}
-
-function getRecentTransactionsStart() {
-  const currentDate = new Date();
-  currentDate.setHours(0, 0, 0, 0);
-  currentDate.setDate(currentDate.getDate() - 6);
-
-  return currentDate;
 }
 
 function getQuickRangeDates(range: QuickRange) {
