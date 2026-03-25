@@ -11,6 +11,7 @@ import { getCache, setCache } from "@/lib/cache";
 import { useSitePreferences } from "@/components/providers/site-preferences-provider";
 import { getSiteText } from "@/lib/site";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -28,6 +29,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CreateTransactionModal } from "./components/create-transaction-modal";
 import { TransactionsFilters } from "./components/transactions-filters";
 import { TransactionsTable } from "./components/transactions-table";
@@ -45,6 +47,8 @@ const schema = z.object({
 });
 
 type FormValues = z.infer<typeof schema>;
+type TransactionsView = "recent" | "history";
+type QuickRange = "today" | "last7" | "thisMonth";
 
 export default function TransactionsPage() {
   const { site } = useSitePreferences();
@@ -65,8 +69,14 @@ export default function TransactionsPage() {
   );
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [filterCategoryId, setFilterCategoryId] = useState<string>("");
+  const [filterParentCategoryId, setFilterParentCategoryId] = useState("");
   const [filterStartDate, setFilterStartDate] = useState("");
   const [filterEndDate, setFilterEndDate] = useState("");
+  const [activeQuickRange, setActiveQuickRange] = useState<QuickRange | null>(
+    null,
+  );
+  const [transactionsView, setTransactionsView] =
+    useState<TransactionsView>("recent");
   const [currentPage, setCurrentPage] = useState(1);
 
   const filterParams = useMemo(
@@ -95,6 +105,24 @@ export default function TransactionsPage() {
     control: editControl,
     name: "category_id",
   });
+
+  const categoryMap = useMemo(() => {
+    const map = new Map<string, Category>();
+
+    for (const category of categories) {
+      map.set(category.id, category);
+    }
+
+    return map;
+  }, [categories]);
+
+  const parentCategories = useMemo(
+    () =>
+      categories.filter((category) => !category.parent_id).sort((a, b) =>
+        a.name.localeCompare(b.name, displayLocale),
+      ),
+    [categories, displayLocale],
+  );
 
   const loadTransactions = useCallback(
     async (
@@ -153,7 +181,84 @@ export default function TransactionsPage() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [filterParams]);
+  }, [filterParams, filterParentCategoryId, transactionsView]);
+
+  const visibleTransactions = useMemo(() => {
+    const recentWindowStart = getRecentTransactionsStart();
+
+    return transactions.filter((transaction) => {
+      const category = categoryMap.get(transaction.category_id);
+      const occurredAt = new Date(transaction.occurred_at);
+      const matchesParentCategory =
+        !filterParentCategoryId ||
+        transaction.category_id === filterParentCategoryId ||
+        category?.parent_id === filterParentCategoryId;
+      const matchesView =
+        transactionsView === "recent"
+          ? occurredAt >= recentWindowStart
+          : occurredAt < recentWindowStart;
+
+      return matchesParentCategory && matchesView;
+    });
+  }, [categoryMap, filterParentCategoryId, transactions, transactionsView]);
+
+  const summaryItems = useMemo(() => {
+    const incomeTotals = new Map<string, number>();
+    const expenseTotals = new Map<string, number>();
+    const balanceTotals = new Map<string, number>();
+
+    for (const transaction of visibleTransactions) {
+      const category = categoryMap.get(transaction.category_id);
+      const direction = category?.direction;
+      const currency = (transaction.currency || "COP").toUpperCase();
+      const amount = Number(transaction.amount || 0);
+
+      if (direction === "income") {
+        incomeTotals.set(currency, (incomeTotals.get(currency) ?? 0) + amount);
+        balanceTotals.set(currency, (balanceTotals.get(currency) ?? 0) + amount);
+      }
+
+      if (direction === "expense") {
+        expenseTotals.set(currency, (expenseTotals.get(currency) ?? 0) + amount);
+        balanceTotals.set(currency, (balanceTotals.get(currency) ?? 0) - amount);
+      }
+    }
+
+    return [
+      {
+        label: t.summaryIncome,
+        value: formatCurrencyTotals(
+          incomeTotals,
+          displayLocale,
+          site.common.dash,
+        ),
+      },
+      {
+        label: t.summaryExpense,
+        value: formatCurrencyTotals(
+          expenseTotals,
+          displayLocale,
+          site.common.dash,
+        ),
+      },
+      {
+        label: t.summaryBalance,
+        value: formatCurrencyTotals(
+          balanceTotals,
+          displayLocale,
+          site.common.dash,
+        ),
+      },
+    ];
+  }, [
+    categoryMap,
+    displayLocale,
+    site.common.dash,
+    t.summaryBalance,
+    t.summaryExpense,
+    t.summaryIncome,
+    visibleTransactions,
+  ]);
 
   function openEditDialog(transaction: Transaction) {
     setEditingTxn(transaction);
@@ -218,25 +323,67 @@ export default function TransactionsPage() {
         <p className="mt-1 text-sm text-muted-foreground">{t.subtitle}</p>
       </div>
 
+      <Tabs
+        value={transactionsView}
+        onValueChange={(value) => setTransactionsView(value as TransactionsView)}
+        className="gap-3"
+      >
+        <TabsList>
+          <TabsTrigger value="recent">{t.recentView}</TabsTrigger>
+          <TabsTrigger value="history">{t.historyView}</TabsTrigger>
+        </TabsList>
+      </Tabs>
+
       <TransactionsFilters
         categories={categories}
+        parentCategories={parentCategories}
         filterCategoryId={filterCategoryId}
+        filterParentCategoryId={filterParentCategoryId}
         filterStartDate={filterStartDate}
         filterEndDate={filterEndDate}
+        activeQuickRange={activeQuickRange}
         onFilterCategoryChange={setFilterCategoryId}
-        onFilterStartDateChange={setFilterStartDate}
-        onFilterEndDateChange={setFilterEndDate}
+        onFilterParentCategoryChange={setFilterParentCategoryId}
+        onFilterStartDateChange={(value) => {
+          setActiveQuickRange(null);
+          setFilterStartDate(value);
+        }}
+        onFilterEndDateChange={(value) => {
+          setActiveQuickRange(null);
+          setFilterEndDate(value);
+        }}
+        onQuickRangeChange={(range) => {
+          const quickRange = getQuickRangeDates(range);
+          setActiveQuickRange(range);
+          setFilterStartDate(quickRange.startDate);
+          setFilterEndDate(quickRange.endDate);
+        }}
         onClearFilters={() => {
+          setActiveQuickRange(null);
+          setFilterParentCategoryId("");
           setFilterCategoryId("");
           setFilterStartDate("");
           setFilterEndDate("");
         }}
       />
 
+      <div className="grid gap-3 md:grid-cols-3">
+        {summaryItems.map((item) => (
+          <Card key={item.label} className="gap-0 py-0">
+            <CardContent className="space-y-1 px-4 py-4">
+              <p className="text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">
+                {item.label}
+              </p>
+              <p className="text-lg font-semibold">{item.value}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
       <div>
         <div className="mb-3 flex items-center justify-between gap-3">
           <h2 className="text-base font-semibold">
-            {t.listTitle}
+            {transactionsView === "recent" ? t.recentListTitle : t.historyListTitle}
             {listLoading ? (
               <span className="ml-2 inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary border-t-transparent align-middle" />
             ) : null}
@@ -254,7 +401,7 @@ export default function TransactionsPage() {
 
         <TransactionsTable
           categories={categories}
-          transactions={transactions}
+          transactions={visibleTransactions}
           listLoading={listLoading}
           currentPage={currentPage}
           onPageChange={setCurrentPage}
@@ -402,6 +549,37 @@ function toDayBoundaryIso(date: string, boundary: "start" | "end") {
   return new Date(`${date}T${time}`).toISOString();
 }
 
+function getRecentTransactionsStart() {
+  const currentDate = new Date();
+  currentDate.setHours(0, 0, 0, 0);
+  currentDate.setDate(currentDate.getDate() - 6);
+
+  return currentDate;
+}
+
+function getQuickRangeDates(range: QuickRange) {
+  const currentDate = new Date();
+  const endDate = toLocalDateInputValue(currentDate);
+  const startDate = new Date(currentDate);
+
+  if (range === "today") {
+    return { startDate: endDate, endDate };
+  }
+
+  if (range === "last7") {
+    startDate.setDate(startDate.getDate() - 6);
+    return { startDate: toLocalDateInputValue(startDate), endDate };
+  }
+
+  startDate.setDate(1);
+  return { startDate: toLocalDateInputValue(startDate), endDate };
+}
+
+function toLocalDateInputValue(date: Date) {
+  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return localDate.toISOString().slice(0, 10);
+}
+
 function getDisplayLocale(language: string) {
   return language === "en" ? "en-US" : "es-CO";
 }
@@ -423,4 +601,19 @@ function formatTransactionAmount(
   })
     .format(amount)
     .replace(/\s+/g, "");
+}
+
+function formatCurrencyTotals(
+  totals: Map<string, number>,
+  locale: string,
+  emptyValue: string,
+) {
+  if (totals.size === 0) return emptyValue;
+
+  return [...totals.entries()]
+    .sort(([currencyA], [currencyB]) => currencyA.localeCompare(currencyB))
+    .map(([currency, amount]) =>
+      formatTransactionAmount(String(amount), currency, locale),
+    )
+    .join(" · ");
 }
