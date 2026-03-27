@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -10,6 +10,8 @@ import { FiPlus } from "react-icons/fi";
 import { api, ApiError, type Category } from "@/lib/api";
 import { useSitePreferences } from "@/components/providers/site-preferences-provider";
 import { getSiteText } from "@/lib/site";
+import { normalizeCurrencyCode } from "@/lib/finance";
+import { dateTimeLocalToUtcIso } from "@/lib/timezone";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -39,7 +41,6 @@ const schema = z.object({
     .trim()
     .min(1, schemaText.validations.amountRequired)
     .regex(AMOUNT_PATTERN, schemaText.validations.amountInvalid),
-  currency: z.string().min(1, schemaText.validations.currencyRequired),
   occurred_at: z.string().min(1, schemaText.validations.dateRequired),
   description: z.string().optional(),
 });
@@ -48,11 +49,15 @@ type FormValues = z.infer<typeof schema>;
 
 interface CreateTransactionModalProps {
   categories: Category[];
+  defaultCurrency?: string;
+  timeZone?: string;
   onCreated: () => void;
 }
 
 export function CreateTransactionModal({
   categories,
+  defaultCurrency = "COP",
+  timeZone = "UTC",
   onCreated,
 }: CreateTransactionModalProps) {
   const { site } = useSitePreferences();
@@ -68,7 +73,6 @@ export function CreateTransactionModal({
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { currency: "COP" },
   });
 
   const categoryIdValue = useWatch({
@@ -80,18 +84,23 @@ export function CreateTransactionModal({
       event.target.value = sanitizeAmountInput(event.target.value);
     },
   });
+  const normalizedDefaultCurrency = normalizeCurrencyCode(defaultCurrency || "COP");
+
+  useEffect(() => {
+    reset();
+  }, [normalizedDefaultCurrency, reset]);
 
   async function onSubmit(values: FormValues) {
     try {
       await api.createTransaction({
         category_id: values.category_id,
         amount: normalizeAmountForApi(values.amount),
-        currency: values.currency,
-        occurred_at: new Date(values.occurred_at).toISOString(),
+        currency: normalizedDefaultCurrency,
+        occurred_at: dateTimeLocalToUtcIso(values.occurred_at, timeZone),
         description: values.description || null,
       });
       toast.success(t.created);
-      reset({ currency: "COP" });
+      reset();
       setOpen(false);
       onCreated();
     } catch (err) {
@@ -110,7 +119,9 @@ export function CreateTransactionModal({
       <Dialog
         open={open}
         onOpenChange={(o) => {
-          if (!o) reset({ currency: "COP" });
+          if (!o) {
+            reset();
+          }
           setOpen(o);
         }}
       >
@@ -166,14 +177,10 @@ export function CreateTransactionModal({
                 <Label htmlFor="create_currency">{t.currency}</Label>
                 <Input
                   id="create_currency"
-                  {...register("currency")}
-                  placeholder={t.currencyPlaceholder}
+                  value={normalizedDefaultCurrency}
+                  disabled
+                  readOnly
                 />
-                {errors.currency && (
-                  <p className="text-sm text-destructive">
-                    {errors.currency.message}
-                  </p>
-                )}
               </div>
 
               <div className="space-y-1.5">
@@ -203,7 +210,7 @@ export function CreateTransactionModal({
                 variant="outline"
                 type="button"
                 onClick={() => {
-                  reset({ currency: "COP" });
+                  reset();
                   setOpen(false);
                 }}
               >

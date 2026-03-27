@@ -93,7 +93,36 @@ lib/
 - Callback dedicado en `/auth/callback` para terminar OAuth y llamar `POST /users/me/bootstrap`.
 - Rutas protegidas bajo `/app/*`.
 - Perfil editable, categorias, transacciones y balance.
+- Perfil financiero con `base_currency` y `timezone` persistidos en backend.
+- Balance y resumenes coherentes en moneda base, con reporte explicito de conversiones faltantes.
+- Onboarding de 4 pasos: moneda base, zona horaria, categoria y transaccion.
+- Resolucion del perfil autenticado reutilizada entre layout y auth para evitar `GET /users/me` duplicados y redirects innecesarios.
 - i18n es/en y preferencias de tema.
+
+## Reglas de producto vigentes
+
+- Dinerance opera como producto monomoneda.
+- Cada usuario configura una sola `base_currency` y una `timezone`.
+- Toda transaccion nueva usa la `base_currency` del perfil.
+- Los agregados visibles para el usuario siempre salen en `base_currency` o separados por moneda.
+- Si existen datos legacy no convertibles, se excluyen del agregado y se informa claramente.
+- `exchange_rates` y los snapshots FX siguen siendo internos: no hay selector de moneda por transaccion ni flujo multicurrency expuesto en UI.
+
+## Perfil financiero y onboarding
+
+- `base_currency` se configura en `/app/profile` y es la moneda canonica de analytics.
+- Si la cuenta todavia no tiene perfil financiero completo, el onboarding de `/app/balance` permite guardar `base_currency` y `timezone` ahi mismo, sin enviar al usuario a Perfil para el setup inicial.
+- Si el usuario ya tiene transacciones y su moneda base ya estaba fijada, el campo queda bloqueado para preservar consistencia historica.
+- `timezone` tambien se configura en `/app/profile`.
+- El input de zona horaria acepta busqueda/escritura y puede rellenarse con la zona del navegador.
+- El onboarding de balance ahora muestra 4 pasos y solo desaparece cuando perfil, categorias y primera transaccion ya estan completos.
+
+## Monedas y fechas
+
+- Las tablas de transacciones siguen mostrando `amount` y `currency` originales.
+- Las nuevas transacciones usan la `base_currency` del perfil como moneda fija del producto actual.
+- Los resumenes consolidados usan `amount_in_base_currency` y la arquitectura FX queda interna/preparada para futuras extensiones.
+- Los quick filters, el etiquetado de hoy/ayer y la conversion de `datetime-local` usan `profile.timezone`, no la zona de la maquina.
 
 ## Flujo Google
 

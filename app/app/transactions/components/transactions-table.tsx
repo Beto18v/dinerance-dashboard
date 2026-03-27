@@ -40,6 +40,7 @@ interface TransactionsViewProps {
   onDelete: (transaction: Transaction) => void;
   deletingId: string | null;
   displayMode: "desktop" | "mobile";
+  timeZone: string;
   formatAmount: (value: string, currency: string) => string;
 }
 
@@ -53,24 +54,16 @@ export function TransactionsView({
   onDelete,
   deletingId,
   displayMode,
+  timeZone,
   formatAmount,
 }: TransactionsViewProps) {
   const { site } = useSitePreferences();
   const t = site.pages.transactions;
   const displayLocale = site.metadata.htmlLang === "en" ? "en-US" : "es-CO";
-  const [browserTimeZone, setBrowserTimeZone] = useState(() =>
-    getBrowserTimeZone(),
-  );
   const [currentDate, setCurrentDate] = useState(() => new Date());
 
   useEffect(() => {
-    function syncBrowserClock() {
-      setBrowserTimeZone(getBrowserTimeZone());
-      setCurrentDate(new Date());
-    }
-
-    syncBrowserClock();
-    const intervalId = window.setInterval(syncBrowserClock, 60_000);
+    const intervalId = window.setInterval(() => setCurrentDate(new Date()), 60_000);
 
     return () => window.clearInterval(intervalId);
   }, []);
@@ -92,21 +85,21 @@ export function TransactionsView({
         day: "numeric",
         month: "short",
         year: "numeric",
-        timeZone: browserTimeZone,
+        timeZone,
       }),
       time: new Intl.DateTimeFormat(displayLocale, {
         hour: "numeric",
         minute: "2-digit",
-        timeZone: browserTimeZone,
+        timeZone,
       }),
       dayKey: new Intl.DateTimeFormat("en-US", {
         year: "numeric",
         month: "2-digit",
         day: "2-digit",
-        timeZone: browserTimeZone,
+        timeZone,
       }),
     }),
-    [browserTimeZone, displayLocale],
+    [displayLocale, timeZone],
   );
 
   const currentDayKey = useMemo(
@@ -440,10 +433,6 @@ function formatTransactionDayLabel(
 
 function capitalizeFirstLetter(value: string) {
   return value ? value.charAt(0).toUpperCase() + value.slice(1) : value;
-}
-
-function getBrowserTimeZone() {
-  return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 }
 
 function getDayKey(value: Date, formatter: Intl.DateTimeFormat) {

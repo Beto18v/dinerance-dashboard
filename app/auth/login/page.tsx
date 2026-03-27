@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -10,7 +10,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 
 import { createClient } from "@/lib/supabase/client";
-import { api, ApiError } from "@/lib/api";
+import { ApiError } from "@/lib/api";
+import {
+  getPostAuthAppPath,
+  getPreferredSessionName,
+  resolveAuthenticatedProfile,
+} from "@/lib/profile";
 import { GoogleAuthButton } from "@/components/auth/google-auth-button";
 import { useSession } from "@/components/providers/auth-provider";
 import { useSitePreferences } from "@/components/providers/site-preferences-provider";
@@ -46,6 +51,7 @@ export default function LoginPage() {
   const { site } = useSitePreferences();
   const t = site.auth.login;
   const background = site.pages.main.background;
+  const handledSessionUserIdRef = useRef<string | null>(null);
 
   const {
     register,
@@ -54,14 +60,39 @@ export default function LoginPage() {
   } = useForm<FormValues>({ resolver: zodResolver(schema) });
 
   useEffect(() => {
-    if (!loading && session) {
-      router.replace("/app/balance");
+    if (!session) {
+      handledSessionUserIdRef.current = null;
     }
-  }, [session, loading, router]);
+
+    if (!loading && session) {
+      if (handledSessionUserIdRef.current === session.user.id) {
+        return;
+      }
+
+      handledSessionUserIdRef.current = session.user.id;
+      resolveAuthenticatedProfile({
+        preferredName: getPreferredSessionName(session),
+        sessionUserId: session.user.id,
+      })
+        .then((profile) => {
+          router.replace(getPostAuthAppPath(profile));
+        })
+        .catch(async (err) => {
+          if (err instanceof ApiError) {
+            toast.error(err.message);
+          } else {
+            toast.error(site.common.unexpectedError);
+          }
+
+          handledSessionUserIdRef.current = null;
+          await createClient().auth.signOut();
+        });
+    }
+  }, [loading, router, session, site.common.unexpectedError]);
 
   async function onSubmit(values: FormValues) {
     const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email: values.email,
       password: values.password,
     });
@@ -72,24 +103,19 @@ export default function LoginPage() {
     }
 
     try {
-      await api.getProfile();
+      const profile = await resolveAuthenticatedProfile({
+        preferredName:
+          getPreferredSessionName(data.session) ?? values.email.trim().split("@")[0],
+        sessionUserId: data.session?.user.id,
+      });
+      toast.success(t.successToast);
+      router.replace(getPostAuthAppPath(profile));
     } catch (err) {
-      if (err instanceof ApiError && err.status === 404) {
-        await supabase.auth.signOut();
-        toast.error(t.notRegistered);
-        router.replace("/auth/register");
-        return;
-      }
-
       await supabase.auth.signOut();
       toast.error(
         err instanceof ApiError ? err.message : site.common.unexpectedError,
       );
-      return;
     }
-
-    toast.success(t.successToast);
-    router.replace("/app/balance");
   }
 
   return (

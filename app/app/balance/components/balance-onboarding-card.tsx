@@ -2,7 +2,7 @@
 
 import { FiCheckCircle } from "react-icons/fi";
 
-import type { Category } from "@/lib/api";
+import type { Category, UserProfile } from "@/lib/api";
 import { useSitePreferences } from "@/components/providers/site-preferences-provider";
 import {
   Card,
@@ -11,23 +11,40 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { FinancialProfileForm } from "../../profile/components/financial-profile-form";
 import { CreateCategoryModal } from "../../categories/components/create-category-modal";
 import { CreateTransactionModal } from "../../transactions/components/create-transaction-modal";
 
 interface BalanceOnboardingCardProps {
+  profile: UserProfile | null;
   categories: Category[];
+  hasBaseCurrency: boolean;
+  hasTimeZone: boolean;
+  hasTransactions: boolean;
+  baseCurrency: string | null;
+  timeZone: string | null;
+  onProfileUpdated: (profile: UserProfile) => void;
   onCategoryCreated: () => void;
   onTransactionCreated: () => void;
 }
 
 export function BalanceOnboardingCard({
+  profile,
   categories,
+  hasBaseCurrency,
+  hasTimeZone,
+  hasTransactions,
+  baseCurrency,
+  timeZone,
+  onProfileUpdated,
   onCategoryCreated,
   onTransactionCreated,
 }: BalanceOnboardingCardProps) {
   const { site } = useSitePreferences();
   const t = site.pages.balance;
   const hasCategories = categories.length > 0;
+  const needsProfileSetup = !hasBaseCurrency || !hasTimeZone;
+  const financialFormKey = `${profile?.base_currency ?? ""}:${profile?.timezone ?? ""}:${hasTransactions ? 1 : 0}`;
 
   return (
     <Card className="border-primary/15 bg-linear-to-br from-background via-primary/5 to-emerald-50/60 shadow-sm">
@@ -37,50 +54,89 @@ export function BalanceOnboardingCard({
       </CardHeader>
 
       <CardContent className="space-y-5">
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           <OnboardingStep
             index={1}
+            title={t.onboardingBaseCurrencyStepTitle}
+            description={t.onboardingBaseCurrencyStepDescription}
+            completed={hasBaseCurrency}
+            statusLabel={
+              hasBaseCurrency ? t.onboardingCompleted : t.onboardingPending
+            }
+          />
+
+          <OnboardingStep
+            index={2}
+            title={t.onboardingTimeZoneStepTitle}
+            description={t.onboardingTimeZoneStepDescription}
+            completed={hasTimeZone}
+            statusLabel={
+              hasTimeZone ? t.onboardingCompleted : t.onboardingPending
+            }
+          />
+
+          <OnboardingStep
+            index={3}
             title={t.onboardingCategoryStepTitle}
             description={t.onboardingCategoryStepDescription}
             completed={hasCategories}
             statusLabel={
               hasCategories ? t.onboardingCompleted : t.onboardingPending
             }
+            muted={needsProfileSetup}
           />
 
           <OnboardingStep
-            index={2}
+            index={4}
             title={t.onboardingTransactionStepTitle}
             description={t.onboardingTransactionStepDescription}
-            completed={false}
-            statusLabel={t.onboardingPending}
-            muted={!hasCategories}
+            completed={hasTransactions}
+            statusLabel={
+              hasTransactions ? t.onboardingCompleted : t.onboardingPending
+            }
+            muted={needsProfileSetup || !hasCategories}
           />
         </div>
 
         <div className="flex flex-col gap-4 rounded-xl border bg-background/80 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-1">
             <p className="text-sm font-semibold text-foreground">
-              {hasCategories
-                ? t.onboardingTransactionPromptTitle
-                : t.onboardingCategoryPromptTitle}
+              {needsProfileSetup
+                ? t.onboardingProfilePromptTitle
+                : !hasCategories
+                  ? t.onboardingCategoryPromptTitle
+                  : t.onboardingTransactionPromptTitle}
             </p>
             <p className="text-sm text-muted-foreground">
-              {hasCategories
-                ? t.onboardingTransactionPromptDescription
-                : t.onboardingCategoryPromptDescription}
+              {needsProfileSetup
+                ? t.onboardingProfilePromptDescription
+                : !hasCategories
+                  ? t.onboardingCategoryPromptDescription
+                  : t.onboardingTransactionPromptDescription}
             </p>
           </div>
 
-          {hasCategories ? (
-            <CreateTransactionModal
-              categories={categories}
-              onCreated={onTransactionCreated}
-            />
-          ) : (
+          {needsProfileSetup ? (
+            <div className="w-full sm:max-w-md">
+              <FinancialProfileForm
+                key={financialFormKey}
+                compact
+                profile={profile}
+                hasTransactions={hasTransactions}
+                onProfileUpdated={onProfileUpdated}
+              />
+            </div>
+          ) : !hasCategories ? (
             <CreateCategoryModal
               categories={categories}
               onCreated={onCategoryCreated}
+            />
+          ) : (
+            <CreateTransactionModal
+              categories={categories}
+              defaultCurrency={baseCurrency ?? "COP"}
+              timeZone={timeZone ?? "UTC"}
+              onCreated={onTransactionCreated}
             />
           )}
         </div>

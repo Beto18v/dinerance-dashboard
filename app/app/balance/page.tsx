@@ -1,10 +1,26 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { api, ApiError, type BalanceOverview, type Category } from "@/lib/api";
-import { getCache, setCache } from "@/lib/cache";
+import {
+  api,
+  ApiError,
+  type BalanceOverview,
+  type Category,
+  type UserProfile,
+} from "@/lib/api";
+import { useProfile } from "@/components/providers/profile-provider";
+import { formatCurrencyAmount } from "@/lib/finance";
+import {
+  cacheKeys,
+  cacheTtls,
+  getCache,
+  invalidateCacheKey,
+  setCache,
+  subscribeToCacheKeys,
+} from "@/lib/cache";
+import { getCurrentMonthValue } from "@/lib/timezone";
 import { useSitePreferences } from "@/components/providers/site-preferences-provider";
 import { Input } from "@/components/ui/input";
 import {
@@ -24,12 +40,6 @@ import {
 } from "@/components/ui/table";
 import { BalanceOnboardingCard } from "./components/balance-onboarding-card";
 
-const moneyFormatter = new Intl.NumberFormat("es-CO", {
-  style: "currency",
-  currency: "COP",
-  maximumFractionDigits: 0,
-});
-
 const monthFormatters = {
   es: new Intl.DateTimeFormat("es-CO", {
     month: "long",
@@ -40,31 +50,74 @@ const monthFormatters = {
     year: "numeric",
   }),
 };
-const CACHE_KEY_CATS = "cache:categories";
-
 export default function BalancePage() {
   const { site } = useSitePreferences();
+  const { profile, setProfile } = useProfile();
   const t = site.pages.balance;
+  const cachedCategories = getFreshCategoriesCache();
+  const cachedTransactions = getFreshTransactionsCache();
   const [overview, setOverview] = useState<BalanceOverview | null>(null);
   const [categories, setCategories] = useState<Category[]>(
-    () => getCache<Category[]>(CACHE_KEY_CATS) ?? [],
+    () => cachedCategories ?? [],
   );
-  const [categoriesReady, setCategoriesReady] = useState(
-    () => !!getCache<Category[]>(CACHE_KEY_CATS),
+  const [categoriesReady, setCategoriesReady] = useState(() => !!cachedCategories);
+  const [transactionsReady, setTransactionsReady] = useState(
+    () => cachedTransactions !== null,
+  );
+  const [hasTransactions, setHasTransactions] = useState(
+    () => (cachedTransactions?.length ?? 0) > 0,
   );
   const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState("");
+  const profileRef = useRef<UserProfile | null>(profile);
+
+  const hasBaseCurrency = Boolean(profile?.base_currency);
+  const hasTimeZone = Boolean(profile?.timezone);
+  const hasCategories = categories.length > 0;
+  const needsProfileSetup = !hasBaseCurrency || !hasTimeZone;
+  // Missing finance setup should render onboarding immediately instead of flashing
+  // a temporary fallback card while categories/transactions are still loading.
+  const showOnboarding =
+    needsProfileSetup ||
+    (categoriesReady &&
+      transactionsReady &&
+      !(hasBaseCurrency && hasTimeZone && hasCategories && hasTransactions));
+
+  useEffect(() => {
+    profileRef.current = profile;
+  }, [profile]);
 
   const loadBalance = useCallback(
-    async (params?: { year?: number; month?: number }) => {
+    async (
+      params?: { year?: number; month?: number },
+      activeProfile?: UserProfile | null,
+    ) => {
+      const resolvedProfile = activeProfile ?? profileRef.current;
+      const fallbackMonth = getCurrentMonthValue(
+        resolvedProfile?.timezone ?? "UTC",
+      );
+
+      if (!resolvedProfile?.base_currency) {
+        setOverview(null);
+        setSelectedMonth((currentValue) => currentValue || fallbackMonth);
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
       try {
         const data = await api.getMonthlyBalance(params);
         setOverview(data);
         setSelectedMonth(data.current.month_start.slice(0, 7));
       } catch (err) {
-        if (err instanceof ApiError) toast.error(err.message);
-        else toast.error(site.common.unexpectedError);
+        if (err instanceof ApiError && err.status === 409) {
+          setOverview(null);
+          setSelectedMonth((currentValue) => currentValue || fallbackMonth);
+        } else if (err instanceof ApiError) {
+          toast.error(err.message);
+        } else {
+          toast.error(site.common.unexpectedError);
+        }
       } finally {
         setLoading(false);
       }
@@ -76,12 +129,39 @@ export default function BalancePage() {
     try {
       const data = await api.getCategories();
       setCategories(data);
-      setCache(CACHE_KEY_CATS, data);
+      setCache(cacheKeys.categories, data);
     } catch (err) {
       if (err instanceof ApiError) toast.error(err.message);
       else toast.error(site.common.unexpectedError);
     } finally {
       setCategoriesReady(true);
+    }
+  }, [site.common.unexpectedError]);
+
+  const refreshProfileFromOnboarding = useCallback(
+    async (updatedProfile: UserProfile) => {
+      setProfile(updatedProfile);
+      await loadBalance(undefined, updatedProfile);
+    },
+    [loadBalance, setProfile],
+  );
+
+  const loadTransactionsPresence = useCallback(async () => {
+    const freshTransactions = getFreshTransactionsCache();
+    if (freshTransactions) {
+      setHasTransactions(freshTransactions.length > 0);
+      setTransactionsReady(true);
+      return;
+    }
+
+    try {
+      const data = await api.getTransactions({ limit: 1 });
+      setHasTransactions(data.length > 0);
+    } catch (err) {
+      if (err instanceof ApiError) toast.error(err.message);
+      else toast.error(site.common.unexpectedError);
+    } finally {
+      setTransactionsReady(true);
     }
   }, [site.common.unexpectedError]);
 
@@ -96,16 +176,38 @@ export default function BalancePage() {
   }, [loadBalance, selectedMonth]);
 
   useEffect(() => {
-    loadBalance();
-    loadCategories();
-  }, [loadBalance, loadCategories]);
+    loadBalance(undefined, profile);
+  }, [loadBalance, profile]);
+
+  useEffect(() => {
+    Promise.all([loadCategories(), loadTransactionsPresence()]);
+  }, [loadCategories, loadTransactionsPresence]);
+
+  useEffect(() => {
+    return subscribeToCacheKeys(
+      [cacheKeys.categories, cacheKeys.transactions],
+      (changedKeys) => {
+        if (changedKeys.includes(cacheKeys.categories)) {
+          void loadCategories();
+        }
+        if (changedKeys.includes(cacheKeys.transactions)) {
+          void loadTransactionsPresence();
+          refreshSelectedMonth();
+        }
+      },
+    );
+  }, [loadCategories, loadTransactionsPresence, refreshSelectedMonth]);
 
   const current = overview?.current;
   const history = overview?.series ?? [];
-  const showOnboarding =
-    categoriesReady && overview !== null && history.length === 0;
   const monthHeadingDate =
-    current?.month_start ?? `${selectedMonth || getCurrentMonthValue()}-01`;
+    current?.month_start ??
+    `${selectedMonth || getCurrentMonthValue(profile?.timezone ?? "UTC")}-01`;
+  const balanceCurrency = current?.currency ?? profile?.base_currency ?? "COP";
+  const totalSkippedTransactions = history.reduce(
+    (total, item) => total + (item.skipped_transactions ?? 0),
+    0,
+  );
 
   return (
     <div className="space-y-6">
@@ -125,15 +227,16 @@ export default function BalancePage() {
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
           <div className="space-y-1.5">
-            <label className="text-sm font-medium px-2" htmlFor="balance-month">
+            <label className="px-2 text-sm font-medium" htmlFor="balance-month">
               {t.monthLabel}
             </label>
             <Input
               id="balance-month"
               type="month"
               value={selectedMonth}
-              onChange={(e) => {
-                const value = e.target.value;
+              disabled={!hasBaseCurrency}
+              onChange={(event) => {
+                const value = event.target.value;
                 setSelectedMonth(value);
                 const [year, month] = value.split("-").map(Number);
                 if (year && month) {
@@ -146,13 +249,20 @@ export default function BalancePage() {
         </div>
       </div>
 
-      {showOnboarding && (
+      {showOnboarding ? (
         <BalanceOnboardingCard
+          profile={profile}
           categories={categories}
-          onCategoryCreated={loadCategories}
-          onTransactionCreated={refreshSelectedMonth}
+          hasBaseCurrency={hasBaseCurrency}
+          hasTimeZone={hasTimeZone}
+          hasTransactions={hasTransactions}
+          baseCurrency={profile?.base_currency ?? null}
+          timeZone={profile?.timezone ?? null}
+          onProfileUpdated={refreshProfileFromOnboarding}
+          onCategoryCreated={() => invalidateCacheKey(cacheKeys.categories)}
+          onTransactionCreated={() => invalidateCacheKey(cacheKeys.transactions)}
         />
-      )}
+      ) : null}
 
       <Card>
         <CardHeader>
@@ -161,23 +271,27 @@ export default function BalancePage() {
               formatMonthLabel(monthHeadingDate, site.metadata.htmlLang),
             )}
           </CardTitle>
-          <CardDescription>{t.currentCardDescription}</CardDescription>
+          <CardDescription>
+            {hasBaseCurrency
+              ? t.currentCardDescription(balanceCurrency)
+              : t.currentCardPendingDescription}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-3">
             <BalanceStatCard
               label={site.common.income}
-              value={formatMoney(current?.income ?? "0")}
+              value={formatMoney(current?.income ?? "0", balanceCurrency, displayLocale(site.metadata.htmlLang))}
               tone="emerald"
             />
             <BalanceStatCard
               label={site.common.expense}
-              value={formatMoney(current?.expense ?? "0")}
+              value={formatMoney(current?.expense ?? "0", balanceCurrency, displayLocale(site.metadata.htmlLang))}
               tone="rose"
             />
             <BalanceStatCard
               label={t.title}
-              value={formatMoney(current?.balance ?? "0")}
+              value={formatMoney(current?.balance ?? "0", balanceCurrency, displayLocale(site.metadata.htmlLang))}
               tone="sky"
             />
           </div>
@@ -189,6 +303,14 @@ export default function BalancePage() {
                 {t.selectedMonthEmpty}
               </p>
             )}
+          {(current?.skipped_transactions ?? 0) > 0 ? (
+            <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              {t.selectedMonthSkippedNotice(
+                current?.skipped_transactions ?? 0,
+                balanceCurrency,
+              )}
+            </p>
+          ) : null}
         </CardContent>
       </Card>
 
@@ -224,7 +346,7 @@ export default function BalancePage() {
                       colSpan={4}
                       className="py-8 text-center text-muted-foreground"
                     >
-                      {t.noHistory}
+                      {hasBaseCurrency ? t.noHistory : t.historyPending}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -240,13 +362,25 @@ export default function BalancePage() {
                         )}
                       </TableCell>
                       <TableCell className="font-mono text-emerald-700">
-                        {formatMoney(item.income)}
+                        {formatMoney(
+                          item.income,
+                          item.currency ?? balanceCurrency,
+                          displayLocale(site.metadata.htmlLang),
+                        )}
                       </TableCell>
                       <TableCell className="font-mono text-rose-700">
-                        {formatMoney(item.expense)}
+                        {formatMoney(
+                          item.expense,
+                          item.currency ?? balanceCurrency,
+                          displayLocale(site.metadata.htmlLang),
+                        )}
                       </TableCell>
                       <TableCell className="font-mono text-sky-700">
-                        {formatMoney(item.balance)}
+                        {formatMoney(
+                          item.balance,
+                          item.currency ?? balanceCurrency,
+                          displayLocale(site.metadata.htmlLang),
+                        )}
                       </TableCell>
                     </TableRow>
                   ))
@@ -254,6 +388,11 @@ export default function BalancePage() {
               </TableBody>
             </Table>
           </div>
+          {totalSkippedTransactions > 0 ? (
+            <p className="mt-4 text-sm text-muted-foreground">
+              {t.historySkippedNotice(totalSkippedTransactions, balanceCurrency)}
+            </p>
+          ) : null}
         </CardContent>
       </Card>
     </div>
@@ -283,8 +422,8 @@ function BalanceStatCard({
   );
 }
 
-function formatMoney(value: string) {
-  return moneyFormatter.format(Number(value || 0));
+function formatMoney(value: string, currency: string, locale: string) {
+  return formatCurrencyAmount(value, currency, locale);
 }
 
 function formatMonthLabel(value: string, locale: string) {
@@ -293,6 +432,18 @@ function formatMonthLabel(value: string, locale: string) {
   );
 }
 
-function getCurrentMonthValue() {
-  return new Date().toISOString().slice(0, 7);
+function displayLocale(language: string) {
+  return language === "en" ? "en-US" : "es-CO";
+}
+
+function getFreshCategoriesCache() {
+  return getCache<Category[]>(cacheKeys.categories, {
+    maxAgeMs: cacheTtls.categories,
+  });
+}
+
+function getFreshTransactionsCache() {
+  return getCache<{ id: string }[]>(cacheKeys.transactions, {
+    maxAgeMs: cacheTtls.transactions,
+  });
 }

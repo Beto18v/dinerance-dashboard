@@ -7,7 +7,14 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 
 import { api, ApiError, type Category } from "@/lib/api";
-import { getCache, setCache } from "@/lib/cache";
+import {
+  cacheKeys,
+  cacheTtls,
+  getCache,
+  invalidateCacheKey,
+  setCache,
+  subscribeToCacheKeys,
+} from "@/lib/cache";
 import {
   findDuplicateCategory,
   getTopLevelCategoryOptions,
@@ -38,7 +45,6 @@ import {
 import { CreateCategoryModal } from "./components/create-category-modal";
 import { GroupedCategoriesView } from "./components/grouped-categories-view";
 
-const CACHE_KEY = "cache:categories";
 const schemaText = getSiteText().pages.categories;
 
 const schema = z.object({
@@ -53,10 +59,16 @@ export default function CategoriesPage() {
   const { site } = useSitePreferences();
   const t = site.pages.categories;
   const [categories, setCategories] = useState<Category[]>(
-    () => getCache<Category[]>(CACHE_KEY) ?? [],
+    () =>
+      getCache<Category[]>(cacheKeys.categories, {
+        maxAgeMs: cacheTtls.categories,
+      }) ?? [],
   );
   const [listLoading, setListLoading] = useState(
-    () => !getCache<Category[]>(CACHE_KEY),
+    () =>
+      !getCache<Category[]>(cacheKeys.categories, {
+        maxAgeMs: cacheTtls.categories,
+      }),
   );
   const [editingCat, setEditingCat] = useState<Category | null>(null);
   const [confirmDeleteCat, setConfirmDeleteCat] = useState<Category | null>(
@@ -108,7 +120,7 @@ export default function CategoriesPage() {
       try {
         const data = await api.getCategories();
         setCategories(data);
-        setCache(CACHE_KEY, data);
+        setCache(cacheKeys.categories, data);
       } catch (err) {
         if (err instanceof ApiError) toast.error(err.message);
         else toast.error(t.failedLoad);
@@ -120,7 +132,17 @@ export default function CategoriesPage() {
   );
 
   useEffect(() => {
-    loadCategories(!!getCache(CACHE_KEY));
+    loadCategories(
+      !!getCache<Category[]>(cacheKeys.categories, {
+        maxAgeMs: cacheTtls.categories,
+      }),
+    );
+  }, [loadCategories]);
+
+  useEffect(() => {
+    return subscribeToCacheKeys([cacheKeys.categories], () => {
+      void loadCategories(true);
+    });
   }, [loadCategories]);
 
   function openEditDialog(category: Category) {
@@ -190,7 +212,7 @@ export default function CategoriesPage() {
       await api.updateCategory(editingCat.id, updatePayload);
       toast.success(t.updated);
       setEditingCat(null);
-      loadCategories(true);
+      invalidateCacheKey(cacheKeys.categories);
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.status === 409 && err.message === "Category already exists") {
@@ -233,11 +255,19 @@ export default function CategoriesPage() {
     try {
       await api.deleteCategory(confirmDeleteCat.id);
       toast.success(t.deleted);
-      loadCategories(true);
+      invalidateCacheKey(cacheKeys.categories);
     } catch (err) {
       if (err instanceof ApiError) {
-        if (err.status === 409) toast.error(t.deleteBlockedByTransactions);
-        else toast.error(err.message);
+        if (err.status === 409 && err.message === "Category has transactions") {
+          toast.error(t.deleteBlockedByTransactions);
+        } else if (
+          err.status === 409 &&
+          err.message === "Category has subcategories"
+        ) {
+          toast.error(t.deleteBlockedBySubcategories);
+        } else {
+          toast.error(err.message);
+        }
       } else {
         toast.error(t.failedDelete);
       }
@@ -328,7 +358,7 @@ export default function CategoriesPage() {
           </h2>
           <CreateCategoryModal
             categories={categories}
-            onCreated={() => loadCategories(true)}
+            onCreated={() => invalidateCacheKey(cacheKeys.categories)}
           />
         </div>
 

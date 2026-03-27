@@ -73,6 +73,8 @@ export interface UserProfile {
   id: string;
   name: string;
   email: string;
+  base_currency?: string | null;
+  timezone?: string | null;
   created_at: string;
   deleted_at?: string | null;
 }
@@ -89,6 +91,11 @@ export interface Transaction {
   category_id: string;
   amount: string;
   currency: string;
+  fx_rate?: string | null;
+  fx_rate_date?: string | null;
+  fx_rate_source?: string | null;
+  base_currency?: string | null;
+  amount_in_base_currency?: string | null;
   description: string | null;
   occurred_at: string;
   created_at: string;
@@ -96,12 +103,15 @@ export interface Transaction {
 
 export interface BalanceMonth {
   month_start: string;
+  currency?: string | null;
   income: string;
   expense: string;
   balance: string;
+  skipped_transactions?: number;
 }
 
 export interface BalanceOverview {
+  currency?: string | null;
   current: BalanceMonth;
   series: BalanceMonth[];
 }
@@ -125,7 +135,11 @@ export const api = {
       body: JSON.stringify(body),
     }),
 
-  updateProfile: (body: { name?: string }) =>
+  updateProfile: (body: {
+    name?: string;
+    base_currency?: string;
+    timezone?: string;
+  }) =>
     request<UserProfile>("/users/me", {
       method: "PUT",
       body: JSON.stringify(body),

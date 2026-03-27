@@ -6,8 +6,12 @@ import { toast } from "sonner";
 
 import { useSession } from "@/components/providers/auth-provider";
 import { useSitePreferences } from "@/components/providers/site-preferences-provider";
-import { bootstrapAuthenticatedProfile } from "@/lib/auth";
 import { ApiError } from "@/lib/api";
+import {
+  getPostAuthAppPath,
+  getPreferredSessionName,
+  resolveAuthenticatedProfile,
+} from "@/lib/profile";
 
 export default function AuthCallbackPage() {
   const router = useRouter();
@@ -28,9 +32,12 @@ export default function AuthCallbackPage() {
 
     hasHandledRef.current = true;
 
-    bootstrapAuthenticatedProfile()
-      .then(() => {
-        router.replace("/app/balance");
+    resolveAuthenticatedProfile({
+      preferredName: getPreferredSessionName(session),
+      sessionUserId: session.user.id,
+    })
+      .then((profile) => {
+        router.replace(getPostAuthAppPath(profile));
       })
       .catch(async (error) => {
         await signOut();

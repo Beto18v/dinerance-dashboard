@@ -161,11 +161,19 @@ const siteTexts = {
         monthLabel: "Mes",
         latestMonthHint:
           "Si no eliges un mes, se muestra el ultimo mes con movimientos.",
-        currentCardDescription:
-          "Vista consolidada de ingresos, gastos y balance.",
-        onboardingTitle: "Empieza a usar tu balance",
+        currentCardDescription: (currency: string) =>
+          `Vista consolidada de ingresos, gastos y balance en ${currency}.`,
+        currentCardPendingDescription:
+          "Completa tu perfil financiero para ver analytics coherentes en tu moneda base.",
+        onboardingTitle: "Configura tu balance",
         onboardingDescription:
-          "Para ver resultados aqui, primero crea una categoria y luego registra una transaccion.",
+          "Completa estos cuatro pasos para empezar a ver tu balance mensual con datos consistentes.",
+        onboardingBaseCurrencyStepTitle: "Elegir moneda base",
+        onboardingBaseCurrencyStepDescription:
+          "Sera la moneda fija de tu cuenta y de todos los totales.",
+        onboardingTimeZoneStepTitle: "Elegir zona horaria",
+        onboardingTimeZoneStepDescription:
+          "La usaremos para ubicar cada movimiento en el dia y mes correctos.",
         onboardingCategoryStepTitle: "Crear una categoria",
         onboardingCategoryStepDescription:
           "Organiza tus ingresos o gastos antes de registrar movimientos.",
@@ -174,16 +182,25 @@ const siteTexts = {
           "Agrega tu primer movimiento para que el balance empiece a calcularse.",
         onboardingCompleted: "Completado",
         onboardingPending: "Pendiente",
-        onboardingCategoryPromptTitle: "Tu primer paso",
+        onboardingProfilePromptTitle: "Completa tu perfil financiero",
+        onboardingProfilePromptDescription:
+          "Define tu moneda base y tu zona horaria para registrar movimientos y ver analytics consistentes desde el inicio.",
+        onboardingCategoryPromptTitle: "Crea tu primera categoria",
         onboardingCategoryPromptDescription:
-          "Aun no tienes categorias. Crea una para empezar a organizar tus movimientos.",
-        onboardingTransactionPromptTitle: "Siguiente paso",
+          "Crea al menos una categoria para empezar a organizar tus movimientos.",
+        onboardingTransactionPromptTitle: "Registra tu primer movimiento",
         onboardingTransactionPromptDescription:
-          "Ya tienes categorias. Ahora registra tu primera transaccion para ver el balance.",
+          "Con tu perfil y categorias listos, agrega una transaccion para empezar a ver resultados.",
         historyTitle: "Balance mensual",
         historyDescription: "Todos los meses con movimientos registrados.",
+        historyPending:
+          "Completa tu perfil financiero para ver el historico mensual.",
         noHistory: "Todavia no hay movimientos para calcular el balance.",
         selectedMonthEmpty: "No hay movimientos en el mes seleccionado.",
+        selectedMonthSkippedNotice: (count: number, currency: string) =>
+          `${count} transacciones quedaron fuera del balance del mes porque no se pudieron convertir de forma segura a ${currency}.`,
+        historySkippedNotice: (count: number, currency: string) =>
+          `Hay ${count} transacciones legacy excluidas del historico porque no existe una conversion confiable hacia ${currency}.`,
       },
       categories: {
         title: "Categorias",
@@ -236,6 +253,8 @@ const siteTexts = {
         failedDelete: "No se pudo eliminar la categoria",
         deleteBlockedByTransactions:
           "No puedes eliminar esta categoria porque tiene transacciones asociadas. Primero elimina esas transacciones o cambialas a otra categoria.",
+        deleteBlockedBySubcategories:
+          "No puedes eliminar esta categoria porque todavia tiene subcategorias.",
         ofTotal: (visible: number, total: number) => `(${visible} de ${total})`,
         pageOf: (page: number, total: number) => `Pagina ${page} de ${total}`,
         showingOfTotal: (visible: number, total: number) =>
@@ -281,6 +300,8 @@ const siteTexts = {
         summaryExpense: "Gastos",
         summaryBalance: "Balance",
         summaryCategories: "Categorias activas",
+        summarySkippedNotice: (count: number, currency: string) =>
+          `${count} transacciones quedaron fuera de este resumen porque no se pueden llevar con seguridad a ${currency}.`,
         startDate: "Fecha inicial",
         endDate: "Fecha final",
         listTitle: "Transacciones",
@@ -334,13 +355,36 @@ const siteTexts = {
         themeDark: "Oscuro",
         infoCardTitle: "Informacion de la cuenta",
         infoCardDescription:
-          "Tu nombre se puede editar y se guarda automaticamente.",
+          "Tu nombre se guarda automaticamente. La moneda base y la zona horaria se usan en todos los analytics.",
         fullName: "Nombre completo",
         fullNamePlaceholder: "Tu nombre",
         email: "Correo",
         memberSince: "Miembro desde",
         saving: "Guardando...",
         saved: "Guardado",
+        financeTitle: "Perfil financiero",
+        financeCardDescription:
+          "Configura la moneda fija de tu cuenta y la zona horaria usada en onboarding, balance y transacciones.",
+        financeDescription:
+          "Elige la moneda fija de tu cuenta y la zona horaria que usaremos para ordenar dias y meses.",
+        financeSave: "Guardar perfil financiero",
+        financeSaving: "Guardando perfil...",
+        financeSaved: "Perfil guardado",
+        baseCurrencyLabel: "Moneda base",
+        baseCurrencyPlaceholder: "COP",
+        baseCurrencyHint:
+          "Elige la moneda principal de tu cuenta. Todas las transacciones nuevas usaran esta moneda.",
+        baseCurrencyLockedHint:
+          "Como ya tienes movimientos registrados, la moneda base queda fija para conservar la consistencia del historial.",
+        baseCurrencyInvalid:
+          "La moneda base debe ser un codigo ISO de 3 letras, por ejemplo COP o USD.",
+        timezoneLabel: "Zona horaria",
+        timezonePlaceholder: "America/Bogota",
+        timezoneBrowserAction: "Usar la del navegador",
+        timezoneHint: (browserTimeZone: string) =>
+          `Puedes escribir para buscar una zona horaria o usar la detectada en este navegador: ${browserTimeZone}.`,
+        timezoneExamples: "Ejemplos: America/Bogota, America/New_York, Europe/Madrid.",
+        timezoneInvalid: "Selecciona una zona horaria IANA valida.",
         dangerTitle: "Zona de peligro",
         dangerDescription:
           "Elimina permanentemente tu cuenta y todos los datos asociados.",
@@ -352,6 +396,9 @@ const siteTexts = {
         deleting: "Eliminando...",
         deleted: "Cuenta eliminada",
         failedSaveName: "No se pudo guardar el nombre",
+        failedSaveFinance: "No se pudo guardar la configuracion financiera",
+        failedLoadTransactionPresence:
+          "No se pudo verificar si ya tienes transacciones.",
         failedDeleteAccount: "No se pudo eliminar la cuenta",
         dateLocale: "es-CO",
       },
@@ -449,11 +496,19 @@ const siteTexts = {
         monthLabel: "Month",
         latestMonthHint:
           "Without a filter, the latest month with activity is shown.",
-        currentCardDescription:
-          "Consolidated view of income, expenses, and balance.",
-        onboardingTitle: "Get started with your balance",
+        currentCardDescription: (currency: string) =>
+          `Consolidated view of income, expenses, and balance in ${currency}.`,
+        currentCardPendingDescription:
+          "Complete your financial profile to unlock coherent analytics in your base currency.",
+        onboardingTitle: "Set up your balance",
         onboardingDescription:
-          "To see results here, first create a category and then record a transaction.",
+          "Complete these four steps to start seeing your monthly balance with consistent data.",
+        onboardingBaseCurrencyStepTitle: "Choose base currency",
+        onboardingBaseCurrencyStepDescription:
+          "It will be the fixed currency for your account and all totals.",
+        onboardingTimeZoneStepTitle: "Choose time zone",
+        onboardingTimeZoneStepDescription:
+          "We use it to place each transaction in the correct day and month.",
         onboardingCategoryStepTitle: "Create a category",
         onboardingCategoryStepDescription:
           "Organize your income or expenses before recording transactions.",
@@ -462,16 +517,25 @@ const siteTexts = {
           "Add your first movement so the balance can start calculating.",
         onboardingCompleted: "Completed",
         onboardingPending: "Pending",
-        onboardingCategoryPromptTitle: "Your first step",
+        onboardingProfilePromptTitle: "Complete your financial profile",
+        onboardingProfilePromptDescription:
+          "Set your base currency and time zone to record transactions and view analytics consistently from the start.",
+        onboardingCategoryPromptTitle: "Create your first category",
         onboardingCategoryPromptDescription:
-          "You do not have categories yet. Create one to start organizing your activity.",
-        onboardingTransactionPromptTitle: "Next step",
+          "Create at least one category to start organizing your activity.",
+        onboardingTransactionPromptTitle: "Record your first transaction",
         onboardingTransactionPromptDescription:
-          "Your categories are ready. Now record your first transaction to see your balance.",
+          "With your profile and categories ready, add a transaction to start seeing results.",
         historyTitle: "Monthly balance",
         historyDescription: "Every month with recorded activity.",
+        historyPending:
+          "Complete your financial profile to start seeing monthly history.",
         noHistory: "There is no activity yet to calculate the balance.",
         selectedMonthEmpty: "There is no activity in the selected month.",
+        selectedMonthSkippedNotice: (count: number, currency: string) =>
+          `${count} transactions were excluded from this month's balance because they could not be converted safely to ${currency}.`,
+        historySkippedNotice: (count: number, currency: string) =>
+          `There are ${count} legacy transactions excluded from history because no reliable conversion to ${currency} exists.`,
       },
       categories: {
         title: "Categories",
@@ -525,6 +589,8 @@ const siteTexts = {
         failedDelete: "Failed to delete category",
         deleteBlockedByTransactions:
           "You cannot delete this category because it has related transactions. First delete those transactions or move them to another category.",
+        deleteBlockedBySubcategories:
+          "You cannot delete this category because it still has subcategories.",
         ofTotal: (visible: number, total: number) => `(${visible} of ${total})`,
         pageOf: (page: number, total: number) => `Page ${page} of ${total}`,
         showingOfTotal: (visible: number, total: number) =>
@@ -570,6 +636,8 @@ const siteTexts = {
         summaryExpense: "Expenses",
         summaryBalance: "Balance",
         summaryCategories: "Active categories",
+        summarySkippedNotice: (count: number, currency: string) =>
+          `${count} transactions were excluded from this summary because they cannot be mapped safely to ${currency}.`,
         startDate: "Start date",
         endDate: "End date",
         listTitle: "Transactions",
@@ -621,13 +689,38 @@ const siteTexts = {
         themeLight: "Light",
         themeDark: "Dark",
         infoCardTitle: "Account information",
-        infoCardDescription: "Your name is editable and saves automatically.",
+        infoCardDescription:
+          "Your name saves automatically. Base currency and time zone drive all analytics.",
         fullName: "Full name",
         fullNamePlaceholder: "Your name",
         email: "Email",
         memberSince: "Member since",
         saving: "Saving...",
         saved: "Saved",
+        financeTitle: "Financial profile",
+        financeCardDescription:
+          "Set the fixed account currency and time zone used by onboarding, balance, and transactions.",
+        financeDescription:
+          "Choose the fixed currency for your account and the time zone used for day and month boundaries.",
+        financeSave: "Save financial profile",
+        financeSaving: "Saving profile...",
+        financeSaved: "Profile saved",
+        baseCurrencyLabel: "Base currency",
+        baseCurrencyPlaceholder: "USD",
+        baseCurrencyHint:
+          "Choose the main currency for your account. Every new transaction will use this currency.",
+        baseCurrencyLockedHint:
+          "Because you already have recorded activity, the base currency is now locked to preserve historical consistency.",
+        baseCurrencyInvalid:
+          "Base currency must be a 3-letter ISO code, for example USD or COP.",
+        timezoneLabel: "Time zone",
+        timezonePlaceholder: "America/New_York",
+        timezoneBrowserAction: "Use browser time zone",
+        timezoneHint: (browserTimeZone: string) =>
+          `You can type to search for a time zone or reuse the one detected in this browser: ${browserTimeZone}.`,
+        timezoneExamples:
+          "Examples: America/Bogota, America/New_York, Europe/Madrid.",
+        timezoneInvalid: "Select a valid IANA time zone.",
         dangerTitle: "Danger zone",
         dangerDescription:
           "Permanently delete your account and all associated data.",
@@ -639,6 +732,9 @@ const siteTexts = {
         deleting: "Deleting...",
         deleted: "Account deleted",
         failedSaveName: "Failed to save name",
+        failedSaveFinance: "Failed to save financial settings",
+        failedLoadTransactionPresence:
+          "Failed to verify whether you already have transactions.",
         failedDeleteAccount: "Failed to delete account",
         dateLocale: "en-US",
       },

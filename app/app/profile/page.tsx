@@ -2,6 +2,7 @@ import { Separator } from "@/components/ui/separator";
 
 import { AccountInfoCard } from "./components/account-info-card";
 import { DangerZoneCard } from "./components/danger-zone-card";
+import { FinancialProfileCard } from "./components/financial-profile-card";
 import { PreferencesCard } from "./components/preferences-card";
 import { ProfileHeader } from "./components/profile-header";
 
@@ -10,6 +11,8 @@ export default function ProfilePage() {
     <div className="max-w-lg space-y-6">
       <ProfileHeader />
       <AccountInfoCard />
+      <Separator />
+      <FinancialProfileCard />
       <Separator />
       <PreferencesCard />
       <Separator />
