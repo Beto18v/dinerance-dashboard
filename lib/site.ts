@@ -387,14 +387,14 @@ const siteTexts = {
         timezoneInvalid: "Selecciona una zona horaria IANA valida.",
         dangerTitle: "Zona de peligro",
         dangerDescription:
-          "Elimina permanentemente tu cuenta y todos los datos asociados.",
-        deleteAccount: "Eliminar cuenta",
-        confirmDeleteTitle: "Eliminar cuenta?",
+          "Elimina tu perfil y los datos guardados en Dinerance.",
+        deleteAccount: "Eliminar mis datos",
+        confirmDeleteTitle: "Eliminar tus datos?",
         confirmDeleteDescription:
-          "Esta accion es permanente. Tu perfil, transacciones y categorias se eliminaran y no se podran recuperar.",
-        confirmDeleteButton: "Si, eliminar mi cuenta",
+          "Esta accion elimina tu perfil local, transacciones y categorias de Dinerance. Si vuelves a iniciar sesion mas adelante, empezaras con un perfil nuevo.",
+        confirmDeleteButton: "Si, eliminar mis datos",
         deleting: "Eliminando...",
-        deleted: "Cuenta eliminada",
+        deleted: "Datos eliminados",
         failedSaveName: "No se pudo guardar el nombre",
         failedSaveFinance: "No se pudo guardar la configuracion financiera",
         failedLoadTransactionPresence:
@@ -723,14 +723,14 @@ const siteTexts = {
         timezoneInvalid: "Select a valid IANA time zone.",
         dangerTitle: "Danger zone",
         dangerDescription:
-          "Permanently delete your account and all associated data.",
-        deleteAccount: "Delete account",
-        confirmDeleteTitle: "Delete account?",
+          "Delete your profile and the data stored in Dinerance.",
+        deleteAccount: "Delete my data",
+        confirmDeleteTitle: "Delete your data?",
         confirmDeleteDescription:
-          "This action is permanent. Your profile, transactions, and categories will be deleted and cannot be recovered.",
-        confirmDeleteButton: "Yes, delete my account",
+          "This action removes your local profile, transactions, and categories from Dinerance. If you sign in again later, you will start with a new profile.",
+        confirmDeleteButton: "Yes, delete my data",
         deleting: "Deleting...",
-        deleted: "Account deleted",
+        deleted: "Data deleted",
         failedSaveName: "Failed to save name",
         failedSaveFinance: "Failed to save financial settings",
         failedLoadTransactionPresence:
