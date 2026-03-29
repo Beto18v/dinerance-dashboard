@@ -20,7 +20,7 @@ type TransactionsMobileRow =
 interface TransactionsMobileListProps {
   categories: Category[];
   rows: TransactionsMobileRow[];
-  transactionsCount: number;
+  totalCount: number;
   listLoading: boolean;
   deletingId: string | null;
   onEdit: (transaction: Transaction) => void;
@@ -33,7 +33,7 @@ interface TransactionsMobileListProps {
 export function TransactionsMobileList({
   categories,
   rows,
-  transactionsCount,
+  totalCount,
   listLoading,
   deletingId,
   onEdit,
@@ -100,11 +100,11 @@ export function TransactionsMobileList({
 
   return (
     <div className={cn("space-y-3", className)}>
-      {listLoading && transactionsCount === 0 ? (
+      {listLoading && totalCount === 0 ? (
         <div className="rounded-lg border bg-card px-4 py-8 text-center text-muted-foreground shadow-sm">
           {t.loading}
         </div>
-      ) : transactionsCount === 0 ? (
+      ) : totalCount === 0 ? (
         <div className="rounded-lg border bg-card px-4 py-8 text-center text-muted-foreground shadow-sm">
           {t.empty}
         </div>

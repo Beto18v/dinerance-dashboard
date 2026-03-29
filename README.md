@@ -98,6 +98,7 @@ lib/
 - Balance y resumenes coherentes en moneda base, con reporte explicito de conversiones faltantes.
 - Onboarding de 4 pasos: moneda base, zona horaria, categoria y transaccion.
 - Resolucion del perfil autenticado reutilizada entre layout y auth para evitar `GET /users/me` duplicados y redirects innecesarios.
+- `/app/transactions` usa paginacion server-side real sobre `GET /transactions/` y deja de descargar todo el historial al cliente.
 - i18n es/en y preferencias de tema.
 
 ## Alcance actual
@@ -127,6 +128,7 @@ lib/
 ## Monedas y fechas
 
 - Las tablas de transacciones siguen mostrando `amount` y `currency` originales.
+- La lista de transacciones consume `items + total_count + limit + offset` desde el backend y usa `summary` para conservar los totales del filtro activo sin paginar en memoria.
 - Las nuevas transacciones usan la `base_currency` del perfil como moneda fija del producto actual.
 - Los resumenes consolidados usan `amount_in_base_currency` y la arquitectura FX queda interna/preparada para futuras extensiones.
 - Los quick filters, el etiquetado de hoy/ayer y la conversion de `datetime-local` usan `profile.timezone`, no la zona de la maquina.

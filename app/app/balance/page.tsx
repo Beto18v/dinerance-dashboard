@@ -9,6 +9,7 @@ import {
   type AnalyticsSummary,
   type AnalyticsSummaryTransaction,
   type Category,
+  type TransactionsPageResponse,
   type UserProfile,
 } from "@/lib/api";
 import { useProfile } from "@/components/providers/profile-provider";
@@ -66,7 +67,7 @@ export default function BalancePage() {
     () => cachedTransactions !== null,
   );
   const [hasTransactions, setHasTransactions] = useState(
-    () => (cachedTransactions?.length ?? 0) > 0,
+    () => (cachedTransactions?.total_count ?? 0) > 0,
   );
   const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState("");
@@ -150,14 +151,14 @@ export default function BalancePage() {
   const loadTransactionsPresence = useCallback(async () => {
     const freshTransactions = getFreshTransactionsCache();
     if (freshTransactions) {
-      setHasTransactions(freshTransactions.length > 0);
+      setHasTransactions(freshTransactions.total_count > 0);
       setTransactionsReady(true);
       return;
     }
 
     try {
       const data = await api.getTransactions({ limit: 1 });
-      setHasTransactions(data.length > 0);
+      setHasTransactions(data.total_count > 0);
     } catch (err) {
       if (err instanceof ApiError) toast.error(err.message);
       else toast.error(site.common.unexpectedError);
@@ -520,7 +521,7 @@ function getFreshCategoriesCache() {
 }
 
 function getFreshTransactionsCache() {
-  return getCache<{ id: string }[]>(cacheKeys.transactions, {
+  return getCache<TransactionsPageResponse>(cacheKeys.transactions, {
     maxAgeMs: cacheTtls.transactions,
   });
 }

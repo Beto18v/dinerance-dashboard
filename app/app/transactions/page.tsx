@@ -27,7 +27,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { api, ApiError, type Category, type Transaction } from "@/lib/api";
+import {
+  api,
+  ApiError,
+  type Category,
+  type Transaction,
+  type TransactionsPageResponse,
+} from "@/lib/api";
 import {
   cacheKeys,
   cacheTtls,
@@ -69,7 +75,21 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 type QuickRange = "today" | "last7" | "thisMonth";
 type TransactionsDisplayMode = "desktop" | "mobile";
-const TRANSACTIONS_FETCH_BATCH_SIZE = 100;
+type TransactionFilters = {
+  category_id?: string;
+  parent_category_id?: string;
+  start_date?: string;
+  end_date?: string;
+};
+
+const TRANSACTIONS_PAGE_SIZE = 12;
+const EMPTY_TRANSACTIONS_SUMMARY: TransactionsPageResponse["summary"] = {
+  active_categories_count: 0,
+  skipped_transactions: 0,
+  income_totals: [],
+  expense_totals: [],
+  balance_totals: [],
+};
 
 export default function TransactionsPage() {
   const { site } = useSitePreferences();
@@ -82,18 +102,16 @@ export default function TransactionsPage() {
     ? normalizeCurrencyCode(profile.base_currency)
     : null;
   const hasFinanceProfile = Boolean(profile?.base_currency && profile?.timezone);
+  const cachedTransactionsPage = getFreshTransactionCache();
   const [categories, setCategories] = useState<Category[]>(
     () => getFreshCategoryCache() ?? [],
   );
-  const [transactions, setTransactions] = useState<Transaction[]>(
-    () => getFreshTransactionCache() ?? [],
-  );
+  const [transactionsPage, setTransactionsPage] =
+    useState<TransactionsPageResponse | null>(() => cachedTransactionsPage);
   const [hasAnyTransactions, setHasAnyTransactions] = useState(
-    () => (getFreshTransactionCache()?.length ?? 0) > 0,
+    () => (cachedTransactionsPage?.total_count ?? 0) > 0,
   );
-  const [listLoading, setListLoading] = useState(
-    () => !getFreshTransactionCache(),
-  );
+  const [listLoading, setListLoading] = useState(() => !cachedTransactionsPage);
   const [editingTxn, setEditingTxn] = useState<Transaction | null>(null);
   const [confirmDeleteTxn, setConfirmDeleteTxn] = useState<Transaction | null>(
     null,
@@ -113,6 +131,7 @@ export default function TransactionsPage() {
   const filterParams = useMemo(
     () => ({
       category_id: filterCategoryId || undefined,
+      parent_category_id: filterParentCategoryId || undefined,
       start_date: filterStartDate
         ? dateInputBoundaryToUtcIso(filterStartDate, "start", timeZone)
         : undefined,
@@ -120,7 +139,7 @@ export default function TransactionsPage() {
         ? dateInputBoundaryToUtcIso(filterEndDate, "end", timeZone)
         : undefined,
     }),
-    [filterCategoryId, filterEndDate, filterStartDate, timeZone],
+    [filterCategoryId, filterEndDate, filterParentCategoryId, filterStartDate, timeZone],
   );
 
   const {
@@ -141,16 +160,6 @@ export default function TransactionsPage() {
       event.target.value = sanitizeAmountInput(event.target.value);
     },
   });
-
-  const categoryMap = useMemo(() => {
-    const map = new Map<string, Category>();
-
-    for (const category of categories) {
-      map.set(category.id, category);
-    }
-
-    return map;
-  }, [categories]);
 
   const parentCategories = useMemo(
     () =>
@@ -180,17 +189,15 @@ export default function TransactionsPage() {
   );
 
   const loadTransactionsPresence = useCallback(async () => {
-    const freshTransactions = getCache<Transaction[]>(cacheKeys.transactions, {
-      maxAgeMs: cacheTtls.transactions,
-    });
+    const freshTransactions = getFreshTransactionCache();
     if (freshTransactions) {
-      setHasAnyTransactions(freshTransactions.length > 0);
+      setHasAnyTransactions(freshTransactions.total_count > 0);
       return;
     }
 
     try {
       const data = await api.getTransactions({ limit: 1 });
-      setHasAnyTransactions(data.length > 0);
+      setHasAnyTransactions(data.total_count > 0);
     } catch (error) {
       if (error instanceof ApiError) {
         toast.error(error.message);
@@ -202,25 +209,37 @@ export default function TransactionsPage() {
 
   const loadTransactions = useCallback(
     async (
-      params?: { category_id?: string; start_date?: string; end_date?: string },
+      params: TransactionFilters,
+      page: number,
       silent = false,
     ) => {
       if (!silent) setListLoading(true);
 
       try {
-        const data = await fetchAllTransactions({
-          category_id: params?.category_id,
-          start_date: params?.start_date,
-          end_date: params?.end_date,
-        });
+        let resolvedPage = page;
+        let data = await fetchTransactionsPage(params, page);
+        const totalPages = Math.max(
+          1,
+          Math.ceil(data.total_count / TRANSACTIONS_PAGE_SIZE),
+        );
 
-        setTransactions(data);
+        if (data.total_count > 0 && page > totalPages) {
+          resolvedPage = totalPages;
+          setCurrentPage(totalPages);
+          data = await fetchTransactionsPage(params, totalPages);
+        } else if (data.total_count === 0 && page !== 1) {
+          resolvedPage = 1;
+          setCurrentPage(1);
+        }
 
-        const isUnfiltered = !params?.category_id && !params?.start_date && !params?.end_date;
-        if (isUnfiltered) {
+        setTransactionsPage(data);
+
+        const isDefaultQuery =
+          !isTransactionsFilterActive(params) && resolvedPage === 1;
+        if (isDefaultQuery) {
           setCache(cacheKeys.transactions, data);
-          setHasAnyTransactions(data.length > 0);
-        } else if (data.length > 0) {
+          setHasAnyTransactions(data.total_count > 0);
+        } else if (data.total_count > 0) {
           setHasAnyTransactions(true);
         }
       } catch (error) {
@@ -250,17 +269,16 @@ export default function TransactionsPage() {
   }, [loadCategories]);
 
   useEffect(() => {
-    const hasFreshTransactionCache = Boolean(
-      getCache<Transaction[]>(cacheKeys.transactions, {
-        maxAgeMs: cacheTtls.transactions,
-      }),
-    );
-    const isFiltered = Boolean(
-      filterParams.category_id || filterParams.start_date || filterParams.end_date,
-    );
+    const hasFreshTransactionCache = Boolean(getFreshTransactionCache());
+    const isDefaultQuery =
+      currentPage === 1 && !isTransactionsFilterActive(filterParams);
 
-    void loadTransactions(filterParams, hasFreshTransactionCache && !isFiltered);
-  }, [filterParams, loadTransactions]);
+    void loadTransactions(
+      filterParams,
+      currentPage,
+      hasFreshTransactionCache && isDefaultQuery,
+    );
+  }, [currentPage, filterParams, loadTransactions]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -274,92 +292,36 @@ export default function TransactionsPage() {
           void loadCategories(true);
         }
         if (changedKeys.includes(cacheKeys.transactions)) {
-          void loadTransactions(filterParams, true);
+          void loadTransactions(filterParams, currentPage, true);
           void loadTransactionsPresence();
         }
       },
     );
-  }, [filterParams, loadCategories, loadTransactions, loadTransactionsPresence]);
+  }, [currentPage, filterParams, loadCategories, loadTransactions, loadTransactionsPresence]);
 
-  const visibleTransactions = useMemo(() => {
-    return transactions.filter((transaction) => {
-      const category = categoryMap.get(transaction.category_id);
-      const matchesParentCategory =
-        !filterParentCategoryId ||
-        transaction.category_id === filterParentCategoryId ||
-        category?.parent_id === filterParentCategoryId;
-
-      return matchesParentCategory;
-    });
-  }, [categoryMap, filterParentCategoryId, transactions]);
-
-  const activeCategoriesCount = useMemo(
-    () => new Set(visibleTransactions.map((transaction) => transaction.category_id)).size,
-    [visibleTransactions],
-  );
+  const transactions = transactionsPage?.items ?? [];
+  const totalCount = transactionsPage?.total_count ?? 0;
+  const transactionsSummary = transactionsPage?.summary ?? EMPTY_TRANSACTIONS_SUMMARY;
 
   const summary = useMemo(() => {
-    const incomeTotals = new Map<string, number>();
-    const expenseTotals = new Map<string, number>();
-    const balanceTotals = new Map<string, number>();
-    let skippedCount = 0;
-
-    for (const transaction of visibleTransactions) {
-      const category = categoryMap.get(transaction.category_id);
-      const direction = category?.direction;
-      if (!direction) continue;
-
-      if (baseCurrency) {
-        const amountInBaseCurrency = getAmountForBaseCurrency(
-          transaction,
-          baseCurrency,
-        );
-
-        if (amountInBaseCurrency == null) {
-          skippedCount += 1;
-          continue;
-        }
-
-        accumulateAmount(
-          direction,
-          amountInBaseCurrency,
-          baseCurrency,
-          incomeTotals,
-          expenseTotals,
-          balanceTotals,
-        );
-        continue;
-      }
-
-      const currency = normalizeCurrencyCode(transaction.currency || "COP");
-      const amount = Number(transaction.amount || 0);
-      accumulateAmount(
-        direction,
-        amount,
-        currency,
-        incomeTotals,
-        expenseTotals,
-        balanceTotals,
-      );
-    }
-
     return {
-      skippedCount,
-      income: formatTotals(incomeTotals, displayLocale, site.common.dash, baseCurrency),
-      expense: formatTotals(
-        expenseTotals,
+      income: formatTotals(
+        transactionsSummary.income_totals,
         displayLocale,
         site.common.dash,
-        baseCurrency,
+      ),
+      expense: formatTotals(
+        transactionsSummary.expense_totals,
+        displayLocale,
+        site.common.dash,
       ),
       balance: formatTotals(
-        balanceTotals,
+        transactionsSummary.balance_totals,
         displayLocale,
         site.common.dash,
-        baseCurrency,
       ),
     };
-  }, [baseCurrency, categoryMap, displayLocale, site.common.dash, visibleTransactions]);
+  }, [displayLocale, site.common.dash, transactionsSummary]);
 
   function openEditDialog(transaction: Transaction) {
     setEditingTxn(transaction);
@@ -417,8 +379,11 @@ export default function TransactionsPage() {
   }
 
   const summaryItems = [
-    { label: t.summaryTransactions, value: String(visibleTransactions.length) },
-    { label: t.summaryCategories, value: String(activeCategoriesCount) },
+    { label: t.summaryTransactions, value: String(totalCount) },
+    {
+      label: t.summaryCategories,
+      value: String(transactionsSummary.active_categories_count),
+    },
     { label: t.summaryIncome, value: summary.income },
     { label: t.summaryExpense, value: summary.expense },
     { label: t.summaryBalance, value: summary.balance },
@@ -496,9 +461,12 @@ export default function TransactionsPage() {
         ))}
       </div>
 
-      {baseCurrency && summary.skippedCount > 0 ? (
+      {baseCurrency && transactionsSummary.skipped_transactions > 0 ? (
         <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-          {t.summarySkippedNotice(summary.skippedCount, baseCurrency)}
+          {t.summarySkippedNotice(
+            transactionsSummary.skipped_transactions,
+            baseCurrency,
+          )}
         </p>
       ) : null}
 
@@ -525,7 +493,9 @@ export default function TransactionsPage() {
 
         <TransactionsView
           categories={categories}
-          transactions={visibleTransactions}
+          transactions={transactions}
+          totalCount={totalCount}
+          pageSize={TRANSACTIONS_PAGE_SIZE}
           listLoading={listLoading}
           currentPage={currentPage}
           onPageChange={setCurrentPage}
@@ -668,66 +638,16 @@ export default function TransactionsPage() {
   );
 }
 
-function getAmountForBaseCurrency(
-  transaction: Transaction,
-  baseCurrency: string,
-) {
-  const transactionCurrency = normalizeCurrencyCode(
-    transaction.currency || baseCurrency,
-  );
-
-  if (transactionCurrency === baseCurrency) {
-    return Number(transaction.amount || 0);
-  }
-
-  if (
-    normalizeCurrencyCode(transaction.base_currency || "") === baseCurrency &&
-    transaction.amount_in_base_currency != null
-  ) {
-    return Number(transaction.amount_in_base_currency);
-  }
-
-  return null;
-}
-
-function accumulateAmount(
-  direction: Category["direction"],
-  amount: number,
-  currency: string,
-  incomeTotals: Map<string, number>,
-  expenseTotals: Map<string, number>,
-  balanceTotals: Map<string, number>,
-) {
-  if (direction === "income") {
-    incomeTotals.set(currency, (incomeTotals.get(currency) ?? 0) + amount);
-    balanceTotals.set(currency, (balanceTotals.get(currency) ?? 0) + amount);
-  }
-
-  if (direction === "expense") {
-    expenseTotals.set(currency, (expenseTotals.get(currency) ?? 0) + amount);
-    balanceTotals.set(currency, (balanceTotals.get(currency) ?? 0) - amount);
-  }
-}
-
 function formatTotals(
-  totals: Map<string, number>,
+  totals: TransactionsPageResponse["summary"]["income_totals"],
   locale: string,
   emptyValue: string,
-  baseCurrency: string | null,
 ) {
-  if (totals.size === 0) return emptyValue;
+  if (totals.length === 0) return emptyValue;
 
-  if (baseCurrency) {
-    return formatCurrencyAmount(
-      totals.get(baseCurrency) ?? 0,
-      baseCurrency,
-      locale,
-    );
-  }
-
-  return [...totals.entries()]
-    .sort(([currencyA], [currencyB]) => currencyA.localeCompare(currencyB))
-    .map(([currency, amount]) => formatCurrencyAmount(amount, currency, locale))
+  return [...totals]
+    .sort((a, b) => a.currency.localeCompare(b.currency))
+    .map((item) => formatCurrencyAmount(item.amount, item.currency, locale))
     .join(" | ");
 }
 
@@ -759,34 +679,30 @@ function getFreshCategoryCache() {
 }
 
 function getFreshTransactionCache() {
-  return getCache<Transaction[]>(cacheKeys.transactions, {
+  return getCache<TransactionsPageResponse>(cacheKeys.transactions, {
     maxAgeMs: cacheTtls.transactions,
   });
 }
 
-async function fetchAllTransactions(params?: {
-  category_id?: string;
-  start_date?: string;
-  end_date?: string;
-}) {
-  const allTransactions: Transaction[] = [];
-  let offset = 0;
+async function fetchTransactionsPage(
+  params: TransactionFilters,
+  page: number,
+) {
+  return api.getTransactions({
+    category_id: params.category_id,
+    parent_category_id: params.parent_category_id,
+    start_date: params.start_date,
+    end_date: params.end_date,
+    limit: TRANSACTIONS_PAGE_SIZE,
+    offset: (page - 1) * TRANSACTIONS_PAGE_SIZE,
+  });
+}
 
-  while (true) {
-    const batch = await api.getTransactions({
-      category_id: params?.category_id,
-      start_date: params?.start_date,
-      end_date: params?.end_date,
-      limit: TRANSACTIONS_FETCH_BATCH_SIZE,
-      offset,
-    });
-
-    allTransactions.push(...batch);
-
-    if (batch.length < TRANSACTIONS_FETCH_BATCH_SIZE) {
-      return allTransactions;
-    }
-
-    offset += TRANSACTIONS_FETCH_BATCH_SIZE;
-  }
+function isTransactionsFilterActive(params: TransactionFilters) {
+  return Boolean(
+    params.category_id ||
+      params.parent_category_id ||
+      params.start_date ||
+      params.end_date,
+  );
 }

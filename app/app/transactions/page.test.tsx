@@ -99,16 +99,25 @@ vi.mock("./components", () => ({
   ),
   TransactionsView: ({
     transactions,
+    totalCount,
     listLoading,
+    onPageChange,
   }: {
     transactions: { id: string }[];
+    totalCount: number;
     listLoading: boolean;
+    onPageChange: (page: number) => void;
   }) => (
     <div>
       <div data-testid="transactions-loading">
         {listLoading ? "loading" : "ready"}
       </div>
       <div data-testid="transactions-count">{transactions.length}</div>
+      <div data-testid="transactions-total">{totalCount}</div>
+      <div data-testid="transactions-first-id">{transactions[0]?.id ?? "none"}</div>
+      <button type="button" onClick={() => onPageChange(2)}>
+        Ir a pagina 2
+      </button>
     </div>
   ),
 }));
@@ -135,27 +144,17 @@ describe("TransactionsPage", () => {
     cleanup();
   });
 
-  it("loads every backend page on the initial unfiltered request", async () => {
-    const allTransactions = buildTransactions(125, "cat-1");
-
+  it("loads only the requested backend page and fetches the next page on demand", async () => {
     getTransactionsMock.mockImplementation(async (params?: {
       category_id?: string;
       limit?: number;
       offset?: number;
     }) => {
-      if (params?.limit === 1) {
-        return allTransactions.slice(0, 1);
+      if (params?.category_id === "cat-filtered") {
+        return buildTransactionsPage(24, "cat-filtered", params?.offset ?? 0);
       }
 
-      if (params?.limit === 100 && params?.offset === 0) {
-        return allTransactions.slice(0, 100);
-      }
-
-      if (params?.limit === 100 && params?.offset === 100) {
-        return allTransactions.slice(100);
-      }
-
-      return [];
+      return buildTransactionsPage(125, "cat-1", params?.offset ?? 0);
     });
 
     render(<TransactionsPage />);
@@ -164,93 +163,113 @@ describe("TransactionsPage", () => {
       expect(screen.getByTestId("transactions-loading")).toHaveTextContent("ready");
     });
 
-    expect(screen.getByTestId("transactions-count")).toHaveTextContent("125");
+    expect(screen.getByTestId("transactions-count")).toHaveTextContent("12");
+    expect(screen.getByTestId("transactions-total")).toHaveTextContent("125");
+    expect(screen.getByTestId("transactions-first-id")).toHaveTextContent("txn-1");
     expect(getTransactionsMock).toHaveBeenCalledWith(
-      expect.objectContaining({ limit: 100, offset: 0 }),
+      expect.objectContaining({ limit: 12, offset: 0 }),
     );
+
+    fireEvent.click(screen.getByRole("button", { name: "Ir a pagina 2" }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("transactions-first-id")).toHaveTextContent(
+        "txn-13",
+      );
+    });
+
     expect(getTransactionsMock).toHaveBeenCalledWith(
-      expect.objectContaining({ limit: 100, offset: 100 }),
+      expect.objectContaining({ limit: 12, offset: 12 }),
     );
+    expect(
+      getTransactionsMock.mock.calls.some(
+        ([params]) => params?.offset === 100 || params?.offset === 24,
+      ),
+    ).toBe(false);
   });
 
-  it("loads every backend page again when filters change", async () => {
-    const initialTransactions = buildTransactions(125, "cat-1");
-    const filteredTransactions = buildTransactions(105, "cat-1");
-
+  it("resets to the first backend page when filters change", async () => {
     getTransactionsMock.mockImplementation(async (params?: {
       category_id?: string;
       limit?: number;
       offset?: number;
     }) => {
-      if (params?.limit === 1) {
-        return initialTransactions.slice(0, 1);
-      }
-
       if (params?.category_id === "cat-filtered") {
-        if (params?.limit === 100 && params?.offset === 0) {
-          return filteredTransactions.slice(0, 100);
-        }
-
-        if (params?.limit === 100 && params?.offset === 100) {
-          return filteredTransactions.slice(100);
-        }
-
-        return [];
+        return buildTransactionsPage(18, "cat-filtered", params?.offset ?? 0);
       }
 
-      if (params?.limit === 100 && params?.offset === 0) {
-        return initialTransactions.slice(0, 100);
-      }
-
-      if (params?.limit === 100 && params?.offset === 100) {
-        return initialTransactions.slice(100);
-      }
-
-      return [];
+      return buildTransactionsPage(125, "cat-1", params?.offset ?? 0);
     });
 
     render(<TransactionsPage />);
 
     await waitFor(() => {
-      expect(screen.getByTestId("transactions-count")).toHaveTextContent("125");
+      expect(screen.getByTestId("transactions-first-id")).toHaveTextContent(
+        "txn-1",
+      );
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Ir a pagina 2" }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("transactions-first-id")).toHaveTextContent(
+        "txn-13",
+      );
     });
 
     fireEvent.click(screen.getByRole("button", { name: "Aplicar filtro" }));
 
     await waitFor(() => {
-      expect(screen.getByTestId("transactions-count")).toHaveTextContent("105");
+      expect(screen.getByTestId("transactions-count")).toHaveTextContent("12");
+      expect(screen.getByTestId("transactions-total")).toHaveTextContent("18");
+      expect(screen.getByTestId("transactions-first-id")).toHaveTextContent(
+        "txn-1",
+      );
     });
 
     expect(getTransactionsMock).toHaveBeenCalledWith(
       expect.objectContaining({
         category_id: "cat-filtered",
-        limit: 100,
+        limit: 12,
         offset: 0,
-      }),
-    );
-    expect(getTransactionsMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        category_id: "cat-filtered",
-        limit: 100,
-        offset: 100,
       }),
     );
   });
 });
 
-function buildTransactions(count: number, categoryId: string) {
-  return Array.from({ length: count }, (_, index) => ({
-    id: `txn-${index + 1}`,
-    category_id: categoryId,
-    amount: "1000.00",
-    currency: "COP",
-    description: `Transaction ${index + 1}`,
-    occurred_at: `2026-03-${String((index % 28) + 1).padStart(2, "0")}T12:00:00Z`,
-    created_at: "2026-03-01T12:00:00Z",
-    fx_rate: "1.00000000",
-    fx_rate_date: "2026-03-01",
-    fx_rate_source: "identity",
-    base_currency: "COP",
-    amount_in_base_currency: "1000.00",
-  }));
+function buildTransactionsPage(
+  totalCount: number,
+  categoryId: string,
+  offset: number,
+) {
+  const pageSize = 12;
+  const remaining = Math.max(0, totalCount - offset);
+  const count = Math.min(pageSize, remaining);
+
+  return {
+    items: Array.from({ length: count }, (_, index) => ({
+      id: `txn-${offset + index + 1}`,
+      category_id: categoryId,
+      amount: "1000.00",
+      currency: "COP",
+      description: `Transaction ${offset + index + 1}`,
+      occurred_at: `2026-03-${String(((offset + index) % 28) + 1).padStart(2, "0")}T12:00:00Z`,
+      created_at: "2026-03-01T12:00:00Z",
+      fx_rate: "1.00000000",
+      fx_rate_date: "2026-03-01",
+      fx_rate_source: "identity",
+      base_currency: "COP",
+      amount_in_base_currency: "1000.00",
+    })),
+    total_count: totalCount,
+    limit: pageSize,
+    offset,
+    summary: {
+      active_categories_count: 1,
+      skipped_transactions: 0,
+      income_totals: [],
+      expense_totals: [{ currency: "COP", amount: "1000.00" }],
+      balance_totals: [{ currency: "COP", amount: "-1000.00" }],
+    },
+  };
 }

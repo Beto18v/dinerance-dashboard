@@ -19,8 +19,6 @@ import {
 } from "@/components/ui/table";
 import { TransactionsMobileList } from "./transactions-mobile-list";
 
-const TRANSACTIONS_PAGE_SIZE = 12;
-
 type TransactionTableRow =
   | { type: "separator"; key: string; label: string }
   | {
@@ -33,6 +31,8 @@ type TransactionTableRow =
 interface TransactionsViewProps {
   categories: Category[];
   transactions: Transaction[];
+  totalCount: number;
+  pageSize: number;
   listLoading: boolean;
   currentPage: number;
   onPageChange: (page: number) => void;
@@ -47,6 +47,8 @@ interface TransactionsViewProps {
 export function TransactionsView({
   categories,
   transactions,
+  totalCount,
+  pageSize,
   listLoading,
   currentPage,
   onPageChange,
@@ -116,12 +118,12 @@ export function TransactionsView({
 
   const totalPages = Math.max(
     1,
-    Math.ceil(transactions.length / TRANSACTIONS_PAGE_SIZE),
+    Math.ceil(totalCount / pageSize),
   );
   const activePage = Math.min(currentPage, totalPages);
   const paginationSummary = getPaginationSummary({
-    itemCount: transactions.length,
-    pageSize: TRANSACTIONS_PAGE_SIZE,
+    itemCount: totalCount,
+    pageSize,
     currentPage: activePage,
     totalPages,
     pageOf: t.pageOf,
@@ -134,13 +136,8 @@ export function TransactionsView({
     }
   }, [activePage, currentPage, onPageChange]);
 
-  const paginatedTransactions = useMemo(() => {
-    const start = (activePage - 1) * TRANSACTIONS_PAGE_SIZE;
-    return transactions.slice(start, start + TRANSACTIONS_PAGE_SIZE);
-  }, [activePage, transactions]);
-
   const paginatedRows = useMemo(() => {
-    return paginatedTransactions.reduce<{
+    return transactions.reduce<{
       lastDayKey: string;
       rows: TransactionTableRow[];
     }>(
@@ -181,9 +178,9 @@ export function TransactionsView({
     ).rows;
   }, [
     currentDayKey,
-    paginatedTransactions,
     t.today,
     t.yesterday,
+    transactions,
     transactionDateFormatters.day,
     transactionDateFormatters.dayKey,
     yesterdayDayKey,
@@ -246,7 +243,7 @@ export function TransactionsView({
       <TransactionsMobileList
         categories={categories}
         rows={paginatedRows}
-        transactionsCount={transactions.length}
+        totalCount={totalCount}
         listLoading={listLoading}
         deletingId={deletingId}
         onEdit={onEdit}
@@ -279,7 +276,7 @@ export function TransactionsView({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {listLoading && transactions.length === 0 ? (
+            {listLoading && totalCount === 0 ? (
               <TableRow>
                 <TableCell
                   colSpan={desktopColumnCount}
@@ -288,7 +285,7 @@ export function TransactionsView({
                   {t.loading}
                 </TableCell>
               </TableRow>
-            ) : transactions.length === 0 ? (
+            ) : totalCount === 0 ? (
               <TableRow>
                 <TableCell
                   colSpan={desktopColumnCount}
@@ -399,11 +396,11 @@ export function TransactionsView({
         </Table>
       </div>
 
-      {transactions.length > 0 ? (
+      {totalCount > 0 ? (
         <PaginationFooter
           currentPage={activePage}
           totalPages={totalPages}
-          pageSizeLabel={t.pageSizeLabel(TRANSACTIONS_PAGE_SIZE)}
+          pageSizeLabel={t.pageSizeLabel(pageSize)}
           summaryLabel={paginationSummary}
           previousLabel={t.previousPage}
           nextLabel={t.nextPage}

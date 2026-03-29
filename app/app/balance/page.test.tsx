@@ -89,7 +89,7 @@ describe("BalancePage", () => {
       created_at: "2026-03-01T00:00:00Z",
       deleted_at: null,
     });
-    getTransactionsMock.mockResolvedValue([{ id: "txn-1" }]);
+    getTransactionsMock.mockResolvedValue(buildTransactionsPresenceResponse(1));
   });
 
   it("loads and renders the current balance overview", async () => {
@@ -210,7 +210,7 @@ describe("BalancePage", () => {
 
   it("shows onboarding when there are no categories or transactions", async () => {
     getCategoriesMock.mockResolvedValue([]);
-    getTransactionsMock.mockResolvedValue([]);
+    getTransactionsMock.mockResolvedValue(buildTransactionsPresenceResponse(0));
     getAnalyticsSummaryMock.mockResolvedValue({
       currency: "COP",
       current: {
@@ -250,7 +250,7 @@ describe("BalancePage", () => {
       deleted_at: null,
     });
     getCategoriesMock.mockResolvedValue([]);
-    getTransactionsMock.mockResolvedValue([]);
+    getTransactionsMock.mockResolvedValue(buildTransactionsPresenceResponse(0));
 
     const { container } = render(<BalancePage />);
     const scoped = within(container);
@@ -283,3 +283,19 @@ describe("BalancePage", () => {
     expect(scoped.queryByText("Falta tu moneda base")).not.toBeInTheDocument();
   });
 });
+
+function buildTransactionsPresenceResponse(totalCount: number) {
+  return {
+    items: totalCount > 0 ? [{ id: "txn-1" }] : [],
+    total_count: totalCount,
+    limit: 1,
+    offset: 0,
+    summary: {
+      active_categories_count: 0,
+      skipped_transactions: 0,
+      income_totals: [],
+      expense_totals: [],
+      balance_totals: [],
+    },
+  };
+}

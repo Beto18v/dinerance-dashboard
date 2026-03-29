@@ -101,6 +101,27 @@ export interface Transaction {
   created_at: string;
 }
 
+export interface TransactionSummaryTotal {
+  currency: string;
+  amount: string;
+}
+
+export interface TransactionsSummary {
+  active_categories_count: number;
+  skipped_transactions: number;
+  income_totals: TransactionSummaryTotal[];
+  expense_totals: TransactionSummaryTotal[];
+  balance_totals: TransactionSummaryTotal[];
+}
+
+export interface TransactionsPageResponse {
+  items: Transaction[];
+  total_count: number;
+  limit: number;
+  offset: number;
+  summary: TransactionsSummary;
+}
+
 export interface BalanceMonth {
   month_start: string;
   currency?: string | null;
@@ -194,6 +215,7 @@ export const api = {
 
   getTransactions: (params?: {
     category_id?: string;
+    parent_category_id?: string;
     start_date?: string;
     end_date?: string;
     limit?: number;
@@ -201,12 +223,15 @@ export const api = {
   }) => {
     const qs = new URLSearchParams();
     if (params?.category_id) qs.set("category_id", params.category_id);
+    if (params?.parent_category_id) {
+      qs.set("parent_category_id", params.parent_category_id);
+    }
     if (params?.start_date) qs.set("start_date", params.start_date);
     if (params?.end_date) qs.set("end_date", params.end_date);
     if (params?.limit != null) qs.set("limit", String(params.limit));
     if (params?.offset != null) qs.set("offset", String(params.offset));
     const query = qs.toString() ? `?${qs.toString()}` : "";
-    return request<Transaction[]>(`/transactions/${query}`);
+    return request<TransactionsPageResponse>(`/transactions/${query}`);
   },
 
   getMonthlyBalance: (params?: { year?: number; month?: number }) => {
