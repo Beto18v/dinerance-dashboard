@@ -39,7 +39,7 @@ export function FinancialProfileCard() {
 
     try {
       const transactions = await api.getTransactions({ limit: 1 });
-      setHasTransactions(transactions.total_count > 0);
+      setHasTransactions((transactions.total_count ?? 0) > 0);
     } catch (error) {
       if (error instanceof ApiError) {
         toast.error(error.message);
@@ -60,7 +60,7 @@ export function FinancialProfileCard() {
       try {
         const transactions = await api.getTransactions({ limit: 1 });
         if (!cancelled) {
-          setHasTransactions(transactions.total_count > 0);
+          setHasTransactions((transactions.total_count ?? 0) > 0);
         }
       } catch (error) {
         if (cancelled) return;
@@ -112,5 +112,5 @@ function readTransactionsPresenceFromCache() {
     },
   );
 
-  return cachedTransactions ? cachedTransactions.total_count > 0 : null;
+  return cachedTransactions ? (cachedTransactions.total_count ?? 0) > 0 : null;
 }

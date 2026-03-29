@@ -151,14 +151,14 @@ export default function BalancePage() {
   const loadTransactionsPresence = useCallback(async () => {
     const freshTransactions = getFreshTransactionsCache();
     if (freshTransactions) {
-      setHasTransactions(freshTransactions.total_count > 0);
+      setHasTransactions((freshTransactions.total_count ?? 0) > 0);
       setTransactionsReady(true);
       return;
     }
 
     try {
       const data = await api.getTransactions({ limit: 1 });
-      setHasTransactions(data.total_count > 0);
+      setHasTransactions((data.total_count ?? 0) > 0);
     } catch (err) {
       if (err instanceof ApiError) toast.error(err.message);
       else toast.error(site.common.unexpectedError);

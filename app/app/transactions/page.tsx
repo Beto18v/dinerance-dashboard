@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -81,9 +81,15 @@ type TransactionFilters = {
   start_date?: string;
   end_date?: string;
 };
+type LoadTransactionsOptions = {
+  includeMetadata?: boolean;
+  silent?: boolean;
+};
 
 const TRANSACTIONS_PAGE_SIZE = 12;
-const EMPTY_TRANSACTIONS_SUMMARY: TransactionsPageResponse["summary"] = {
+const EMPTY_TRANSACTIONS_SUMMARY: NonNullable<
+  TransactionsPageResponse["summary"]
+> = {
   active_categories_count: 0,
   skipped_transactions: 0,
   income_totals: [],
@@ -108,6 +114,10 @@ export default function TransactionsPage() {
   );
   const [transactionsPage, setTransactionsPage] =
     useState<TransactionsPageResponse | null>(() => cachedTransactionsPage);
+  const transactionsPageRef = useRef<TransactionsPageResponse | null>(
+    cachedTransactionsPage,
+  );
+  const previousFilterKeyRef = useRef<string | null>(null);
   const [hasAnyTransactions, setHasAnyTransactions] = useState(
     () => (cachedTransactionsPage?.total_count ?? 0) > 0,
   );
@@ -191,13 +201,13 @@ export default function TransactionsPage() {
   const loadTransactionsPresence = useCallback(async () => {
     const freshTransactions = getFreshTransactionCache();
     if (freshTransactions) {
-      setHasAnyTransactions(freshTransactions.total_count > 0);
+      setHasAnyTransactions((freshTransactions.total_count ?? 0) > 0);
       return;
     }
 
     try {
       const data = await api.getTransactions({ limit: 1 });
-      setHasAnyTransactions(data.total_count > 0);
+      setHasAnyTransactions((data.total_count ?? 0) > 0);
     } catch (error) {
       if (error instanceof ApiError) {
         toast.error(error.message);
@@ -211,35 +221,68 @@ export default function TransactionsPage() {
     async (
       params: TransactionFilters,
       page: number,
-      silent = false,
+      options: LoadTransactionsOptions = {},
     ) => {
+      const { silent = false } = options;
       if (!silent) setListLoading(true);
 
       try {
-        let resolvedPage = page;
-        let data = await fetchTransactionsPage(params, page);
-        const totalPages = Math.max(
-          1,
-          Math.ceil(data.total_count / TRANSACTIONS_PAGE_SIZE),
-        );
+        const previousTransactionsPage = transactionsPageRef.current;
+        let includeMetadata = options.includeMetadata ?? true;
 
-        if (data.total_count > 0 && page > totalPages) {
-          resolvedPage = totalPages;
-          setCurrentPage(totalPages);
-          data = await fetchTransactionsPage(params, totalPages);
-        } else if (data.total_count === 0 && page !== 1) {
-          resolvedPage = 1;
-          setCurrentPage(1);
+        if (
+          !previousTransactionsPage ||
+          previousTransactionsPage.total_count == null ||
+          previousTransactionsPage.summary == null
+        ) {
+          includeMetadata = true;
         }
 
-        setTransactionsPage(data);
+        let resolvedPage = page;
+        let data = await fetchTransactionsPage(params, page, includeMetadata);
+
+        if (!includeMetadata && page > 1 && data.items.length === 0) {
+          includeMetadata = true;
+          data = await fetchTransactionsPage(params, page, includeMetadata);
+        }
+
+        if (data.total_count != null) {
+          const totalPages = Math.max(
+            1,
+            Math.ceil(data.total_count / TRANSACTIONS_PAGE_SIZE),
+          );
+
+          if (data.total_count > 0 && page > totalPages) {
+            resolvedPage = totalPages;
+            setCurrentPage(totalPages);
+            includeMetadata = true;
+            data = await fetchTransactionsPage(params, totalPages, includeMetadata);
+          } else if (data.total_count === 0 && page !== 1) {
+            resolvedPage = 1;
+            setCurrentPage(1);
+          }
+        }
+
+        const nextTransactionsPage = mergeTransactionsPage(
+          previousTransactionsPage,
+          data,
+        );
+        transactionsPageRef.current = nextTransactionsPage;
+        setTransactionsPage(nextTransactionsPage);
 
         const isDefaultQuery =
           !isTransactionsFilterActive(params) && resolvedPage === 1;
-        if (isDefaultQuery) {
-          setCache(cacheKeys.transactions, data);
-          setHasAnyTransactions(data.total_count > 0);
-        } else if (data.total_count > 0) {
+        if (
+          isDefaultQuery &&
+          nextTransactionsPage.total_count != null &&
+          nextTransactionsPage.summary != null
+        ) {
+          setCache(cacheKeys.transactions, nextTransactionsPage);
+          setHasAnyTransactions(nextTransactionsPage.total_count > 0);
+        } else if (
+          (nextTransactionsPage.total_count ?? 0) > 0 ||
+          nextTransactionsPage.items.length > 0
+        ) {
           setHasAnyTransactions(true);
         }
       } catch (error) {
@@ -269,6 +312,9 @@ export default function TransactionsPage() {
   }, [loadCategories]);
 
   useEffect(() => {
+    const filterKey = getTransactionsFilterKey(filterParams);
+    const filtersChanged = previousFilterKeyRef.current !== filterKey;
+    previousFilterKeyRef.current = filterKey;
     const hasFreshTransactionCache = Boolean(getFreshTransactionCache());
     const isDefaultQuery =
       currentPage === 1 && !isTransactionsFilterActive(filterParams);
@@ -276,13 +322,12 @@ export default function TransactionsPage() {
     void loadTransactions(
       filterParams,
       currentPage,
-      hasFreshTransactionCache && isDefaultQuery,
+      {
+        includeMetadata: filtersChanged,
+        silent: hasFreshTransactionCache && isDefaultQuery,
+      },
     );
   }, [currentPage, filterParams, loadTransactions]);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [filterCategoryId, filterEndDate, filterParentCategoryId, filterStartDate]);
 
   useEffect(() => {
     return subscribeToCacheKeys(
@@ -292,7 +337,10 @@ export default function TransactionsPage() {
           void loadCategories(true);
         }
         if (changedKeys.includes(cacheKeys.transactions)) {
-          void loadTransactions(filterParams, currentPage, true);
+          void loadTransactions(filterParams, currentPage, {
+            includeMetadata: true,
+            silent: true,
+          });
           void loadTransactionsPresence();
         }
       },
@@ -422,24 +470,34 @@ export default function TransactionsPage() {
         filterEndDate={filterEndDate}
         activeQuickRange={activeQuickRange}
         displayMode={displayMode}
-        onFilterCategoryChange={setFilterCategoryId}
-        onFilterParentCategoryChange={setFilterParentCategoryId}
+        onFilterCategoryChange={(value) => {
+          setCurrentPage(1);
+          setFilterCategoryId(value);
+        }}
+        onFilterParentCategoryChange={(value) => {
+          setCurrentPage(1);
+          setFilterParentCategoryId(value);
+        }}
         onFilterStartDateChange={(value) => {
+          setCurrentPage(1);
           setActiveQuickRange(null);
           setFilterStartDate(value);
         }}
         onFilterEndDateChange={(value) => {
+          setCurrentPage(1);
           setActiveQuickRange(null);
           setFilterEndDate(value);
         }}
         onQuickRangeChange={(range) => {
           const quickRange = getQuickRangeDates(range, timeZone);
+          setCurrentPage(1);
           setActiveQuickRange(range);
           setFilterStartDate(quickRange.startDate);
           setFilterEndDate(quickRange.endDate);
         }}
         onDisplayModeChange={setDisplayMode}
         onClearFilters={() => {
+          setCurrentPage(1);
           setActiveQuickRange(null);
           setFilterParentCategoryId("");
           setFilterCategoryId("");
@@ -639,7 +697,7 @@ export default function TransactionsPage() {
 }
 
 function formatTotals(
-  totals: TransactionsPageResponse["summary"]["income_totals"],
+  totals: NonNullable<TransactionsPageResponse["summary"]>["income_totals"],
   locale: string,
   emptyValue: string,
 ) {
@@ -687,6 +745,7 @@ function getFreshTransactionCache() {
 async function fetchTransactionsPage(
   params: TransactionFilters,
   page: number,
+  includeMetadata = true,
 ) {
   return api.getTransactions({
     category_id: params.category_id,
@@ -695,6 +754,8 @@ async function fetchTransactionsPage(
     end_date: params.end_date,
     limit: TRANSACTIONS_PAGE_SIZE,
     offset: (page - 1) * TRANSACTIONS_PAGE_SIZE,
+    include_total_count: includeMetadata ? undefined : false,
+    include_summary: includeMetadata ? undefined : false,
   });
 }
 
@@ -705,4 +766,26 @@ function isTransactionsFilterActive(params: TransactionFilters) {
       params.start_date ||
       params.end_date,
   );
+}
+
+function getTransactionsFilterKey(params: TransactionFilters) {
+  return JSON.stringify({
+    category_id: params.category_id ?? null,
+    parent_category_id: params.parent_category_id ?? null,
+    start_date: params.start_date ?? null,
+    end_date: params.end_date ?? null,
+  });
+}
+
+function mergeTransactionsPage(
+  previousPage: TransactionsPageResponse | null,
+  nextPage: TransactionsPageResponse,
+): TransactionsPageResponse {
+  return {
+    items: nextPage.items,
+    total_count: nextPage.total_count ?? previousPage?.total_count ?? null,
+    limit: nextPage.limit,
+    offset: nextPage.offset,
+    summary: nextPage.summary ?? previousPage?.summary ?? null,
+  };
 }

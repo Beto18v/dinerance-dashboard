@@ -149,12 +149,24 @@ describe("TransactionsPage", () => {
       category_id?: string;
       limit?: number;
       offset?: number;
+      include_total_count?: boolean;
+      include_summary?: boolean;
     }) => {
       if (params?.category_id === "cat-filtered") {
-        return buildTransactionsPage(24, "cat-filtered", params?.offset ?? 0);
+        return buildTransactionsPage(
+          24,
+          "cat-filtered",
+          params?.offset ?? 0,
+          params?.include_total_count !== false,
+        );
       }
 
-      return buildTransactionsPage(125, "cat-1", params?.offset ?? 0);
+      return buildTransactionsPage(
+        125,
+        "cat-1",
+        params?.offset ?? 0,
+        params?.include_total_count !== false,
+      );
     });
 
     render(<TransactionsPage />);
@@ -181,6 +193,14 @@ describe("TransactionsPage", () => {
     expect(getTransactionsMock).toHaveBeenCalledWith(
       expect.objectContaining({ limit: 12, offset: 12 }),
     );
+    expect(getTransactionsMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        limit: 12,
+        offset: 12,
+        include_total_count: false,
+        include_summary: false,
+      }),
+    );
     expect(
       getTransactionsMock.mock.calls.some(
         ([params]) => params?.offset === 100 || params?.offset === 24,
@@ -193,12 +213,24 @@ describe("TransactionsPage", () => {
       category_id?: string;
       limit?: number;
       offset?: number;
+      include_total_count?: boolean;
+      include_summary?: boolean;
     }) => {
       if (params?.category_id === "cat-filtered") {
-        return buildTransactionsPage(18, "cat-filtered", params?.offset ?? 0);
+        return buildTransactionsPage(
+          18,
+          "cat-filtered",
+          params?.offset ?? 0,
+          params?.include_total_count !== false,
+        );
       }
 
-      return buildTransactionsPage(125, "cat-1", params?.offset ?? 0);
+      return buildTransactionsPage(
+        125,
+        "cat-1",
+        params?.offset ?? 0,
+        params?.include_total_count !== false,
+      );
     });
 
     render(<TransactionsPage />);
@@ -234,6 +266,13 @@ describe("TransactionsPage", () => {
         offset: 0,
       }),
     );
+    expect(getTransactionsMock).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        category_id: "cat-filtered",
+        include_total_count: false,
+        include_summary: false,
+      }),
+    );
   });
 });
 
@@ -241,6 +280,7 @@ function buildTransactionsPage(
   totalCount: number,
   categoryId: string,
   offset: number,
+  includeMetadata = true,
 ) {
   const pageSize = 12;
   const remaining = Math.max(0, totalCount - offset);
@@ -261,15 +301,17 @@ function buildTransactionsPage(
       base_currency: "COP",
       amount_in_base_currency: "1000.00",
     })),
-    total_count: totalCount,
+    total_count: includeMetadata ? totalCount : null,
     limit: pageSize,
     offset,
-    summary: {
-      active_categories_count: 1,
-      skipped_transactions: 0,
-      income_totals: [],
-      expense_totals: [{ currency: "COP", amount: "1000.00" }],
-      balance_totals: [{ currency: "COP", amount: "-1000.00" }],
-    },
+    summary: includeMetadata
+      ? {
+          active_categories_count: 1,
+          skipped_transactions: 0,
+          income_totals: [],
+          expense_totals: [{ currency: "COP", amount: "1000.00" }],
+          balance_totals: [{ currency: "COP", amount: "-1000.00" }],
+        }
+      : null,
   };
 }

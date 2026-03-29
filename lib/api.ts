@@ -116,10 +116,10 @@ export interface TransactionsSummary {
 
 export interface TransactionsPageResponse {
   items: Transaction[];
-  total_count: number;
+  total_count: number | null;
   limit: number;
   offset: number;
-  summary: TransactionsSummary;
+  summary: TransactionsSummary | null;
 }
 
 export interface BalanceMonth {
@@ -220,6 +220,8 @@ export const api = {
     end_date?: string;
     limit?: number;
     offset?: number;
+    include_total_count?: boolean;
+    include_summary?: boolean;
   }) => {
     const qs = new URLSearchParams();
     if (params?.category_id) qs.set("category_id", params.category_id);
@@ -230,6 +232,12 @@ export const api = {
     if (params?.end_date) qs.set("end_date", params.end_date);
     if (params?.limit != null) qs.set("limit", String(params.limit));
     if (params?.offset != null) qs.set("offset", String(params.offset));
+    if (params?.include_total_count != null) {
+      qs.set("include_total_count", String(params.include_total_count));
+    }
+    if (params?.include_summary != null) {
+      qs.set("include_summary", String(params.include_summary));
+    }
     const query = qs.toString() ? `?${qs.toString()}` : "";
     return request<TransactionsPageResponse>(`/transactions/${query}`);
   },
