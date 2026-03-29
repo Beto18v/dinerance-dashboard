@@ -99,6 +99,12 @@ lib/
 - Resolucion del perfil autenticado reutilizada entre layout y auth para evitar `GET /users/me` duplicados y redirects innecesarios.
 - i18n es/en y preferencias de tema.
 
+## Alcance actual
+
+- El dashboard actual opera sobre una sola cuenta personal por usuario autenticado.
+- No existen todavia `workspaces`, cuentas compartidas, invitaciones ni notificaciones in-app.
+- Si esa capa se implementa mas adelante, requerira cambios explicitos de contexto activo en API, cache y navegacion; no debe asumirse como parte del estado actual del repo.
+
 ## Reglas de producto vigentes
 
 - Dinerance opera como producto monomoneda.

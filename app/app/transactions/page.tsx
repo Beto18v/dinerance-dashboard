@@ -69,6 +69,7 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 type QuickRange = "today" | "last7" | "thisMonth";
 type TransactionsDisplayMode = "desktop" | "mobile";
+const TRANSACTIONS_FETCH_BATCH_SIZE = 100;
 
 export default function TransactionsPage() {
   const { site } = useSitePreferences();
@@ -207,7 +208,7 @@ export default function TransactionsPage() {
       if (!silent) setListLoading(true);
 
       try {
-        const data = await api.getTransactions({
+        const data = await fetchAllTransactions({
           category_id: params?.category_id,
           start_date: params?.start_date,
           end_date: params?.end_date,
@@ -761,4 +762,31 @@ function getFreshTransactionCache() {
   return getCache<Transaction[]>(cacheKeys.transactions, {
     maxAgeMs: cacheTtls.transactions,
   });
+}
+
+async function fetchAllTransactions(params?: {
+  category_id?: string;
+  start_date?: string;
+  end_date?: string;
+}) {
+  const allTransactions: Transaction[] = [];
+  let offset = 0;
+
+  while (true) {
+    const batch = await api.getTransactions({
+      category_id: params?.category_id,
+      start_date: params?.start_date,
+      end_date: params?.end_date,
+      limit: TRANSACTIONS_FETCH_BATCH_SIZE,
+      offset,
+    });
+
+    allTransactions.push(...batch);
+
+    if (batch.length < TRANSACTIONS_FETCH_BATCH_SIZE) {
+      return allTransactions;
+    }
+
+    offset += TRANSACTIONS_FETCH_BATCH_SIZE;
+  }
 }
