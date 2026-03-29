@@ -193,6 +193,11 @@ const siteTexts = {
           "Con tu perfil y categorias listos, agrega una transaccion para empezar a ver resultados.",
         historyTitle: "Balance mensual",
         historyDescription: "Todos los meses con movimientos registrados.",
+        recentTransactionsTitle: "Movimientos recientes",
+        recentTransactionsDescription:
+          "Ultimos movimientos del mes seleccionado.",
+        recentTransactionsEmpty:
+          "No hay movimientos en el mes seleccionado para mostrar aqui.",
         historyPending:
           "Completa tu perfil financiero para ver el historico mensual.",
         noHistory: "Todavia no hay movimientos para calcular el balance.",
@@ -528,6 +533,11 @@ const siteTexts = {
           "With your profile and categories ready, add a transaction to start seeing results.",
         historyTitle: "Monthly balance",
         historyDescription: "Every month with recorded activity.",
+        recentTransactionsTitle: "Recent activity",
+        recentTransactionsDescription:
+          "Latest transactions from the selected month.",
+        recentTransactionsEmpty:
+          "There is no activity in the selected month to show here.",
         historyPending:
           "Complete your financial profile to start seeing monthly history.",
         noHistory: "There is no activity yet to calculate the balance.",

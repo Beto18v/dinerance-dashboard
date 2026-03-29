@@ -116,6 +116,23 @@ export interface BalanceOverview {
   series: BalanceMonth[];
 }
 
+export interface AnalyticsSummaryTransaction {
+  id: string;
+  category_id: string;
+  category_name: string;
+  direction: "income" | "expense" | string;
+  amount: string;
+  currency: string;
+  base_currency?: string | null;
+  amount_in_base_currency?: string | null;
+  description?: string | null;
+  occurred_at: string;
+}
+
+export interface AnalyticsSummary extends BalanceOverview {
+  recent_transactions: AnalyticsSummaryTransaction[];
+}
+
 // ── Endpoints ────────────────────────────────────────────────────────────────
 
 export const api = {
@@ -198,6 +215,14 @@ export const api = {
     if (params?.month != null) qs.set("month", String(params.month));
     const query = qs.toString() ? `?${qs.toString()}` : "";
     return request<BalanceOverview>(`/balance/monthly${query}`);
+  },
+
+  getAnalyticsSummary: (params?: { year?: number; month?: number }) => {
+    const qs = new URLSearchParams();
+    if (params?.year != null) qs.set("year", String(params.year));
+    if (params?.month != null) qs.set("month", String(params.month));
+    const query = qs.toString() ? `?${qs.toString()}` : "";
+    return request<AnalyticsSummary>(`/analytics/summary${query}`);
   },
 
   createTransaction: (body: {

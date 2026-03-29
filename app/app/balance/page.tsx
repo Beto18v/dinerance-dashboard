@@ -6,7 +6,8 @@ import { toast } from "sonner";
 import {
   api,
   ApiError,
-  type BalanceOverview,
+  type AnalyticsSummary,
+  type AnalyticsSummaryTransaction,
   type Category,
   type UserProfile,
 } from "@/lib/api";
@@ -56,7 +57,7 @@ export default function BalancePage() {
   const t = site.pages.balance;
   const cachedCategories = getFreshCategoriesCache();
   const cachedTransactions = getFreshTransactionsCache();
-  const [overview, setOverview] = useState<BalanceOverview | null>(null);
+  const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
   const [categories, setCategories] = useState<Category[]>(
     () => cachedCategories ?? [],
   );
@@ -98,7 +99,7 @@ export default function BalancePage() {
       );
 
       if (!resolvedProfile?.base_currency) {
-        setOverview(null);
+        setSummary(null);
         setSelectedMonth((currentValue) => currentValue || fallbackMonth);
         setLoading(false);
         return;
@@ -106,12 +107,12 @@ export default function BalancePage() {
 
       setLoading(true);
       try {
-        const data = await api.getMonthlyBalance(params);
-        setOverview(data);
+        const data = await api.getAnalyticsSummary(params);
+        setSummary(data);
         setSelectedMonth(data.current.month_start.slice(0, 7));
       } catch (err) {
         if (err instanceof ApiError && err.status === 409) {
-          setOverview(null);
+          setSummary(null);
           setSelectedMonth((currentValue) => currentValue || fallbackMonth);
         } else if (err instanceof ApiError) {
           toast.error(err.message);
@@ -198,12 +199,14 @@ export default function BalancePage() {
     );
   }, [loadCategories, loadTransactionsPresence, refreshSelectedMonth]);
 
-  const current = overview?.current;
-  const history = overview?.series ?? [];
+  const current = summary?.current;
+  const history = summary?.series ?? [];
+  const recentTransactions = summary?.recent_transactions ?? [];
   const monthHeadingDate =
     current?.month_start ??
     `${selectedMonth || getCurrentMonthValue(profile?.timezone ?? "UTC")}-01`;
   const balanceCurrency = current?.currency ?? profile?.base_currency ?? "COP";
+  const timeZone = profile?.timezone ?? "UTC";
   const totalSkippedTransactions = history.reduce(
     (total, item) => total + (item.skipped_transactions ?? 0),
     0,
@@ -316,6 +319,33 @@ export default function BalancePage() {
 
       <Card>
         <CardHeader>
+          <CardTitle>{t.recentTransactionsTitle}</CardTitle>
+          <CardDescription>{t.recentTransactionsDescription}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loading && recentTransactions.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{site.common.loading}</p>
+          ) : recentTransactions.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              {t.recentTransactionsEmpty}
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {recentTransactions.map((transaction) => (
+                <RecentTransactionItem
+                  key={transaction.id}
+                  transaction={transaction}
+                  locale={displayLocale(site.metadata.htmlLang)}
+                  timeZone={timeZone}
+                />
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>{t.historyTitle}</CardTitle>
           <CardDescription>{t.historyDescription}</CardDescription>
         </CardHeader>
@@ -418,6 +448,53 @@ function BalanceStatCard({
     <div className={`rounded-xl border p-5 shadow-sm ${toneClasses[tone]}`}>
       <p className="text-sm font-medium">{label}</p>
       <p className="mt-3 text-3xl font-bold tracking-tight">{value}</p>
+    </div>
+  );
+}
+
+function RecentTransactionItem({
+  transaction,
+  locale,
+  timeZone,
+}: {
+  transaction: AnalyticsSummaryTransaction;
+  locale: string;
+  timeZone: string;
+}) {
+  const occurredAtFormatter = new Intl.DateTimeFormat(locale, {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone,
+  });
+  const amountColorClass =
+    transaction.direction === "income"
+      ? "text-emerald-700"
+      : transaction.direction === "expense"
+        ? "text-rose-700"
+        : "text-foreground";
+
+  return (
+    <div className="flex items-start justify-between gap-4 rounded-xl border bg-muted/20 px-4 py-3 shadow-sm">
+      <div className="min-w-0">
+        <p className="font-medium text-foreground">{transaction.category_name}</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {occurredAtFormatter.format(new Date(transaction.occurred_at))}
+        </p>
+        {transaction.description?.trim() ? (
+          <p className="mt-2 text-sm text-muted-foreground">
+            {transaction.description}
+          </p>
+        ) : null}
+      </div>
+
+      <div className="shrink-0 text-right">
+        <p className={`font-semibold tabular-nums ${amountColorClass}`}>
+          {formatMoney(transaction.amount, transaction.currency, locale)}
+        </p>
+        <p className="mt-1 text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">
+          {transaction.currency}
+        </p>
+      </div>
     </div>
   );
 }

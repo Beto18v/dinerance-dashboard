@@ -12,7 +12,7 @@ import BalancePage from "./page";
 import { getSiteText } from "@/lib/site";
 
 const {
-  getMonthlyBalanceMock,
+  getAnalyticsSummaryMock,
   getCategoriesMock,
   getProfileMock,
   getTransactionsMock,
@@ -20,7 +20,7 @@ const {
   setProfileMock,
   toastErrorMock,
 } = vi.hoisted(() => ({
-  getMonthlyBalanceMock: vi.fn(),
+  getAnalyticsSummaryMock: vi.fn(),
   getCategoriesMock: vi.fn(),
   getProfileMock: vi.fn(),
   getTransactionsMock: vi.fn(),
@@ -39,7 +39,7 @@ vi.mock("@/lib/api", () => ({
     }
   },
   api: {
-    getMonthlyBalance: getMonthlyBalanceMock,
+    getAnalyticsSummary: getAnalyticsSummaryMock,
     getCategories: getCategoriesMock,
     getProfile: getProfileMock,
     getTransactions: getTransactionsMock,
@@ -72,7 +72,7 @@ describe("BalancePage", () => {
   });
 
   beforeEach(() => {
-    getMonthlyBalanceMock.mockReset();
+    getAnalyticsSummaryMock.mockReset();
     getCategoriesMock.mockReset();
     getProfileMock.mockReset();
     getTransactionsMock.mockReset();
@@ -101,7 +101,7 @@ describe("BalancePage", () => {
         parent_id: null,
       },
     ]);
-    getMonthlyBalanceMock.mockResolvedValue({
+    getAnalyticsSummaryMock.mockResolvedValue({
       currency: "COP",
       current: {
         month_start: "2026-03-01",
@@ -121,14 +121,28 @@ describe("BalancePage", () => {
           skipped_transactions: 0,
         },
       ],
+      recent_transactions: [
+        {
+          id: "txn-1",
+          category_id: "cat-1",
+          category_name: "Salario",
+          direction: "income",
+          amount: "2500000.00",
+          currency: "COP",
+          base_currency: "COP",
+          amount_in_base_currency: "2500000.00",
+          description: "Nomina",
+          occurred_at: "2026-03-10T12:00:00Z",
+        },
+      ],
     });
 
     render(<BalancePage />);
 
-    expect(screen.getByText("Cargando...")).toBeInTheDocument();
+    expect(screen.getAllByText("Cargando...").length).toBeGreaterThan(0);
 
     await waitFor(() => {
-      expect(getMonthlyBalanceMock).toHaveBeenCalledWith(undefined);
+      expect(getAnalyticsSummaryMock).toHaveBeenCalledWith(undefined);
     });
 
     expect(
@@ -137,6 +151,9 @@ describe("BalancePage", () => {
     expect(screen.getAllByText(/\$\s?2\.500\.000/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/\$\s?1\.200\.000/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/\$\s?1\.300\.000/).length).toBeGreaterThan(0);
+    expect(screen.getByText("Movimientos recientes")).toBeInTheDocument();
+    expect(screen.getByText("Salario")).toBeInTheDocument();
+    expect(screen.getByText("Nomina")).toBeInTheDocument();
   });
 
   it("refetches balance when the selected month changes", async () => {
@@ -148,7 +165,7 @@ describe("BalancePage", () => {
         parent_id: null,
       },
     ]);
-    getMonthlyBalanceMock
+    getAnalyticsSummaryMock
       .mockResolvedValueOnce({
         currency: "COP",
         current: {
@@ -160,6 +177,7 @@ describe("BalancePage", () => {
           skipped_transactions: 0,
         },
         series: [],
+        recent_transactions: [],
       })
       .mockResolvedValueOnce({
         currency: "COP",
@@ -172,6 +190,7 @@ describe("BalancePage", () => {
           skipped_transactions: 0,
         },
         series: [],
+        recent_transactions: [],
       });
 
     render(<BalancePage />);
@@ -180,7 +199,7 @@ describe("BalancePage", () => {
     fireEvent.change(monthInput, { target: { value: "2026-02" } });
 
     await waitFor(() => {
-      expect(getMonthlyBalanceMock).toHaveBeenNthCalledWith(2, {
+      expect(getAnalyticsSummaryMock).toHaveBeenNthCalledWith(2, {
         year: 2026,
         month: 2,
       });
@@ -192,7 +211,7 @@ describe("BalancePage", () => {
   it("shows onboarding when there are no categories or transactions", async () => {
     getCategoriesMock.mockResolvedValue([]);
     getTransactionsMock.mockResolvedValue([]);
-    getMonthlyBalanceMock.mockResolvedValue({
+    getAnalyticsSummaryMock.mockResolvedValue({
       currency: "COP",
       current: {
         month_start: "2026-03-01",
@@ -203,6 +222,7 @@ describe("BalancePage", () => {
         skipped_transactions: 0,
       },
       series: [],
+      recent_transactions: [],
     });
 
     const { container } = render(<BalancePage />);
