@@ -103,7 +103,8 @@ const siteTexts = {
       mobileMenuTitle: "Menu",
       mobileMenuDescription: "Navega por tu panel y administra tu sesion.",
       nav: {
-        balance: "Balance",
+        balance: "Resumen",
+        analysis: "Analisis",
         transactions: "Transacciones",
         categories: "Categorias",
         profile: "Perfil",
@@ -156,7 +157,7 @@ const siteTexts = {
     pages: {
       main: mainPageContent.es,
       balance: {
-        title: "Balance",
+        title: "Resumen",
         subtitle: "Resumen financiero del mes seleccionado y su historico.",
         heading: (monthLabel: string) => `Resumen financiero - ${monthLabel}`,
         monthLabel: "Mes",
@@ -164,7 +165,10 @@ const siteTexts = {
         allAccountsLabel: "Todas las cuentas",
         latestMonthHint:
           "Si no eliges un mes, se muestra el ultimo mes con movimientos.",
-        currentCardDescription: (currency: string, accountName?: string | null) =>
+        currentCardDescription: (
+          currency: string,
+          accountName?: string | null,
+        ) =>
           accountName
             ? `Vista de ingresos, gastos y balance en ${currency} para ${accountName}.`
             : `Vista consolidada de ingresos, gastos y balance en ${currency}.`,
@@ -218,6 +222,37 @@ const siteTexts = {
           "Ultimos movimientos del mes seleccionado.",
         recentTransactionsEmpty:
           "No hay movimientos en el mes seleccionado para mostrar aqui.",
+        recurringCandidatesTitle: "Ingresos y gastos frecuentes",
+        recurringCandidatesDescription:
+          "Movimientos que parecen repetirse en tu historial.",
+        recurringCandidatesEmpty:
+          "Todavia no encontramos ingresos o gastos frecuentes con suficiente evidencia.",
+        recurringCandidatesViewAll: "Ver analisis",
+        recurringCandidatesIncome: "Ingreso frecuente",
+        recurringCandidatesExpense: "Gasto frecuente",
+        recurringCandidatesWeekly: "Cada semana",
+        recurringCandidatesBiweekly: "Cada 15 dias",
+        recurringCandidatesMonthly: "Cada mes",
+        recurringCandidatesOccurrences: (count: number) =>
+          count === 1 ? "1 repeticion" : `${count} repeticiones`,
+        recurringCandidatesCategoryHint: (categoryName: string) =>
+          `En ${categoryName}`,
+        recurringCandidatesMatchDescription: (count: number) =>
+          `Vimos ${count} movimientos parecidos con la misma descripcion y categoria.`,
+        recurringCandidatesMatchCategoryAmount: (count: number) =>
+          `Vimos ${count} movimientos sin descripcion, pero con la misma categoria y el mismo monto.`,
+        recurringCandidatesIntervals: (intervals: number[]) =>
+          `Se repitieron con intervalos de ${intervals.join(", ")} dias.`,
+        recurringCandidatesAmountExact: (amount: string) =>
+          `El monto fue exactamente ${amount} en cada repeticion.`,
+        recurringCandidatesAmountStable: (
+          minAmount: string,
+          maxAmount: string,
+        ) => `El monto se movio poco: entre ${minAmount} y ${maxAmount}.`,
+        recurringCandidatesLastSeen: (dateLabel: string) =>
+          `Ultima vez visto: ${dateLabel}.`,
+        recurringCandidatesCompactLine: (dateLabel: string) =>
+          `Ultima vez visto: ${dateLabel}.`,
         historyPending:
           "Completa tu perfil financiero para ver el historico mensual.",
         noHistory: "Todavia no hay movimientos para calcular el balance.",
@@ -226,6 +261,17 @@ const siteTexts = {
           `${count} transacciones quedaron fuera del balance del mes porque no se pudieron convertir de forma segura a ${currency}.`,
         historySkippedNotice: (count: number, currency: string) =>
           `Hay ${count} transacciones legacy excluidas del historico porque no existe una conversion confiable hacia ${currency}.`,
+      },
+      analysis: {
+        title: "Analisis",
+        subtitle:
+          "Explora patrones, categorias y senales utiles del mes seleccionado.",
+        heading: (monthLabel: string) => `Analisis del periodo - ${monthLabel}`,
+        monthLabel: "Mes",
+        accountLabel: "Cuenta",
+        allAccountsLabel: "Todas las cuentas",
+        latestMonthHint:
+          "Usa el mismo mes y cuenta para comparar distribucion y movimientos frecuentes.",
       },
       categories: {
         title: "Categorias",
@@ -499,7 +545,8 @@ const siteTexts = {
       mobileMenuTitle: "Menu",
       mobileMenuDescription: "Navigate your dashboard and manage your session.",
       nav: {
-        balance: "Balance",
+        balance: "Overview",
+        analysis: "Analysis",
         transactions: "Transactions",
         categories: "Categories",
         profile: "Profile",
@@ -552,7 +599,7 @@ const siteTexts = {
     pages: {
       main: mainPageContent.en,
       balance: {
-        title: "Balance",
+        title: "Overview",
         subtitle: "Financial summary for the selected month and full history.",
         heading: (monthLabel: string) => `Financial summary - ${monthLabel}`,
         monthLabel: "Month",
@@ -560,7 +607,10 @@ const siteTexts = {
         allAccountsLabel: "All accounts",
         latestMonthHint:
           "Without a filter, the latest month with activity is shown.",
-        currentCardDescription: (currency: string, accountName?: string | null) =>
+        currentCardDescription: (
+          currency: string,
+          accountName?: string | null,
+        ) =>
           accountName
             ? `View of income, expenses, and balance in ${currency} for ${accountName}.`
             : `Consolidated view of income, expenses, and balance in ${currency}.`,
@@ -616,6 +666,37 @@ const siteTexts = {
           "Latest transactions from the selected month.",
         recentTransactionsEmpty:
           "There is no activity in the selected month to show here.",
+        recurringCandidatesTitle: "Frequent income and expenses",
+        recurringCandidatesDescription:
+          "Activity that seems to repeat in your history. These are helpful hints, not confirmed rules.",
+        recurringCandidatesEmpty:
+          "We have not found frequent income or expenses with enough evidence yet.",
+        recurringCandidatesViewAll: "Open analysis",
+        recurringCandidatesIncome: "Frequent income",
+        recurringCandidatesExpense: "Frequent expense",
+        recurringCandidatesWeekly: "Every week",
+        recurringCandidatesBiweekly: "Every 15 days",
+        recurringCandidatesMonthly: "Every month",
+        recurringCandidatesOccurrences: (count: number) =>
+          count === 1 ? "1 repeat" : `${count} repeats`,
+        recurringCandidatesCategoryHint: (categoryName: string) =>
+          `In ${categoryName}`,
+        recurringCandidatesMatchDescription: (count: number) =>
+          `We found ${count} similar transactions with the same description and category.`,
+        recurringCandidatesMatchCategoryAmount: (count: number) =>
+          `We found ${count} transactions without description, but with the same category and exact amount.`,
+        recurringCandidatesIntervals: (intervals: number[]) =>
+          `They repeated with intervals of ${intervals.join(", ")} days.`,
+        recurringCandidatesAmountExact: (amount: string) =>
+          `The amount was exactly ${amount} on each repeat.`,
+        recurringCandidatesAmountStable: (
+          minAmount: string,
+          maxAmount: string,
+        ) => `The amount stayed close, between ${minAmount} and ${maxAmount}.`,
+        recurringCandidatesLastSeen: (dateLabel: string) =>
+          `Last seen: ${dateLabel}.`,
+        recurringCandidatesCompactLine: (dateLabel: string) =>
+          `Last seen: ${dateLabel}.`,
         historyPending:
           "Complete your financial profile to start seeing monthly history.",
         noHistory: "There is no activity yet to calculate the balance.",
@@ -624,6 +705,17 @@ const siteTexts = {
           `${count} transactions were excluded from this month's balance because they could not be converted safely to ${currency}.`,
         historySkippedNotice: (count: number, currency: string) =>
           `There are ${count} legacy transactions excluded from history because no reliable conversion to ${currency} exists.`,
+      },
+      analysis: {
+        title: "Analysis",
+        subtitle:
+          "Explore patterns, categories, and useful signals for the selected month.",
+        heading: (monthLabel: string) => `Period analysis - ${monthLabel}`,
+        monthLabel: "Month",
+        accountLabel: "Account",
+        allAccountsLabel: "All accounts",
+        latestMonthHint:
+          "Use the same month and account to compare distribution and frequent activity.",
       },
       categories: {
         title: "Categories",

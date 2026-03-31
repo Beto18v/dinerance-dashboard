@@ -3,6 +3,14 @@
 import { type AnalyticsCategoryBreakdown } from "@/lib/api";
 import { type SiteText } from "@/lib/site";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 type BreakdownDirection = "expense" | "income";
 
@@ -54,27 +62,32 @@ export function CategoryBreakdownCard({
       ? text.categoryBreakdownEmptyExpense
       : text.categoryBreakdownEmptyIncome;
   const categoriesCount = breakdown?.breakdown.length ?? 0;
+  const totalTransactions =
+    breakdown?.breakdown.reduce(
+      (count, item) => count + item.transaction_count,
+      0,
+    ) ?? 0;
+  const directionLabel =
+    direction === "expense"
+      ? text.categoryBreakdownExpenseTab
+      : text.categoryBreakdownIncomeTab;
 
   return (
-    <section className="space-y-4">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+    <Card>
+      <CardHeader>
         <div>
-          <h2 className="text-lg font-semibold text-foreground">
-            {text.categoryBreakdownTitle}
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            {text.categoryBreakdownDescription}
-          </p>
+          <CardTitle>{text.categoryBreakdownTitle}</CardTitle>
+          <CardDescription>{text.categoryBreakdownDescription}</CardDescription>
         </div>
-
-        <Tabs
-          value={direction}
-          onValueChange={(value) => {
-            if (value === "expense" || value === "income") {
-              onDirectionChange(value);
-            }
-          }}
-          className="w-fit"
+        <CardAction>
+          <Tabs
+            value={direction}
+            onValueChange={(value) => {
+              if (value === "expense" || value === "income") {
+                onDirectionChange(value);
+              }
+            }}
+            className="w-fit"
           >
             <TabsList>
               <TabsTrigger value="income">
@@ -85,19 +98,35 @@ export function CategoryBreakdownCard({
               </TabsTrigger>
             </TabsList>
           </Tabs>
-        </div>
+        </CardAction>
+      </CardHeader>
 
-      <div className="space-y-4">
-        <div className={`rounded-xl border px-5 py-4 shadow-sm ${tone.surface}`}>
-          <p className={`text-sm font-medium ${tone.label}`}>{totalLabel}</p>
-          <p className="mt-3 text-3xl font-bold tracking-tight tabular-nums md:text-4xl">
-            {formatMoney(breakdown?.total ?? "0", currency, locale)}
-          </p>
-          <p className={`mt-2 text-sm ${tone.meta}`}>
-            {categoriesCount > 0
-              ? text.categoryBreakdownCategoriesCount(categoriesCount)
-              : emptyLabel}
-          </p>
+      <CardContent className="space-y-4">
+        <div
+          className={`grid gap-3 rounded-xl border px-5 py-4 shadow-sm md:grid-cols-[minmax(0,1fr)_auto] md:items-center ${tone.surface}`}
+        >
+          <div>
+            <p className={`text-sm font-medium ${tone.label}`}>{totalLabel}</p>
+            <p className="mt-2 text-2xl font-bold tracking-tight tabular-nums md:text-3xl">
+              {formatMoney(breakdown?.total ?? "0", currency, locale)}
+            </p>
+            <p className={`mt-1 text-sm ${tone.meta}`}>
+              {categoriesCount > 0
+                ? text.categoryBreakdownCategoriesCount(categoriesCount)
+                : emptyLabel}
+            </p>
+          </div>
+
+          {categoriesCount > 0 ? (
+            <div className="rounded-lg border border-black/5 bg-background/70 px-4 py-3 shadow-sm md:text-right">
+              <p className="text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">
+                {directionLabel}
+              </p>
+              <p className="mt-1 text-sm font-semibold text-foreground">
+                {text.categoryBreakdownTransactionsCount(totalTransactions)}
+              </p>
+            </div>
+          ) : null}
         </div>
 
         {(breakdown?.skipped_transactions ?? 0) > 0 ? (
@@ -123,26 +152,30 @@ export function CategoryBreakdownCard({
               return (
                 <div
                   key={item.category_id}
-                  className="rounded-xl border bg-muted/20 px-4 py-3 shadow-sm"
+                  className="rounded-xl border bg-card px-4 py-4 shadow-sm"
                 >
-                  <div className="flex items-start justify-between gap-4">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                     <div className="min-w-0">
-                      <p className="truncate font-medium text-foreground">
+                      <p className="truncate font-semibold text-foreground">
                         {item.category_name}
                       </p>
                       <p className="mt-1 text-sm text-muted-foreground">
-                        {formatPercentage(item.percentage, locale)} |{" "}
                         {text.categoryBreakdownTransactionsCount(
                           item.transaction_count,
                         )}
                       </p>
                     </div>
 
-                    <p
-                      className={`shrink-0 text-base font-bold tabular-nums md:text-lg ${tone.text}`}
-                    >
-                      {formatMoney(item.amount, currency, locale)}
-                    </p>
+                    <div className="shrink-0 text-left md:text-right">
+                      <p
+                        className={`text-base font-bold tabular-nums md:text-lg ${tone.text}`}
+                      >
+                        {formatMoney(item.amount, currency, locale)}
+                      </p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {formatPercentage(item.percentage, locale)}
+                      </p>
+                    </div>
                   </div>
 
                   <div className="mt-3 h-2 rounded-full bg-muted">
@@ -156,8 +189,8 @@ export function CategoryBreakdownCard({
             })}
           </div>
         )}
-      </div>
-    </section>
+      </CardContent>
+    </Card>
   );
 }
 

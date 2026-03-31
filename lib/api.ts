@@ -191,6 +191,31 @@ export interface AnalyticsCategoryBreakdown {
   breakdown: AnalyticsCategoryBreakdownItem[];
 }
 
+export interface AnalyticsRecurringCandidate {
+  label: string;
+  description?: string | null;
+  category_id: string;
+  category_name: string;
+  direction: "income" | "expense";
+  cadence: "weekly" | "biweekly" | "monthly";
+  match_basis: "description" | "category_amount";
+  amount_pattern: "exact" | "stable";
+  currency: string;
+  typical_amount: string;
+  amount_min: string;
+  amount_max: string;
+  occurrence_count: number;
+  interval_days: number[];
+  first_occurred_at: string;
+  last_occurred_at: string;
+}
+
+export interface AnalyticsRecurringCandidates {
+  month_start: string;
+  history_window_start: string;
+  candidates: AnalyticsRecurringCandidate[];
+}
+
 // ── Endpoints ────────────────────────────────────────────────────────────────
 
 export const api = {
@@ -358,6 +383,22 @@ export const api = {
     }
     return request<AnalyticsCategoryBreakdown>(
       `/analytics/category-breakdown?${qs.toString()}`,
+    );
+  },
+
+  getAnalyticsRecurringCandidates: (params: {
+    year: number;
+    month: number;
+    financial_account_id?: string;
+  }) => {
+    const qs = new URLSearchParams();
+    qs.set("year", String(params.year));
+    qs.set("month", String(params.month));
+    if (params.financial_account_id) {
+      qs.set("financial_account_id", params.financial_account_id);
+    }
+    return request<AnalyticsRecurringCandidates>(
+      `/analytics/recurring-candidates?${qs.toString()}`,
     );
   },
 

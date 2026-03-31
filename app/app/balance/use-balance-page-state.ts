@@ -10,6 +10,7 @@ import {
   api,
   ApiError,
   type AnalyticsCategoryBreakdown,
+  type AnalyticsRecurringCandidates,
   type AnalyticsSummary,
   type AnalyticsSummaryTransaction,
   type Category,
@@ -46,9 +47,18 @@ type BreakdownParams = AnalyticsScopeParams & {
 };
 type UrlSyncMode = "push" | "replace";
 
-export function useBalancePageState() {
+type UseBalancePageStateOptions = {
+  includeCategoryBreakdown?: boolean;
+  includeRecurringCandidates?: boolean;
+};
+
+export function useBalancePageState(
+  options: UseBalancePageStateOptions = {},
+) {
   const { site } = useSitePreferences();
   const { profile, setProfile } = useProfile();
+  const includeCategoryBreakdown = options.includeCategoryBreakdown ?? true;
+  const includeRecurringCandidates = options.includeRecurringCandidates ?? true;
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -64,6 +74,10 @@ export function useBalancePageState() {
   const [categoryBreakdown, setCategoryBreakdown] =
     useState<AnalyticsCategoryBreakdown | null>(null);
   const [categoryBreakdownLoading, setCategoryBreakdownLoading] =
+    useState(false);
+  const [recurringCandidates, setRecurringCandidates] =
+    useState<AnalyticsRecurringCandidates | null>(null);
+  const [recurringCandidatesLoading, setRecurringCandidatesLoading] =
     useState(false);
   const [categoryBreakdownDirection, setCategoryBreakdownDirection] =
     useState<BreakdownDirection>("income");
@@ -101,6 +115,13 @@ export function useBalancePageState() {
   const categoryBreakdownResolvedKeyRef = useRef<string | null>(null);
   const categoryBreakdownInFlightKeyRef = useRef<string | null>(null);
   const categoryBreakdownRequestIdRef = useRef(0);
+  const recurringCandidatesCacheRef = useRef(
+    new Map<string, AnalyticsRecurringCandidates>(),
+  );
+  const recurringCandidatesExpectedKeyRef = useRef<string | null>(null);
+  const recurringCandidatesResolvedKeyRef = useRef<string | null>(null);
+  const recurringCandidatesInFlightKeyRef = useRef<string | null>(null);
+  const recurringCandidatesRequestIdRef = useRef(0);
   const skipNextUrlDrivenLoadKeyRef = useRef<string | null>(null);
 
   const hasBaseCurrency = Boolean(profile?.base_currency);
@@ -151,6 +172,7 @@ export function useBalancePageState() {
     ) => {
       const resolvedProfile = activeProfile ?? profileRef.current;
       if (
+        !includeCategoryBreakdown ||
         !resolvedProfile?.base_currency ||
         params?.year == null ||
         params?.month == null
@@ -237,7 +259,103 @@ export function useBalancePageState() {
         }
       }
     },
-    [site.common.unexpectedError],
+    [includeCategoryBreakdown, site.common.unexpectedError],
+  );
+
+  const loadRecurringCandidates = useCallback(
+    async (
+      params?: AnalyticsScopeParams,
+      activeProfile?: UserProfile | null,
+      options?: { force?: boolean },
+    ) => {
+      const resolvedProfile = activeProfile ?? profileRef.current;
+      if (
+        !includeRecurringCandidates ||
+        params?.year == null ||
+        params?.month == null
+      ) {
+        recurringCandidatesExpectedKeyRef.current = null;
+        recurringCandidatesResolvedKeyRef.current = null;
+        recurringCandidatesInFlightKeyRef.current = null;
+        setRecurringCandidates(null);
+        setRecurringCandidatesLoading(false);
+        return;
+      }
+
+      const requestKey = getRecurringCandidatesRequestKey({
+        profileKey: getProfileAnalyticsKey(resolvedProfile),
+        year: params.year,
+        month: params.month,
+        financialAccountId: params.financial_account_id,
+      });
+      recurringCandidatesExpectedKeyRef.current = requestKey;
+      const cachedCandidates =
+        recurringCandidatesCacheRef.current.get(requestKey);
+
+      if (cachedCandidates) {
+        recurringCandidatesResolvedKeyRef.current = requestKey;
+        setRecurringCandidates(cachedCandidates);
+        setRecurringCandidatesLoading(false);
+      }
+
+      if (
+        (!options?.force &&
+          requestKey === recurringCandidatesResolvedKeyRef.current) ||
+        requestKey === recurringCandidatesInFlightKeyRef.current
+      ) {
+        return;
+      }
+
+      const requestId = recurringCandidatesRequestIdRef.current + 1;
+      recurringCandidatesRequestIdRef.current = requestId;
+      recurringCandidatesInFlightKeyRef.current = requestKey;
+      if (!cachedCandidates) {
+        setRecurringCandidates(null);
+      }
+      setRecurringCandidatesLoading(true);
+
+      try {
+        const data = await api.getAnalyticsRecurringCandidates({
+          year: params.year,
+          month: params.month,
+          ...(params.financial_account_id
+            ? { financial_account_id: params.financial_account_id }
+            : {}),
+        });
+        if (requestId !== recurringCandidatesRequestIdRef.current) {
+          return;
+        }
+        recurringCandidatesCacheRef.current.set(requestKey, data);
+        if (requestKey !== recurringCandidatesExpectedKeyRef.current) {
+          return;
+        }
+        recurringCandidatesResolvedKeyRef.current = requestKey;
+        setRecurringCandidates(data);
+      } catch (err) {
+        if (requestId !== recurringCandidatesRequestIdRef.current) {
+          return;
+        }
+        if (requestKey !== recurringCandidatesExpectedKeyRef.current) {
+          return;
+        }
+        recurringCandidatesCacheRef.current.delete(requestKey);
+        recurringCandidatesResolvedKeyRef.current = null;
+        setRecurringCandidates(null);
+        if (err instanceof ApiError) {
+          toast.error(err.message);
+        } else {
+          toast.error(site.common.unexpectedError);
+        }
+      } finally {
+        if (requestId === recurringCandidatesRequestIdRef.current) {
+          recurringCandidatesInFlightKeyRef.current = null;
+          if (requestKey === recurringCandidatesExpectedKeyRef.current) {
+            setRecurringCandidatesLoading(false);
+          }
+        }
+      }
+    },
+    [includeRecurringCandidates, site.common.unexpectedError],
   );
 
   const loadBalance = useCallback(
@@ -261,6 +379,10 @@ export function useBalancePageState() {
         categoryBreakdownInFlightKeyRef.current = null;
         setCategoryBreakdown(null);
         setCategoryBreakdownLoading(false);
+        recurringCandidatesResolvedKeyRef.current = null;
+        recurringCandidatesInFlightKeyRef.current = null;
+        setRecurringCandidates(null);
+        setRecurringCandidatesLoading(false);
         setLoading(false);
         return;
       }
@@ -315,15 +437,27 @@ export function useBalancePageState() {
 
         const resolvedMonth = parseAnalyticsMonth(resolvedMonthValue);
         if (resolvedMonth) {
-          void loadCategoryBreakdown(
-            {
-              ...resolvedMonth,
-              direction: categoryBreakdownDirectionRef.current,
-              financial_account_id: params?.financial_account_id,
-            },
-            resolvedProfile,
-            { force: options?.force },
-          );
+          if (includeCategoryBreakdown) {
+            void loadCategoryBreakdown(
+              {
+                ...resolvedMonth,
+                direction: categoryBreakdownDirectionRef.current,
+                financial_account_id: params?.financial_account_id,
+              },
+              resolvedProfile,
+              { force: options?.force },
+            );
+          }
+          if (includeRecurringCandidates) {
+            void loadRecurringCandidates(
+              {
+                ...resolvedMonth,
+                financial_account_id: params?.financial_account_id,
+              },
+              resolvedProfile,
+              { force: options?.force },
+            );
+          }
         }
       } catch (err) {
         if (requestId !== summaryRequestIdRef.current) {
@@ -338,6 +472,10 @@ export function useBalancePageState() {
           categoryBreakdownInFlightKeyRef.current = null;
           setCategoryBreakdown(null);
           setCategoryBreakdownLoading(false);
+          recurringCandidatesResolvedKeyRef.current = null;
+          recurringCandidatesInFlightKeyRef.current = null;
+          setRecurringCandidates(null);
+          setRecurringCandidatesLoading(false);
 
           if (!selectedMonth) {
             skipNextUrlDrivenLoadKeyRef.current = getAnalyticsFiltersViewKey({
@@ -365,6 +503,9 @@ export function useBalancePageState() {
     },
     [
       loadCategoryBreakdown,
+      loadRecurringCandidates,
+      includeCategoryBreakdown,
+      includeRecurringCandidates,
       selectedMonth,
       site.common.unexpectedError,
       syncUrlFilters,
@@ -632,6 +773,8 @@ export function useBalancePageState() {
     monthHeadingDate,
     profile,
     recentTransactions,
+    recurringCandidates,
+    recurringCandidatesLoading,
     refreshProfileFromOnboarding,
     resolveRecentTransactionAccountName,
     selectedFinancialAccountId,
@@ -683,6 +826,20 @@ function getCategoryBreakdownRequestKey({
   return [baseCurrency, year, month, direction ?? "", financialAccountId ?? ""].join(
     ":",
   );
+}
+
+function getRecurringCandidatesRequestKey({
+  profileKey,
+  year,
+  month,
+  financialAccountId,
+}: {
+  profileKey: string;
+  year: number;
+  month: number;
+  financialAccountId?: string;
+}) {
+  return [profileKey, year, month, financialAccountId ?? ""].join(":");
 }
 
 function getFreshCategoriesCache() {

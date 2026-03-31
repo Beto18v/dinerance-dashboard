@@ -6,13 +6,27 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
+import type { AnchorHTMLAttributes } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import BalancePage from "./page";
 import { getSiteText } from "@/lib/site";
 
+vi.mock("next/link", () => ({
+  default: ({
+    children,
+    href,
+    ...props
+  }: AnchorHTMLAttributes<HTMLAnchorElement> & { href: string }) => (
+    <a href={href} {...props}>
+      {children}
+    </a>
+  ),
+}));
+
 const {
   getAnalyticsCategoryBreakdownMock,
+  getAnalyticsRecurringCandidatesMock,
   getAnalyticsSummaryMock,
   getCategoriesMock,
   getFinancialAccountsMock,
@@ -26,6 +40,7 @@ const {
   toastErrorMock,
 } = vi.hoisted(() => ({
   getAnalyticsCategoryBreakdownMock: vi.fn(),
+  getAnalyticsRecurringCandidatesMock: vi.fn(),
   getAnalyticsSummaryMock: vi.fn(),
   getCategoriesMock: vi.fn(),
   getFinancialAccountsMock: vi.fn(),
@@ -53,6 +68,7 @@ vi.mock("@/lib/api", () => ({
   },
   api: {
     getAnalyticsCategoryBreakdown: getAnalyticsCategoryBreakdownMock,
+    getAnalyticsRecurringCandidates: getAnalyticsRecurringCandidatesMock,
     getAnalyticsSummary: getAnalyticsSummaryMock,
     getCategories: getCategoriesMock,
     getFinancialAccounts: getFinancialAccountsMock,
@@ -305,6 +321,7 @@ describe("BalancePage", () => {
   beforeEach(() => {
     window.localStorage.clear();
     getAnalyticsCategoryBreakdownMock.mockReset();
+    getAnalyticsRecurringCandidatesMock.mockReset();
     getAnalyticsSummaryMock.mockReset();
     getCategoriesMock.mockReset();
     getFinancialAccountsMock.mockReset();
@@ -354,6 +371,11 @@ describe("BalancePage", () => {
         },
       ],
     });
+    getAnalyticsRecurringCandidatesMock.mockResolvedValue({
+      month_start: "2026-03-01",
+      history_window_start: "2025-03-01",
+      candidates: [],
+    });
   });
 
   it("loads and renders the current balance overview", async () => {
@@ -400,6 +422,30 @@ describe("BalancePage", () => {
         },
       ],
     });
+    getAnalyticsRecurringCandidatesMock.mockResolvedValue({
+      month_start: "2026-03-01",
+      history_window_start: "2025-03-01",
+      candidates: [
+        {
+          label: "Nomina",
+          description: null,
+          category_id: "cat-1",
+          category_name: "Salario",
+          direction: "income",
+          cadence: "monthly",
+          match_basis: "category_amount",
+          amount_pattern: "exact",
+          currency: "COP",
+          typical_amount: "2500000.00",
+          amount_min: "2500000.00",
+          amount_max: "2500000.00",
+          occurrence_count: 3,
+          interval_days: [29, 30],
+          first_occurred_at: "2026-01-30T12:00:00Z",
+          last_occurred_at: "2026-03-30T12:00:00Z",
+        },
+      ],
+    });
 
     render(<BalancePage />);
 
@@ -408,14 +454,6 @@ describe("BalancePage", () => {
     await waitFor(() => {
       expect(getAnalyticsSummaryMock).toHaveBeenCalledWith(undefined);
     });
-    await waitFor(() => {
-      expect(getAnalyticsCategoryBreakdownMock).toHaveBeenCalledWith({
-        year: 2026,
-        month: 3,
-        direction: "income",
-      });
-    });
-
     expect(
       await screen.findAllByText(/Resumen financiero - marzo de 2026/i),
     ).toHaveLength(2);
@@ -424,9 +462,10 @@ describe("BalancePage", () => {
     expect(screen.getAllByText(/\$\s?1\.300\.000/).length).toBeGreaterThan(0);
     expect(screen.getByText("Movimientos recientes")).toBeInTheDocument();
     expect(screen.getAllByText("Salario").length).toBeGreaterThan(0);
-    expect(screen.getByText("Nomina")).toBeInTheDocument();
-    expect(screen.getByText("Distribucion por categoria")).toBeInTheDocument();
-    expect(screen.getAllByText("Salario").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Nomina").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Ingresos y gastos frecuentes")).not.toBeInTheDocument();
+    expect(screen.getByText("Balance mensual")).toBeInTheDocument();
+    expect(getAnalyticsRecurringCandidatesMock).not.toHaveBeenCalled();
   });
 
   it("hides the account selector when there is only one financial account", async () => {
@@ -496,24 +535,6 @@ describe("BalancePage", () => {
         series: [],
         recent_transactions: [],
       });
-    getAnalyticsCategoryBreakdownMock
-      .mockResolvedValueOnce({
-        month_start: "2026-03-01",
-        currency: "COP",
-        direction: "income",
-        total: "2500000.00",
-        skipped_transactions: 0,
-        breakdown: [],
-      })
-      .mockResolvedValueOnce({
-        month_start: "2026-02-01",
-        currency: "COP",
-        direction: "income",
-        total: "2000000.00",
-        skipped_transactions: 0,
-        breakdown: [],
-      });
-
     render(<BalancePage />);
 
     const monthInput = await screen.findByLabelText("Mes");
@@ -530,15 +551,8 @@ describe("BalancePage", () => {
         month: 2,
       });
     });
-    await waitFor(() => {
-      expect(getAnalyticsCategoryBreakdownMock).toHaveBeenNthCalledWith(2, {
-        year: 2026,
-        month: 2,
-        direction: "income",
-      });
-    });
-
     expect(screen.getByDisplayValue("2026-02")).toBeInTheDocument();
+    expect(getAnalyticsRecurringCandidatesMock).not.toHaveBeenCalled();
   });
 
   it("hydrates filters from the URL on first render", async () => {
@@ -598,17 +612,9 @@ describe("BalancePage", () => {
         financial_account_id: "acc-2",
       });
     });
-    await waitFor(() => {
-      expect(getAnalyticsCategoryBreakdownMock).toHaveBeenCalledWith({
-        year: 2026,
-        month: 2,
-        direction: "income",
-        financial_account_id: "acc-2",
-      });
-    });
-
     expect(await screen.findByLabelText("Cuenta")).toHaveValue("acc-2");
     expect(screen.getByDisplayValue("2026-02")).toBeInTheDocument();
+    expect(getAnalyticsRecurringCandidatesMock).not.toHaveBeenCalled();
   });
 
   it("shows a local account selector for multiple accounts and passes the filter to analytics", async () => {
@@ -704,24 +710,6 @@ describe("BalancePage", () => {
           },
         ],
       });
-    getAnalyticsCategoryBreakdownMock
-      .mockResolvedValueOnce({
-        month_start: "2026-03-01",
-        currency: "COP",
-        direction: "income",
-        total: "3000000.00",
-        skipped_transactions: 0,
-        breakdown: [],
-      })
-      .mockResolvedValueOnce({
-        month_start: "2026-03-01",
-        currency: "COP",
-        direction: "income",
-        total: "500000.00",
-        skipped_transactions: 0,
-        breakdown: [],
-      });
-
     render(<BalancePage />);
 
     const accountSelect = await screen.findByLabelText("Cuenta");
@@ -750,33 +738,10 @@ describe("BalancePage", () => {
         financial_account_id: "acc-2",
       });
     });
-    await waitFor(() => {
-      expect(getAnalyticsCategoryBreakdownMock).toHaveBeenNthCalledWith(2, {
-        year: 2026,
-        month: 3,
-        direction: "income",
-        financial_account_id: "acc-2",
-      });
-    });
+    expect(getAnalyticsRecurringCandidatesMock).not.toHaveBeenCalled();
   });
 
-  it("ignores stale category breakdown responses when switching directions quickly", async () => {
-    const delayedExpenseBreakdown = createDeferred<{
-      month_start: string;
-      currency: string;
-      direction: "expense";
-      total: string;
-      skipped_transactions: number;
-      breakdown: Array<{
-        category_id: string;
-        category_name: string;
-        direction: "expense";
-        amount: string;
-        percentage: string;
-        transaction_count: number;
-      }>;
-    }>();
-
+  it("always keeps the monthly history visible in the overview", async () => {
     getCategoriesMock.mockResolvedValue([
       {
         id: "cat-1",
@@ -801,65 +766,26 @@ describe("BalancePage", () => {
         balance: "600000.00",
         skipped_transactions: 0,
       },
-      series: [],
-      recent_transactions: [],
-    });
-    getAnalyticsCategoryBreakdownMock
-      .mockResolvedValueOnce({
-        month_start: "2026-03-01",
-        currency: "COP",
-        direction: "income",
-        total: "555000.00",
-        skipped_transactions: 0,
-        breakdown: [
-          {
-            category_id: "cat-1",
-            category_name: "Salario",
-            direction: "income",
-            amount: "555000.00",
-            percentage: "100.00",
-            transaction_count: 1,
-          },
-        ],
-      })
-      .mockImplementationOnce(() => delayedExpenseBreakdown.promise);
-
-    render(<BalancePage />);
-
-    expect((await screen.findAllByText(/\$\s?555\.000/)).length).toBeGreaterThan(0);
-
-    fireEvent.click(screen.getByRole("tab", { name: "Gastos" }));
-    fireEvent.click(screen.getByRole("tab", { name: "Ingresos" }));
-
-    await waitFor(() => {
-      expect(getAnalyticsCategoryBreakdownMock).toHaveBeenCalledTimes(2);
-    });
-    expect(screen.getByText("Total de ingresos")).toBeInTheDocument();
-    expect(screen.getAllByText(/\$\s?555\.000/).length).toBeGreaterThan(0);
-
-    delayedExpenseBreakdown.resolve({
-      month_start: "2026-03-01",
-      currency: "COP",
-      direction: "expense",
-      total: "222000.00",
-      skipped_transactions: 0,
-      breakdown: [
+      series: [
         {
-          category_id: "cat-2",
-          category_name: "Mercado",
-          direction: "expense",
-          amount: "222000.00",
-          percentage: "100.00",
-          transaction_count: 1,
+          month_start: "2026-03-01",
+          currency: "COP",
+          income: "950000.00",
+          expense: "350000.00",
+          balance: "600000.00",
+          skipped_transactions: 0,
         },
       ],
+      recent_transactions: [],
     });
+    render(<BalancePage />);
 
-    await waitFor(() => {
-      expect(screen.getByText("Total de ingresos")).toBeInTheDocument();
-      expect(screen.getAllByText(/\$\s?555\.000/).length).toBeGreaterThan(0);
-    });
-    expect(screen.queryAllByText(/\$\s?222\.000/)).toHaveLength(0);
+    expect(await screen.findByText(/\$\s?950\.000/)).toBeInTheDocument();
+    expect(screen.getByText("Balance mensual")).toBeInTheDocument();
+    expect(
+      screen.queryByText("Ingresos y gastos frecuentes"),
+    ).not.toBeInTheDocument();
+    expect(getAnalyticsRecurringCandidatesMock).not.toHaveBeenCalled();
   });
 
   it("does not refetch analytics when the profile object changes but analytics fields stay equal", async () => {
@@ -909,18 +835,12 @@ describe("BalancePage", () => {
     await waitFor(() => {
       expect(getAnalyticsSummaryMock).toHaveBeenCalledTimes(1);
     });
-    await waitFor(() => {
-      expect(getAnalyticsCategoryBreakdownMock).toHaveBeenCalledTimes(1);
-    });
-
     rerender(<BalancePage />);
 
     await waitFor(() => {
       expect(getAnalyticsSummaryMock).toHaveBeenCalledTimes(1);
     });
-    await waitFor(() => {
-      expect(getAnalyticsCategoryBreakdownMock).toHaveBeenCalledTimes(1);
-    });
+    expect(getAnalyticsRecurringCandidatesMock).not.toHaveBeenCalled();
   });
 
   it("shows onboarding when there are no categories or transactions", async () => {
@@ -1013,13 +933,4 @@ function buildTransactionsPresenceResponse(totalCount: number) {
       balance_totals: [],
     },
   };
-}
-
-function createDeferred<T>() {
-  let resolve!: (value: T) => void;
-  const promise = new Promise<T>((res) => {
-    resolve = res;
-  });
-
-  return { promise, resolve };
 }

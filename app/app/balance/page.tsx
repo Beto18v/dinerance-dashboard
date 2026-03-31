@@ -3,16 +3,6 @@
 import { type AnalyticsSummaryTransaction } from "@/lib/api";
 import { invalidateCacheKey, cacheKeys } from "@/lib/cache";
 import { formatCurrencyAmount } from "@/lib/finance";
-import { getFinancialAccountDisplayName } from "@/lib/financial-accounts";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Card,
   CardContent,
@@ -28,9 +18,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { AnalyticsFiltersBar } from "../components/analytics-filters-bar";
 import { useBalancePageState } from "./use-balance-page-state";
 import { BalanceOnboardingCard } from "./components/balance-onboarding-card";
-import { CategoryBreakdownCard } from "./components/category-breakdown-card";
 
 const monthFormatters = {
   es: new Intl.DateTimeFormat("es-CO", {
@@ -47,12 +37,8 @@ export default function BalancePage() {
   const {
     balanceCurrency,
     categories,
-    categoryBreakdown,
-    categoryBreakdownDirection,
-    categoryBreakdownLoading,
     current,
     financialAccounts,
-    handleCategoryBreakdownDirectionChange,
     handleSelectedFinancialAccountChange,
     handleSelectedMonthChange,
     hasBaseCurrency,
@@ -73,7 +59,10 @@ export default function BalancePage() {
     site,
     timeZone,
     totalSkippedTransactions,
-  } = useBalancePageState();
+  } = useBalancePageState({
+    includeCategoryBreakdown: false,
+    includeRecurringCandidates: false,
+  });
   const t = site.pages.balance;
 
   return (
@@ -92,50 +81,19 @@ export default function BalancePage() {
           </p>
         </div>
 
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-          {hasMultipleFinancialAccounts ? (
-            <div className="space-y-1.5">
-              <Label htmlFor="balance-account">{t.accountLabel}</Label>
-              <Select
-                value={selectedFinancialAccountId || "__all__"}
-                onValueChange={(value) =>
-                  handleSelectedFinancialAccountChange(
-                    value === "__all__" ? "" : value,
-                  )
-                }
-              >
-                <SelectTrigger id="balance-account" className="w-52">
-                  <SelectValue placeholder={t.allAccountsLabel} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__all__">{t.allAccountsLabel}</SelectItem>
-                  {financialAccounts.map((account) => (
-                    <SelectItem key={account.id} value={account.id}>
-                      {getFinancialAccountDisplayName(
-                        account,
-                        site.common.mainFinancialAccount,
-                      )}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          ) : null}
-
-          <div className="space-y-1.5">
-            <label className="px-2 text-sm font-medium" htmlFor="balance-month">
-              {t.monthLabel}
-            </label>
-            <Input
-              id="balance-month"
-              type="month"
-              value={selectedMonth}
-              disabled={!hasBaseCurrency}
-              onChange={(event) => handleSelectedMonthChange(event.target.value)}
-              className="w-44"
-            />
-          </div>
-        </div>
+        <AnalyticsFiltersBar
+          accountLabel={t.accountLabel}
+          allAccountsLabel={t.allAccountsLabel}
+          monthLabel={t.monthLabel}
+          hasBaseCurrency={hasBaseCurrency}
+          hasMultipleFinancialAccounts={hasMultipleFinancialAccounts}
+          financialAccounts={financialAccounts}
+          selectedFinancialAccountId={selectedFinancialAccountId}
+          selectedMonth={selectedMonth}
+          mainFinancialAccountLabel={site.common.mainFinancialAccount}
+          onSelectedFinancialAccountChange={handleSelectedFinancialAccountChange}
+          onSelectedMonthChange={handleSelectedMonthChange}
+        />
       </div>
 
       {showOnboarding ? (
@@ -216,19 +174,6 @@ export default function BalancePage() {
             </p>
           ) : null}
 
-          <div className="mt-8 border-t pt-6">
-            <CategoryBreakdownCard
-              breakdown={categoryBreakdown}
-              loading={categoryBreakdownLoading}
-              direction={categoryBreakdownDirection}
-              currency={categoryBreakdown?.currency ?? balanceCurrency}
-              locale={displayLocale(site.metadata.htmlLang)}
-              loadingLabel={site.common.loading}
-              text={t}
-              onDirectionChange={handleCategoryBreakdownDirectionChange}
-              formatMoney={formatMoney}
-            />
-          </div>
         </CardContent>
       </Card>
 
