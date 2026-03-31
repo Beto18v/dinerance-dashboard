@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import {
   api,
   ApiError,
+  type AnalyticsCategoryBreakdown,
   type AnalyticsSummary,
   type AnalyticsSummaryTransaction,
   type Category,
@@ -41,6 +42,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { BalanceOnboardingCard } from "./components/balance-onboarding-card";
+import { CategoryBreakdownCard } from "./components/category-breakdown-card";
 
 const monthFormatters = {
   es: new Intl.DateTimeFormat("es-CO", {
@@ -59,6 +61,13 @@ export default function BalancePage() {
   const cachedCategories = getFreshCategoriesCache();
   const cachedTransactions = getFreshTransactionsCache();
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
+  const [categoryBreakdown, setCategoryBreakdown] =
+    useState<AnalyticsCategoryBreakdown | null>(null);
+  const [categoryBreakdownLoading, setCategoryBreakdownLoading] =
+    useState(false);
+  const [categoryBreakdownDirection, setCategoryBreakdownDirection] = useState<
+    "expense" | "income"
+  >("income");
   const [categories, setCategories] = useState<Category[]>(
     () => cachedCategories ?? [],
   );
@@ -72,6 +81,12 @@ export default function BalancePage() {
   const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState("");
   const profileRef = useRef<UserProfile | null>(profile);
+  const categoryBreakdownDirectionRef = useRef<"expense" | "income">(
+    categoryBreakdownDirection,
+  );
+  const categoryBreakdownResolvedKeyRef = useRef<string | null>(null);
+  const categoryBreakdownInFlightKeyRef = useRef<string | null>(null);
+  const categoryBreakdownRequestIdRef = useRef(0);
 
   const hasBaseCurrency = Boolean(profile?.base_currency);
   const hasTimeZone = Boolean(profile?.timezone);
@@ -84,10 +99,88 @@ export default function BalancePage() {
     (categoriesReady &&
       transactionsReady &&
       !(hasBaseCurrency && hasTimeZone && hasCategories && hasTransactions));
+  const profileAnalyticsKey = getProfileAnalyticsKey(profile);
 
   useEffect(() => {
     profileRef.current = profile;
   }, [profile]);
+
+  useEffect(() => {
+    categoryBreakdownDirectionRef.current = categoryBreakdownDirection;
+  }, [categoryBreakdownDirection]);
+
+  const loadCategoryBreakdown = useCallback(
+    async (
+      params?: {
+        year?: number;
+        month?: number;
+        direction?: "expense" | "income";
+      },
+      activeProfile?: UserProfile | null,
+    ) => {
+      const resolvedProfile = activeProfile ?? profileRef.current;
+      if (
+        !resolvedProfile?.base_currency ||
+        params?.year == null ||
+        params?.month == null
+      ) {
+        categoryBreakdownResolvedKeyRef.current = null;
+        categoryBreakdownInFlightKeyRef.current = null;
+        setCategoryBreakdown(null);
+        setCategoryBreakdownLoading(false);
+        return;
+      }
+
+      const requestKey = getCategoryBreakdownRequestKey({
+        baseCurrency: resolvedProfile.base_currency,
+        year: params.year,
+        month: params.month,
+        direction: params.direction,
+      });
+      if (
+        requestKey === categoryBreakdownResolvedKeyRef.current ||
+        requestKey === categoryBreakdownInFlightKeyRef.current
+      ) {
+        return;
+      }
+
+      const requestId = categoryBreakdownRequestIdRef.current + 1;
+      categoryBreakdownRequestIdRef.current = requestId;
+      categoryBreakdownInFlightKeyRef.current = requestKey;
+      setCategoryBreakdown(null);
+      setCategoryBreakdownLoading(true);
+      try {
+        const data = await api.getAnalyticsCategoryBreakdown({
+          year: params.year,
+          month: params.month,
+          direction: params.direction,
+        });
+        if (requestId !== categoryBreakdownRequestIdRef.current) {
+          return;
+        }
+        categoryBreakdownResolvedKeyRef.current = requestKey;
+        setCategoryBreakdown(data);
+      } catch (err) {
+        if (requestId !== categoryBreakdownRequestIdRef.current) {
+          return;
+        }
+        if (err instanceof ApiError && err.status === 409) {
+          categoryBreakdownResolvedKeyRef.current = null;
+          setCategoryBreakdown(null);
+        } else if (err instanceof ApiError) {
+          toast.error(err.message);
+        } else {
+          toast.error(site.common.unexpectedError);
+        }
+      } finally {
+        if (requestId === categoryBreakdownRequestIdRef.current) {
+          categoryBreakdownInFlightKeyRef.current = null;
+          setCategoryBreakdownLoading(false);
+        }
+      }
+    },
+    [site.common.unexpectedError],
+  );
 
   const loadBalance = useCallback(
     async (
@@ -101,6 +194,10 @@ export default function BalancePage() {
 
       if (!resolvedProfile?.base_currency) {
         setSummary(null);
+        categoryBreakdownResolvedKeyRef.current = null;
+        categoryBreakdownInFlightKeyRef.current = null;
+        setCategoryBreakdown(null);
+        setCategoryBreakdownLoading(false);
         setSelectedMonth((currentValue) => currentValue || fallbackMonth);
         setLoading(false);
         return;
@@ -110,10 +207,25 @@ export default function BalancePage() {
       try {
         const data = await api.getAnalyticsSummary(params);
         setSummary(data);
-        setSelectedMonth(data.current.month_start.slice(0, 7));
+        const resolvedMonthValue = data.current.month_start.slice(0, 7);
+        setSelectedMonth(resolvedMonthValue);
+        const resolvedMonth = parseMonthValue(resolvedMonthValue);
+        if (resolvedMonth) {
+          void loadCategoryBreakdown(
+            {
+              ...resolvedMonth,
+              direction: categoryBreakdownDirectionRef.current,
+            },
+            resolvedProfile,
+          );
+        }
       } catch (err) {
         if (err instanceof ApiError && err.status === 409) {
           setSummary(null);
+          categoryBreakdownResolvedKeyRef.current = null;
+          categoryBreakdownInFlightKeyRef.current = null;
+          setCategoryBreakdown(null);
+          setCategoryBreakdownLoading(false);
           setSelectedMonth((currentValue) => currentValue || fallbackMonth);
         } else if (err instanceof ApiError) {
           toast.error(err.message);
@@ -124,7 +236,7 @@ export default function BalancePage() {
         setLoading(false);
       }
     },
-    [site.common.unexpectedError],
+    [loadCategoryBreakdown, site.common.unexpectedError],
   );
 
   const loadCategories = useCallback(async () => {
@@ -179,7 +291,7 @@ export default function BalancePage() {
 
   useEffect(() => {
     loadBalance(undefined, profile);
-  }, [loadBalance, profile]);
+  }, [loadBalance, profileAnalyticsKey]);
 
   useEffect(() => {
     Promise.all([loadCategories(), loadTransactionsPresence()]);
@@ -211,6 +323,22 @@ export default function BalancePage() {
   const totalSkippedTransactions = history.reduce(
     (total, item) => total + (item.skipped_transactions ?? 0),
     0,
+  );
+  const selectedMonthParts = parseMonthValue(selectedMonth);
+
+  const handleCategoryBreakdownDirectionChange = useCallback(
+    (direction: "expense" | "income") => {
+      categoryBreakdownDirectionRef.current = direction;
+      setCategoryBreakdownDirection(direction);
+      if (!selectedMonthParts) {
+        return;
+      }
+      void loadCategoryBreakdown({
+        ...selectedMonthParts,
+        direction,
+      });
+    },
+    [loadCategoryBreakdown, selectedMonthParts],
   );
 
   return (
@@ -315,6 +443,20 @@ export default function BalancePage() {
               )}
             </p>
           ) : null}
+
+          <div className="mt-8 border-t pt-6">
+            <CategoryBreakdownCard
+              breakdown={categoryBreakdown}
+              loading={categoryBreakdownLoading}
+              direction={categoryBreakdownDirection}
+              currency={categoryBreakdown?.currency ?? balanceCurrency}
+              locale={displayLocale(site.metadata.htmlLang)}
+              loadingLabel={site.common.loading}
+              text={t}
+              onDirectionChange={handleCategoryBreakdownDirectionChange}
+              formatMoney={formatMoney}
+            />
+          </div>
         </CardContent>
       </Card>
 
@@ -512,6 +654,40 @@ function formatMonthLabel(value: string, locale: string) {
 
 function displayLocale(language: string) {
   return language === "en" ? "en-US" : "es-CO";
+}
+
+function parseMonthValue(value: string) {
+  const [year, month] = value.split("-").map(Number);
+  if (!year || !month) {
+    return null;
+  }
+  return { year, month };
+}
+
+function getProfileAnalyticsKey(profile: UserProfile | null) {
+  if (!profile) {
+    return "anonymous";
+  }
+
+  return [
+    profile.id,
+    profile.base_currency ?? "",
+    profile.timezone ?? "",
+  ].join(":");
+}
+
+function getCategoryBreakdownRequestKey({
+  baseCurrency,
+  year,
+  month,
+  direction,
+}: {
+  baseCurrency: string;
+  year: number;
+  month: number;
+  direction?: "expense" | "income";
+}) {
+  return [baseCurrency, year, month, direction ?? ""].join(":");
 }
 
 function getFreshCategoriesCache() {

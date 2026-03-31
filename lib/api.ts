@@ -154,6 +154,24 @@ export interface AnalyticsSummary extends BalanceOverview {
   recent_transactions: AnalyticsSummaryTransaction[];
 }
 
+export interface AnalyticsCategoryBreakdownItem {
+  category_id: string;
+  category_name: string;
+  direction: "income" | "expense" | string;
+  amount: string;
+  percentage: string;
+  transaction_count: number;
+}
+
+export interface AnalyticsCategoryBreakdown {
+  month_start: string;
+  currency?: string | null;
+  direction?: "income" | "expense" | string | null;
+  total: string;
+  skipped_transactions: number;
+  breakdown: AnalyticsCategoryBreakdownItem[];
+}
+
 // ── Endpoints ────────────────────────────────────────────────────────────────
 
 export const api = {
@@ -256,6 +274,20 @@ export const api = {
     if (params?.month != null) qs.set("month", String(params.month));
     const query = qs.toString() ? `?${qs.toString()}` : "";
     return request<AnalyticsSummary>(`/analytics/summary${query}`);
+  },
+
+  getAnalyticsCategoryBreakdown: (params: {
+    year: number;
+    month: number;
+    direction?: "income" | "expense";
+  }) => {
+    const qs = new URLSearchParams();
+    qs.set("year", String(params.year));
+    qs.set("month", String(params.month));
+    if (params.direction) qs.set("direction", params.direction);
+    return request<AnalyticsCategoryBreakdown>(
+      `/analytics/category-breakdown?${qs.toString()}`,
+    );
   },
 
   createTransaction: (body: {

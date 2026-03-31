@@ -93,7 +93,7 @@ lib/
 - Callback dedicado en `/auth/callback` para terminar OAuth y llamar `POST /users/me/bootstrap`.
 - Rutas protegidas bajo `/app/*`.
 - Perfil editable, categorias, transacciones y balance.
-- `/app/balance` consume `/analytics/summary` para card principal, movimientos recientes del mes e historico sin duplicar requests de analytics.
+- `/app/balance` consume `/analytics/summary` para card principal, movimientos recientes del mes e historico, y `/analytics/category-breakdown` para la visual principal de categorias del mes seleccionado.
 - Perfil financiero con `base_currency` y `timezone` persistidos en backend.
 - Balance y resumenes coherentes en moneda base, con reporte explicito de conversiones faltantes.
 - Onboarding de 4 pasos: moneda base, zona horaria, categoria y transaccion.

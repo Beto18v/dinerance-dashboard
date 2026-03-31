@@ -165,6 +165,21 @@ const siteTexts = {
           `Vista consolidada de ingresos, gastos y balance en ${currency}.`,
         currentCardPendingDescription:
           "Completa tu perfil financiero para ver analytics coherentes en tu moneda base.",
+        categoryBreakdownTitle: "Distribucion por categoria",
+        categoryBreakdownDescription:
+          "Que categorias concentran mas dinero en el mes seleccionado.",
+        categoryBreakdownExpenseTab: "Gastos",
+        categoryBreakdownIncomeTab: "Ingresos",
+        categoryBreakdownExpenseTotal: "Total de gastos",
+        categoryBreakdownIncomeTotal: "Total de ingresos",
+        categoryBreakdownCategoriesCount: (count: number) =>
+          `${count} categorias en esta distribucion.`,
+        categoryBreakdownTransactionsCount: (count: number) =>
+          count === 1 ? "1 movimiento" : `${count} movimientos`,
+        categoryBreakdownEmptyExpense: "No hay gastos en el mes seleccionado.",
+        categoryBreakdownEmptyIncome: "No hay ingresos en el mes seleccionado.",
+        categoryBreakdownSkippedNotice: (count: number, currency: string) =>
+          `${count} transacciones quedaron fuera porque no se pudieron convertir de forma segura a ${currency}.`,
         onboardingTitle: "Configura tu balance",
         onboardingDescription:
           "Completa estos cuatro pasos para empezar a ver tu balance mensual con datos consistentes.",
@@ -325,10 +340,7 @@ const siteTexts = {
         save: "Guardar cambios",
         saving: "Guardando...",
         deleteTitle: "Eliminar transaccion?",
-        deleteDescription: (
-          amount: string,
-          description?: string,
-        ) =>
+        deleteDescription: (amount: string, description?: string) =>
           `Seguro que quieres eliminar esta transaccion de ${amount}${description ? ` - \"${description}\"` : ""}? Esta accion no se puede deshacer.`,
         created: "Transaccion creada",
         updated: "Transaccion actualizada",
@@ -388,7 +400,8 @@ const siteTexts = {
         timezoneBrowserAction: "Usar la del navegador",
         timezoneHint: (browserTimeZone: string) =>
           `Puedes escribir para buscar una zona horaria o usar la detectada en este navegador: ${browserTimeZone}.`,
-        timezoneExamples: "Ejemplos: America/Bogota, America/New_York, Europe/Madrid.",
+        timezoneExamples:
+          "Ejemplos: America/Bogota, America/New_York, Europe/Madrid.",
         timezoneInvalid: "Selecciona una zona horaria IANA valida.",
         dangerTitle: "Zona de peligro",
         dangerDescription:
@@ -505,6 +518,23 @@ const siteTexts = {
           `Consolidated view of income, expenses, and balance in ${currency}.`,
         currentCardPendingDescription:
           "Complete your financial profile to unlock coherent analytics in your base currency.",
+        categoryBreakdownTitle: "Category breakdown",
+        categoryBreakdownDescription:
+          "See which categories hold the most money in the selected month.",
+        categoryBreakdownExpenseTab: "Expenses",
+        categoryBreakdownIncomeTab: "Income",
+        categoryBreakdownExpenseTotal: "Total expenses",
+        categoryBreakdownIncomeTotal: "Total income",
+        categoryBreakdownCategoriesCount: (count: number) =>
+          `${count} categories in this breakdown.`,
+        categoryBreakdownTransactionsCount: (count: number) =>
+          count === 1 ? "1 transaction" : `${count} transactions`,
+        categoryBreakdownEmptyExpense:
+          "There are no expenses in the selected month.",
+        categoryBreakdownEmptyIncome:
+          "There is no income in the selected month.",
+        categoryBreakdownSkippedNotice: (count: number, currency: string) =>
+          `${count} transactions were excluded from this breakdown because they could not be converted safely to ${currency}.`,
         onboardingTitle: "Set up your balance",
         onboardingDescription:
           "Complete these four steps to start seeing your monthly balance with consistent data.",
@@ -587,8 +617,7 @@ const siteTexts = {
           `Your category ${name} already exists`,
         groupCannotBecomeSubcategory:
           "You cannot assign a group because this category already acts as a group.",
-        groupMustBeTopLevel:
-          "You can only group inside a top-level category.",
+        groupMustBeTopLevel: "You can only group inside a top-level category.",
         groupMustMatchDirection:
           "The group must have the same direction as the category.",
         groupDirectionCannotChange:
@@ -666,10 +695,7 @@ const siteTexts = {
         save: "Save changes",
         saving: "Saving...",
         deleteTitle: "Delete transaction?",
-        deleteDescription: (
-          amount: string,
-          description?: string,
-        ) =>
+        deleteDescription: (amount: string, description?: string) =>
           `Are you sure you want to delete this transaction of ${amount}${description ? ` - \"${description}\"` : ""}? This action cannot be undone.`,
         created: "Transaction created",
         updated: "Transaction updated",
