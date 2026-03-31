@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { api, ApiError, type UserProfile } from "@/lib/api";
+import { cacheKeys, invalidateCacheKey } from "@/lib/cache";
 import {
   currencyOptions,
   isValidCurrencyCode,
@@ -103,6 +104,7 @@ export function FinancialProfileForm({
 
     try {
       const updated = await api.updateProfile(payload);
+      invalidateCacheKey(cacheKeys.financialAccounts);
       onProfileUpdated(updated);
       setBaseCurrency(updated.base_currency ?? normalizedBaseCurrency);
       setTimeZone(updated.timezone ?? normalizedTimeZone);

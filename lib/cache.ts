@@ -5,12 +5,14 @@ const CACHE_INVALIDATION_STORAGE_KEY = "cache:__invalidation__";
 export const cacheKeys = {
   profile: "cache:profile",
   categories: "cache:categories",
+  financialAccounts: "cache:financial-accounts",
   transactions: "cache:transactions",
 } as const;
 
 export const cacheTtls = {
   profile: 5 * 60_000,
   categories: 60_000,
+  financialAccounts: 60_000,
   transactions: 30_000,
 } as const;
 

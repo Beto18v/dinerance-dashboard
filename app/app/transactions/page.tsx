@@ -31,6 +31,7 @@ import {
   api,
   ApiError,
   type Category,
+  type FinancialAccount,
   type Transaction,
   type TransactionsPageResponse,
 } from "@/lib/api";
@@ -42,6 +43,11 @@ import {
   setCache,
   subscribeToCacheKeys,
 } from "@/lib/cache";
+import {
+  getFinancialAccountDisplayName,
+  getFreshFinancialAccountsCache,
+  resolveDefaultFinancialAccountId,
+} from "@/lib/financial-accounts";
 import { formatCurrencyAmount, normalizeCurrencyCode } from "@/lib/finance";
 import { getSiteText } from "@/lib/site";
 import {
@@ -62,6 +68,7 @@ const schemaText = getSiteText().pages.transactions;
 const AMOUNT_PATTERN = /^\d+([.,]\d{0,2})?$/;
 
 const schema = z.object({
+  financial_account_id: z.string().optional(),
   category_id: z.string().min(1, schemaText.validations.categoryRequired),
   amount: z
     .string()
@@ -76,6 +83,7 @@ type FormValues = z.infer<typeof schema>;
 type QuickRange = "today" | "last7" | "thisMonth";
 type TransactionsDisplayMode = "desktop" | "mobile";
 type TransactionFilters = {
+  financial_account_id?: string;
   category_id?: string;
   parent_category_id?: string;
   start_date?: string;
@@ -109,8 +117,12 @@ export default function TransactionsPage() {
     : null;
   const hasFinanceProfile = Boolean(profile?.base_currency && profile?.timezone);
   const cachedTransactionsPage = getFreshTransactionCache();
+  const cachedFinancialAccounts = getFreshFinancialAccountsCache();
   const [categories, setCategories] = useState<Category[]>(
     () => getFreshCategoryCache() ?? [],
+  );
+  const [financialAccounts, setFinancialAccounts] = useState<FinancialAccount[]>(
+    () => cachedFinancialAccounts ?? [],
   );
   const [transactionsPage, setTransactionsPage] =
     useState<TransactionsPageResponse | null>(() => cachedTransactionsPage);
@@ -127,6 +139,8 @@ export default function TransactionsPage() {
     null,
   );
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [filterFinancialAccountId, setFilterFinancialAccountId] =
+    useState<string>("");
   const [filterCategoryId, setFilterCategoryId] = useState<string>("");
   const [filterParentCategoryId, setFilterParentCategoryId] = useState("");
   const [filterStartDate, setFilterStartDate] = useState("");
@@ -140,6 +154,7 @@ export default function TransactionsPage() {
 
   const filterParams = useMemo(
     () => ({
+      financial_account_id: filterFinancialAccountId || undefined,
       category_id: filterCategoryId || undefined,
       parent_category_id: filterParentCategoryId || undefined,
       start_date: filterStartDate
@@ -149,7 +164,14 @@ export default function TransactionsPage() {
         ? dateInputBoundaryToUtcIso(filterEndDate, "end", timeZone)
         : undefined,
     }),
-    [filterCategoryId, filterEndDate, filterParentCategoryId, filterStartDate, timeZone],
+    [
+      filterCategoryId,
+      filterEndDate,
+      filterFinancialAccountId,
+      filterParentCategoryId,
+      filterStartDate,
+      timeZone,
+    ],
   );
 
   const {
@@ -165,11 +187,16 @@ export default function TransactionsPage() {
     control: editControl,
     name: "category_id",
   });
+  const editFinancialAccountIdValue = useWatch({
+    control: editControl,
+    name: "financial_account_id",
+  });
   const editAmountField = registerEdit("amount", {
     onChange: (event) => {
       event.target.value = sanitizeAmountInput(event.target.value);
     },
   });
+  const hasMultipleAccounts = financialAccounts.length > 1;
 
   const parentCategories = useMemo(
     () =>
@@ -185,6 +212,25 @@ export default function TransactionsPage() {
         const data = await api.getCategories();
         setCategories(data);
         setCache(cacheKeys.categories, data);
+      } catch (error) {
+        if (!silent) {
+          if (error instanceof ApiError) {
+            toast.error(error.message);
+          } else {
+            toast.error(t.failedLoad);
+          }
+        }
+      }
+    },
+    [t.failedLoad],
+  );
+
+  const loadFinancialAccounts = useCallback(
+    async (silent = false) => {
+      try {
+        const data = await api.getFinancialAccounts();
+        setFinancialAccounts(data);
+        setCache(cacheKeys.financialAccounts, data);
       } catch (error) {
         if (!silent) {
           if (error instanceof ApiError) {
@@ -302,6 +348,7 @@ export default function TransactionsPage() {
     (updatedProfile: typeof profile) => {
       if (!updatedProfile) return;
       setProfile(updatedProfile);
+      invalidateCacheKey(cacheKeys.financialAccounts);
       invalidateCacheKey(cacheKeys.transactions);
     },
     [setProfile],
@@ -310,6 +357,10 @@ export default function TransactionsPage() {
   useEffect(() => {
     void loadCategories(Boolean(getFreshCategoryCache()));
   }, [loadCategories]);
+
+  useEffect(() => {
+    void loadFinancialAccounts(Boolean(getFreshFinancialAccountsCache()));
+  }, [loadFinancialAccounts]);
 
   useEffect(() => {
     const filterKey = getTransactionsFilterKey(filterParams);
@@ -331,10 +382,17 @@ export default function TransactionsPage() {
 
   useEffect(() => {
     return subscribeToCacheKeys(
-      [cacheKeys.categories, cacheKeys.transactions],
+      [
+        cacheKeys.categories,
+        cacheKeys.financialAccounts,
+        cacheKeys.transactions,
+      ],
       (changedKeys) => {
         if (changedKeys.includes(cacheKeys.categories)) {
           void loadCategories(true);
+        }
+        if (changedKeys.includes(cacheKeys.financialAccounts)) {
+          void loadFinancialAccounts(true);
         }
         if (changedKeys.includes(cacheKeys.transactions)) {
           void loadTransactions(filterParams, currentPage, {
@@ -345,7 +403,24 @@ export default function TransactionsPage() {
         }
       },
     );
-  }, [currentPage, filterParams, loadCategories, loadTransactions, loadTransactionsPresence]);
+  }, [
+    currentPage,
+    filterParams,
+    loadCategories,
+    loadFinancialAccounts,
+    loadTransactions,
+    loadTransactionsPresence,
+  ]);
+
+  useEffect(() => {
+    if (
+      filterFinancialAccountId &&
+      !financialAccounts.some((account) => account.id === filterFinancialAccountId)
+    ) {
+      setCurrentPage(1);
+      setFilterFinancialAccountId("");
+    }
+  }, [filterFinancialAccountId, financialAccounts]);
 
   const transactions = transactionsPage?.items ?? [];
   const totalCount = transactionsPage?.total_count ?? 0;
@@ -372,9 +447,17 @@ export default function TransactionsPage() {
   }, [displayLocale, site.common.dash, transactionsSummary]);
 
   function openEditDialog(transaction: Transaction) {
+    if (!transaction.category_id) {
+      toast.error(t.failedUpdate);
+      return;
+    }
+
     setEditingTxn(transaction);
 
     resetEdit({
+      financial_account_id:
+        transaction.financial_account_id ??
+        resolveDefaultFinancialAccountId(financialAccounts),
       category_id: transaction.category_id,
       amount: String(transaction.amount),
       occurred_at: formatDateTimeLocalInTimeZone(transaction.occurred_at, timeZone),
@@ -384,9 +467,16 @@ export default function TransactionsPage() {
 
   async function onEditSubmit(values: FormValues) {
     if (!editingTxn) return;
+    if (hasMultipleAccounts && !values.financial_account_id) {
+      toast.error(t.validations.accountRequired);
+      return;
+    }
 
     try {
       await api.updateTransaction(editingTxn.id, {
+        financial_account_id: hasMultipleAccounts
+          ? values.financial_account_id
+          : undefined,
         category_id: values.category_id,
         amount: normalizeAmountForApi(values.amount),
         occurred_at: dateTimeLocalToUtcIso(values.occurred_at, timeZone),
@@ -462,14 +552,20 @@ export default function TransactionsPage() {
       ) : null}
 
       <TransactionsFilters
+        financialAccounts={financialAccounts}
         categories={categories}
         parentCategories={parentCategories}
+        filterFinancialAccountId={filterFinancialAccountId}
         filterCategoryId={filterCategoryId}
         filterParentCategoryId={filterParentCategoryId}
         filterStartDate={filterStartDate}
         filterEndDate={filterEndDate}
         activeQuickRange={activeQuickRange}
         displayMode={displayMode}
+        onFilterFinancialAccountChange={(value) => {
+          setCurrentPage(1);
+          setFilterFinancialAccountId(value);
+        }}
         onFilterCategoryChange={(value) => {
           setCurrentPage(1);
           setFilterCategoryId(value);
@@ -499,6 +595,7 @@ export default function TransactionsPage() {
         onClearFilters={() => {
           setCurrentPage(1);
           setActiveQuickRange(null);
+          setFilterFinancialAccountId("");
           setFilterParentCategoryId("");
           setFilterCategoryId("");
           setFilterStartDate("");
@@ -536,10 +633,13 @@ export default function TransactionsPage() {
               <span className="ml-2 inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary border-t-transparent align-middle" />
             ) : null}
           </h2>
-          {hasFinanceProfile && categories.length > 0 ? (
+          {hasFinanceProfile &&
+          categories.length > 0 &&
+          financialAccounts.length > 0 ? (
             <CreateTransactionModal
               categories={categories}
               defaultCurrency={baseCurrency ?? "COP"}
+              financialAccounts={financialAccounts}
               timeZone={timeZone}
               onCreated={() => {
                 setCurrentPage(1);
@@ -550,6 +650,7 @@ export default function TransactionsPage() {
         </div>
 
         <TransactionsView
+          financialAccounts={financialAccounts}
           categories={categories}
           transactions={transactions}
           totalCount={totalCount}
@@ -606,6 +707,32 @@ export default function TransactionsPage() {
             <DialogTitle>{t.editTitle}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleEditSubmit(onEditSubmit)} className="space-y-4">
+            {hasMultipleAccounts ? (
+              <div className="space-y-1.5">
+                <Label>{t.account}</Label>
+                <Select
+                  value={editFinancialAccountIdValue ?? ""}
+                  onValueChange={(value) =>
+                    setEditValue("financial_account_id", value)
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={t.accountPlaceholder} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {financialAccounts.map((account) => (
+                      <SelectItem key={account.id} value={account.id}>
+                        {getFinancialAccountDisplayName(
+                          account,
+                          site.common.mainFinancialAccount,
+                        )}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : null}
+
             <div className="space-y-1.5">
               <Label>{t.category}</Label>
               <Select
@@ -748,6 +875,7 @@ async function fetchTransactionsPage(
   includeMetadata = true,
 ) {
   return api.getTransactions({
+    financial_account_id: params.financial_account_id,
     category_id: params.category_id,
     parent_category_id: params.parent_category_id,
     start_date: params.start_date,
@@ -761,7 +889,8 @@ async function fetchTransactionsPage(
 
 function isTransactionsFilterActive(params: TransactionFilters) {
   return Boolean(
-    params.category_id ||
+    params.financial_account_id ||
+      params.category_id ||
       params.parent_category_id ||
       params.start_date ||
       params.end_date,
@@ -770,6 +899,7 @@ function isTransactionsFilterActive(params: TransactionFilters) {
 
 function getTransactionsFilterKey(params: TransactionFilters) {
   return JSON.stringify({
+    financial_account_id: params.financial_account_id ?? null,
     category_id: params.category_id ?? null,
     parent_category_id: params.parent_category_id ?? null,
     start_date: params.start_date ?? null,

@@ -7,12 +7,14 @@ import { getSiteText } from "@/lib/site";
 const {
   cacheStore,
   getCategoriesMock,
+  getFinancialAccountsMock,
   getTransactionsMock,
   setProfileMock,
   toastErrorMock,
 } = vi.hoisted(() => ({
   cacheStore: new Map<string, unknown>(),
   getCategoriesMock: vi.fn(),
+  getFinancialAccountsMock: vi.fn(),
   getTransactionsMock: vi.fn(),
   setProfileMock: vi.fn(),
   toastErrorMock: vi.fn(),
@@ -29,6 +31,7 @@ vi.mock("@/lib/api", () => ({
   },
   api: {
     getCategories: getCategoriesMock,
+    getFinancialAccounts: getFinancialAccountsMock,
     getTransactions: getTransactionsMock,
     updateTransaction: vi.fn(),
     deleteTransaction: vi.fn(),
@@ -59,10 +62,12 @@ vi.mock("@/components/providers/site-preferences-provider", () => ({
 vi.mock("@/lib/cache", () => ({
   cacheKeys: {
     categories: "cache:categories",
+    financialAccounts: "cache:financial-accounts",
     transactions: "cache:transactions",
   },
   cacheTtls: {
     categories: 60_000,
+    financialAccounts: 60_000,
     transactions: 30_000,
   },
   getCache: (key: string) => cacheStore.get(key) ?? null,
@@ -89,13 +94,26 @@ vi.mock("../profile/components/financial-profile-form", () => ({
 vi.mock("./components", () => ({
   CreateTransactionModal: () => null,
   TransactionsFilters: ({
+    onFilterFinancialAccountChange,
     onFilterCategoryChange,
   }: {
+    onFilterFinancialAccountChange: (value: string) => void;
     onFilterCategoryChange: (value: string) => void;
   }) => (
-    <button type="button" onClick={() => onFilterCategoryChange("cat-filtered")}>
-      Aplicar filtro
-    </button>
+    <div>
+      <button
+        type="button"
+        onClick={() => onFilterCategoryChange("cat-filtered")}
+      >
+        Aplicar filtro
+      </button>
+      <button
+        type="button"
+        onClick={() => onFilterFinancialAccountChange("acc-filtered")}
+      >
+        Filtrar cuenta
+      </button>
+    </div>
   ),
   TransactionsView: ({
     transactions,
@@ -126,6 +144,7 @@ describe("TransactionsPage", () => {
   beforeEach(() => {
     cacheStore.clear();
     getCategoriesMock.mockReset();
+    getFinancialAccountsMock.mockReset();
     getTransactionsMock.mockReset();
     setProfileMock.mockReset();
     toastErrorMock.mockReset();
@@ -136,6 +155,22 @@ describe("TransactionsPage", () => {
         name: "Food",
         direction: "expense",
         parent_id: null,
+      },
+    ]);
+    getFinancialAccountsMock.mockResolvedValue([
+      {
+        id: "acc-1",
+        name: "Main account",
+        currency: "COP",
+        is_default: true,
+        created_at: "2026-03-01T00:00:00Z",
+      },
+      {
+        id: "acc-filtered",
+        name: "Wallet",
+        currency: "COP",
+        is_default: false,
+        created_at: "2026-03-02T00:00:00Z",
       },
     ]);
   });
@@ -178,6 +213,7 @@ describe("TransactionsPage", () => {
     expect(screen.getByTestId("transactions-count")).toHaveTextContent("12");
     expect(screen.getByTestId("transactions-total")).toHaveTextContent("125");
     expect(screen.getByTestId("transactions-first-id")).toHaveTextContent("txn-1");
+    expect(getFinancialAccountsMock).toHaveBeenCalledTimes(1);
     expect(getTransactionsMock).toHaveBeenCalledWith(
       expect.objectContaining({ limit: 12, offset: 0 }),
     );
@@ -274,6 +310,67 @@ describe("TransactionsPage", () => {
       }),
     );
   });
+
+  it("passes the selected financial account filter to the backend", async () => {
+    getTransactionsMock.mockImplementation(async (params?: {
+      financial_account_id?: string;
+      limit?: number;
+      offset?: number;
+      include_total_count?: boolean;
+      include_summary?: boolean;
+    }) => {
+      if (params?.financial_account_id === "acc-filtered") {
+        return buildTransactionsPage(
+          7,
+          "cat-1",
+          params?.offset ?? 0,
+          params?.include_total_count !== false,
+          "acc-filtered",
+        );
+      }
+
+      return buildTransactionsPage(
+        15,
+        "cat-1",
+        params?.offset ?? 0,
+        params?.include_total_count !== false,
+        "acc-1",
+      );
+    });
+
+    render(<TransactionsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("transactions-first-id")).toHaveTextContent(
+        "txn-1",
+      );
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Ir a pagina 2" }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("transactions-first-id")).toHaveTextContent(
+        "txn-13",
+      );
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Filtrar cuenta" }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("transactions-first-id")).toHaveTextContent(
+        "txn-1",
+      );
+      expect(screen.getByTestId("transactions-total")).toHaveTextContent("7");
+    });
+
+    expect(getTransactionsMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        financial_account_id: "acc-filtered",
+        limit: 12,
+        offset: 0,
+      }),
+    );
+  });
 });
 
 function buildTransactionsPage(
@@ -281,6 +378,7 @@ function buildTransactionsPage(
   categoryId: string,
   offset: number,
   includeMetadata = true,
+  financialAccountId = "acc-1",
 ) {
   const pageSize = 12;
   const remaining = Math.max(0, totalCount - offset);
@@ -290,6 +388,7 @@ function buildTransactionsPage(
     items: Array.from({ length: count }, (_, index) => ({
       id: `txn-${offset + index + 1}`,
       category_id: categoryId,
+      financial_account_id: financialAccountId,
       amount: "1000.00",
       currency: "COP",
       description: `Transaction ${offset + index + 1}`,

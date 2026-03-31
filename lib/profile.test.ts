@@ -148,7 +148,16 @@ describe("profile helpers", () => {
   });
 
   it("deduplicates concurrent profile resolution for the same authenticated user", async () => {
-    const profile = {
+    type TestProfile = {
+      id: string;
+      name: string;
+      email: string;
+      base_currency: string;
+      timezone: string;
+      created_at: string;
+    };
+
+    const profile: TestProfile = {
       id: "user-3",
       name: "Concurrent User",
       email: "concurrent@example.com",
@@ -157,10 +166,10 @@ describe("profile helpers", () => {
       created_at: "2026-03-26T12:00:00Z",
     };
 
-    let resolveRequest: ((value: typeof profile) => void) | null = null;
+    let resolveRequest: ((value: TestProfile) => void) | null = null;
     getProfileMock.mockImplementation(
       () =>
-        new Promise((resolve) => {
+        new Promise<TestProfile>((resolve) => {
           resolveRequest = resolve;
         }),
     );
@@ -170,7 +179,12 @@ describe("profile helpers", () => {
 
     expect(getProfileMock).toHaveBeenCalledTimes(1);
 
-    resolveRequest?.(profile);
+    expect(resolveRequest).not.toBeNull();
+    if (!resolveRequest) {
+      throw new Error("Missing resolver");
+    }
+    const resolveProfile = resolveRequest as (value: TestProfile) => void;
+    resolveProfile(profile);
 
     await expect(Promise.all([first, second])).resolves.toEqual([
       profile,

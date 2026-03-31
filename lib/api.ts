@@ -86,9 +86,27 @@ export interface Category {
   parent_id: string | null;
 }
 
+export type TransactionType =
+  | "income"
+  | "expense"
+  | "transfer"
+  | "adjustment"
+  | string;
+
+export interface FinancialAccount {
+  id: string;
+  name: string;
+  currency?: string | null;
+  is_default: boolean;
+  created_at: string;
+}
+
 export interface Transaction {
   id: string;
-  category_id: string;
+  category_id: string | null;
+  financial_account_id?: string;
+  transaction_type?: TransactionType | null;
+  transfer_group_id?: string | null;
   amount: string;
   currency: string;
   fx_rate?: string | null;
@@ -139,9 +157,10 @@ export interface BalanceOverview {
 
 export interface AnalyticsSummaryTransaction {
   id: string;
-  category_id: string;
+  category_id: string | null;
+  financial_account_id?: string | null;
   category_name: string;
-  direction: "income" | "expense" | string;
+  direction: TransactionType;
   amount: string;
   currency: string;
   base_currency?: string | null;
@@ -157,7 +176,7 @@ export interface AnalyticsSummary extends BalanceOverview {
 export interface AnalyticsCategoryBreakdownItem {
   category_id: string;
   category_name: string;
-  direction: "income" | "expense" | string;
+  direction: TransactionType;
   amount: string;
   percentage: string;
   transaction_count: number;
@@ -205,6 +224,36 @@ export const api = {
 
   getCategories: () => request<Category[]>("/categories/"),
 
+  getFinancialAccounts: () =>
+    request<FinancialAccount[]>("/financial-accounts/"),
+
+  getFinancialAccount: (id: string) =>
+    request<FinancialAccount>(`/financial-accounts/${id}`),
+
+  createFinancialAccount: (body: {
+    name: string;
+    is_default?: boolean;
+  }) =>
+    request<FinancialAccount>("/financial-accounts/", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  updateFinancialAccount: (
+    id: string,
+    body: {
+      name?: string;
+      is_default?: boolean;
+    },
+  ) =>
+    request<FinancialAccount>(`/financial-accounts/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
+
+  deleteFinancialAccount: (id: string) =>
+    request<void>(`/financial-accounts/${id}`, { method: "DELETE" }),
+
   createCategory: (body: {
     name: string;
     direction: "income" | "expense";
@@ -232,6 +281,7 @@ export const api = {
     request<void>(`/categories/${id}`, { method: "DELETE" }),
 
   getTransactions: (params?: {
+    financial_account_id?: string;
     category_id?: string;
     parent_category_id?: string;
     start_date?: string;
@@ -242,6 +292,9 @@ export const api = {
     include_summary?: boolean;
   }) => {
     const qs = new URLSearchParams();
+    if (params?.financial_account_id) {
+      qs.set("financial_account_id", params.financial_account_id);
+    }
     if (params?.category_id) qs.set("category_id", params.category_id);
     if (params?.parent_category_id) {
       qs.set("parent_category_id", params.parent_category_id);
@@ -260,18 +313,32 @@ export const api = {
     return request<TransactionsPageResponse>(`/transactions/${query}`);
   },
 
-  getMonthlyBalance: (params?: { year?: number; month?: number }) => {
+  getMonthlyBalance: (params?: {
+    year?: number;
+    month?: number;
+    financial_account_id?: string;
+  }) => {
     const qs = new URLSearchParams();
     if (params?.year != null) qs.set("year", String(params.year));
     if (params?.month != null) qs.set("month", String(params.month));
+    if (params?.financial_account_id) {
+      qs.set("financial_account_id", params.financial_account_id);
+    }
     const query = qs.toString() ? `?${qs.toString()}` : "";
     return request<BalanceOverview>(`/balance/monthly${query}`);
   },
 
-  getAnalyticsSummary: (params?: { year?: number; month?: number }) => {
+  getAnalyticsSummary: (params?: {
+    year?: number;
+    month?: number;
+    financial_account_id?: string;
+  }) => {
     const qs = new URLSearchParams();
     if (params?.year != null) qs.set("year", String(params.year));
     if (params?.month != null) qs.set("month", String(params.month));
+    if (params?.financial_account_id) {
+      qs.set("financial_account_id", params.financial_account_id);
+    }
     const query = qs.toString() ? `?${qs.toString()}` : "";
     return request<AnalyticsSummary>(`/analytics/summary${query}`);
   },
@@ -280,11 +347,15 @@ export const api = {
     year: number;
     month: number;
     direction?: "income" | "expense";
+    financial_account_id?: string;
   }) => {
     const qs = new URLSearchParams();
     qs.set("year", String(params.year));
     qs.set("month", String(params.month));
     if (params.direction) qs.set("direction", params.direction);
+    if (params.financial_account_id) {
+      qs.set("financial_account_id", params.financial_account_id);
+    }
     return request<AnalyticsCategoryBreakdown>(
       `/analytics/category-breakdown?${qs.toString()}`,
     );
@@ -292,6 +363,8 @@ export const api = {
 
   createTransaction: (body: {
     category_id: string;
+    financial_account_id?: string;
+    transaction_type?: TransactionType;
     amount: string;
     currency: string;
     description?: string | null;
@@ -306,6 +379,8 @@ export const api = {
     id: string,
     body: {
       category_id?: string;
+      financial_account_id?: string;
+      transaction_type?: TransactionType;
       amount?: string;
       currency?: string;
       description?: string | null;

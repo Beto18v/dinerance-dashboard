@@ -1,6 +1,7 @@
 "use client";
 
-import type { Category } from "@/lib/api";
+import type { Category, FinancialAccount } from "@/lib/api";
+import { getFinancialAccountDisplayName } from "@/lib/financial-accounts";
 import { useSitePreferences } from "@/components/providers/site-preferences-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,14 +16,17 @@ import {
 } from "@/components/ui/select";
 
 interface TransactionsFiltersProps {
+  financialAccounts: FinancialAccount[];
   categories: Category[];
   parentCategories: Category[];
+  filterFinancialAccountId: string;
   filterCategoryId: string;
   filterParentCategoryId: string;
   filterStartDate: string;
   filterEndDate: string;
   activeQuickRange: "today" | "last7" | "thisMonth" | null;
   displayMode: "desktop" | "mobile";
+  onFilterFinancialAccountChange: (value: string) => void;
   onFilterCategoryChange: (value: string) => void;
   onFilterParentCategoryChange: (value: string) => void;
   onFilterStartDateChange: (value: string) => void;
@@ -33,14 +37,17 @@ interface TransactionsFiltersProps {
 }
 
 export function TransactionsFilters({
+  financialAccounts,
   categories,
   parentCategories,
+  filterFinancialAccountId,
   filterCategoryId,
   filterParentCategoryId,
   filterStartDate,
   filterEndDate,
   activeQuickRange,
   displayMode,
+  onFilterFinancialAccountChange,
   onFilterCategoryChange,
   onFilterParentCategoryChange,
   onFilterStartDateChange,
@@ -51,7 +58,9 @@ export function TransactionsFilters({
 }: TransactionsFiltersProps) {
   const { site } = useSitePreferences();
   const t = site.pages.transactions;
+  const showFinancialAccountFilter = financialAccounts.length > 1;
   const hasActiveFilters = !!(
+    filterFinancialAccountId ||
     filterCategoryId ||
     filterParentCategoryId ||
     filterStartDate ||
@@ -132,7 +141,34 @@ export function TransactionsFilters({
           {t.moreFilters}
         </summary>
 
-        <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          {showFinancialAccountFilter ? (
+            <div className="space-y-1.5">
+              <Label>{t.account}</Label>
+              <Select
+                value={filterFinancialAccountId || "__all__"}
+                onValueChange={(value) =>
+                  onFilterFinancialAccountChange(value === "__all__" ? "" : value)
+                }
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder={site.common.all} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">{site.common.all}</SelectItem>
+                  {financialAccounts.map((account) => (
+                    <SelectItem key={account.id} value={account.id}>
+                      {getFinancialAccountDisplayName(
+                        account,
+                        site.common.mainFinancialAccount,
+                      )}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
+
           <div className="space-y-1.5">
             <Label>{t.parentCategory}</Label>
             <Select

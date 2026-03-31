@@ -1,31 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
-
-import {
-  api,
-  ApiError,
-  type AnalyticsCategoryBreakdown,
-  type AnalyticsSummary,
-  type AnalyticsSummaryTransaction,
-  type Category,
-  type TransactionsPageResponse,
-  type UserProfile,
-} from "@/lib/api";
-import { useProfile } from "@/components/providers/profile-provider";
+import { type AnalyticsSummaryTransaction } from "@/lib/api";
+import { invalidateCacheKey, cacheKeys } from "@/lib/cache";
 import { formatCurrencyAmount } from "@/lib/finance";
-import {
-  cacheKeys,
-  cacheTtls,
-  getCache,
-  invalidateCacheKey,
-  setCache,
-  subscribeToCacheKeys,
-} from "@/lib/cache";
-import { getCurrentMonthValue } from "@/lib/timezone";
-import { useSitePreferences } from "@/components/providers/site-preferences-provider";
+import { getFinancialAccountDisplayName } from "@/lib/financial-accounts";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Card,
   CardContent,
@@ -41,6 +28,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useBalancePageState } from "./use-balance-page-state";
 import { BalanceOnboardingCard } from "./components/balance-onboarding-card";
 import { CategoryBreakdownCard } from "./components/category-breakdown-card";
 
@@ -54,294 +42,39 @@ const monthFormatters = {
     year: "numeric",
   }),
 };
+
 export default function BalancePage() {
-  const { site } = useSitePreferences();
-  const { profile, setProfile } = useProfile();
-  const t = site.pages.balance;
-  const cachedCategories = getFreshCategoriesCache();
-  const cachedTransactions = getFreshTransactionsCache();
-  const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
-  const [categoryBreakdown, setCategoryBreakdown] =
-    useState<AnalyticsCategoryBreakdown | null>(null);
-  const [categoryBreakdownLoading, setCategoryBreakdownLoading] =
-    useState(false);
-  const [categoryBreakdownDirection, setCategoryBreakdownDirection] = useState<
-    "expense" | "income"
-  >("income");
-  const [categories, setCategories] = useState<Category[]>(
-    () => cachedCategories ?? [],
-  );
-  const [categoriesReady, setCategoriesReady] = useState(
-    () => !!cachedCategories,
-  );
-  const [transactionsReady, setTransactionsReady] = useState(
-    () => cachedTransactions !== null,
-  );
-  const [hasTransactions, setHasTransactions] = useState(
-    () => (cachedTransactions?.total_count ?? 0) > 0,
-  );
-  const [loading, setLoading] = useState(true);
-  const [selectedMonth, setSelectedMonth] = useState("");
-  const profileRef = useRef<UserProfile | null>(profile);
-  const categoryBreakdownDirectionRef = useRef<"expense" | "income">(
+  const {
+    balanceCurrency,
+    categories,
+    categoryBreakdown,
     categoryBreakdownDirection,
-  );
-  const categoryBreakdownResolvedKeyRef = useRef<string | null>(null);
-  const categoryBreakdownInFlightKeyRef = useRef<string | null>(null);
-  const categoryBreakdownRequestIdRef = useRef(0);
-
-  const hasBaseCurrency = Boolean(profile?.base_currency);
-  const hasTimeZone = Boolean(profile?.timezone);
-  const hasCategories = categories.length > 0;
-  const needsProfileSetup = !hasBaseCurrency || !hasTimeZone;
-  // Missing finance setup should render onboarding immediately instead of flashing
-  // a temporary fallback card while categories/transactions are still loading.
-  const showOnboarding =
-    needsProfileSetup ||
-    (categoriesReady &&
-      transactionsReady &&
-      !(hasBaseCurrency && hasTimeZone && hasCategories && hasTransactions));
-  const profileAnalyticsKey = getProfileAnalyticsKey(profile);
-
-  useEffect(() => {
-    profileRef.current = profile;
-  }, [profile]);
-
-  useEffect(() => {
-    categoryBreakdownDirectionRef.current = categoryBreakdownDirection;
-  }, [categoryBreakdownDirection]);
-
-  const loadCategoryBreakdown = useCallback(
-    async (
-      params?: {
-        year?: number;
-        month?: number;
-        direction?: "expense" | "income";
-      },
-      activeProfile?: UserProfile | null,
-    ) => {
-      const resolvedProfile = activeProfile ?? profileRef.current;
-      if (
-        !resolvedProfile?.base_currency ||
-        params?.year == null ||
-        params?.month == null
-      ) {
-        categoryBreakdownResolvedKeyRef.current = null;
-        categoryBreakdownInFlightKeyRef.current = null;
-        setCategoryBreakdown(null);
-        setCategoryBreakdownLoading(false);
-        return;
-      }
-
-      const requestKey = getCategoryBreakdownRequestKey({
-        baseCurrency: resolvedProfile.base_currency,
-        year: params.year,
-        month: params.month,
-        direction: params.direction,
-      });
-      if (
-        requestKey === categoryBreakdownResolvedKeyRef.current ||
-        requestKey === categoryBreakdownInFlightKeyRef.current
-      ) {
-        return;
-      }
-
-      const requestId = categoryBreakdownRequestIdRef.current + 1;
-      categoryBreakdownRequestIdRef.current = requestId;
-      categoryBreakdownInFlightKeyRef.current = requestKey;
-      setCategoryBreakdown(null);
-      setCategoryBreakdownLoading(true);
-      try {
-        const data = await api.getAnalyticsCategoryBreakdown({
-          year: params.year,
-          month: params.month,
-          direction: params.direction,
-        });
-        if (requestId !== categoryBreakdownRequestIdRef.current) {
-          return;
-        }
-        categoryBreakdownResolvedKeyRef.current = requestKey;
-        setCategoryBreakdown(data);
-      } catch (err) {
-        if (requestId !== categoryBreakdownRequestIdRef.current) {
-          return;
-        }
-        if (err instanceof ApiError && err.status === 409) {
-          categoryBreakdownResolvedKeyRef.current = null;
-          setCategoryBreakdown(null);
-        } else if (err instanceof ApiError) {
-          toast.error(err.message);
-        } else {
-          toast.error(site.common.unexpectedError);
-        }
-      } finally {
-        if (requestId === categoryBreakdownRequestIdRef.current) {
-          categoryBreakdownInFlightKeyRef.current = null;
-          setCategoryBreakdownLoading(false);
-        }
-      }
-    },
-    [site.common.unexpectedError],
-  );
-
-  const loadBalance = useCallback(
-    async (
-      params?: { year?: number; month?: number },
-      activeProfile?: UserProfile | null,
-    ) => {
-      const resolvedProfile = activeProfile ?? profileRef.current;
-      const fallbackMonth = getCurrentMonthValue(
-        resolvedProfile?.timezone ?? "UTC",
-      );
-
-      if (!resolvedProfile?.base_currency) {
-        setSummary(null);
-        categoryBreakdownResolvedKeyRef.current = null;
-        categoryBreakdownInFlightKeyRef.current = null;
-        setCategoryBreakdown(null);
-        setCategoryBreakdownLoading(false);
-        setSelectedMonth((currentValue) => currentValue || fallbackMonth);
-        setLoading(false);
-        return;
-      }
-
-      setLoading(true);
-      try {
-        const data = await api.getAnalyticsSummary(params);
-        setSummary(data);
-        const resolvedMonthValue = data.current.month_start.slice(0, 7);
-        setSelectedMonth(resolvedMonthValue);
-        const resolvedMonth = parseMonthValue(resolvedMonthValue);
-        if (resolvedMonth) {
-          void loadCategoryBreakdown(
-            {
-              ...resolvedMonth,
-              direction: categoryBreakdownDirectionRef.current,
-            },
-            resolvedProfile,
-          );
-        }
-      } catch (err) {
-        if (err instanceof ApiError && err.status === 409) {
-          setSummary(null);
-          categoryBreakdownResolvedKeyRef.current = null;
-          categoryBreakdownInFlightKeyRef.current = null;
-          setCategoryBreakdown(null);
-          setCategoryBreakdownLoading(false);
-          setSelectedMonth((currentValue) => currentValue || fallbackMonth);
-        } else if (err instanceof ApiError) {
-          toast.error(err.message);
-        } else {
-          toast.error(site.common.unexpectedError);
-        }
-      } finally {
-        setLoading(false);
-      }
-    },
-    [loadCategoryBreakdown, site.common.unexpectedError],
-  );
-
-  const loadCategories = useCallback(async () => {
-    try {
-      const data = await api.getCategories();
-      setCategories(data);
-      setCache(cacheKeys.categories, data);
-    } catch (err) {
-      if (err instanceof ApiError) toast.error(err.message);
-      else toast.error(site.common.unexpectedError);
-    } finally {
-      setCategoriesReady(true);
-    }
-  }, [site.common.unexpectedError]);
-
-  const refreshProfileFromOnboarding = useCallback(
-    async (updatedProfile: UserProfile) => {
-      setProfile(updatedProfile);
-      await loadBalance(undefined, updatedProfile);
-    },
-    [loadBalance, setProfile],
-  );
-
-  const loadTransactionsPresence = useCallback(async () => {
-    const freshTransactions = getFreshTransactionsCache();
-    if (freshTransactions) {
-      setHasTransactions((freshTransactions.total_count ?? 0) > 0);
-      setTransactionsReady(true);
-      return;
-    }
-
-    try {
-      const data = await api.getTransactions({ limit: 1 });
-      setHasTransactions((data.total_count ?? 0) > 0);
-    } catch (err) {
-      if (err instanceof ApiError) toast.error(err.message);
-      else toast.error(site.common.unexpectedError);
-    } finally {
-      setTransactionsReady(true);
-    }
-  }, [site.common.unexpectedError]);
-
-  const refreshSelectedMonth = useCallback(() => {
-    if (!selectedMonth) {
-      loadBalance();
-      return;
-    }
-
-    const [year, month] = selectedMonth.split("-").map(Number);
-    loadBalance(year && month ? { year, month } : undefined);
-  }, [loadBalance, selectedMonth]);
-
-  useEffect(() => {
-    loadBalance();
-  }, [loadBalance, profileAnalyticsKey]);
-
-  useEffect(() => {
-    Promise.all([loadCategories(), loadTransactionsPresence()]);
-  }, [loadCategories, loadTransactionsPresence]);
-
-  useEffect(() => {
-    return subscribeToCacheKeys(
-      [cacheKeys.categories, cacheKeys.transactions],
-      (changedKeys) => {
-        if (changedKeys.includes(cacheKeys.categories)) {
-          void loadCategories();
-        }
-        if (changedKeys.includes(cacheKeys.transactions)) {
-          void loadTransactionsPresence();
-          refreshSelectedMonth();
-        }
-      },
-    );
-  }, [loadCategories, loadTransactionsPresence, refreshSelectedMonth]);
-
-  const current = summary?.current;
-  const history = summary?.series ?? [];
-  const recentTransactions = summary?.recent_transactions ?? [];
-  const monthHeadingDate =
-    current?.month_start ??
-    `${selectedMonth || getCurrentMonthValue(profile?.timezone ?? "UTC")}-01`;
-  const balanceCurrency = current?.currency ?? profile?.base_currency ?? "COP";
-  const timeZone = profile?.timezone ?? "UTC";
-  const totalSkippedTransactions = history.reduce(
-    (total, item) => total + (item.skipped_transactions ?? 0),
-    0,
-  );
-  const selectedMonthParts = parseMonthValue(selectedMonth);
-
-  const handleCategoryBreakdownDirectionChange = useCallback(
-    (direction: "expense" | "income") => {
-      categoryBreakdownDirectionRef.current = direction;
-      setCategoryBreakdownDirection(direction);
-      if (!selectedMonthParts) {
-        return;
-      }
-      void loadCategoryBreakdown({
-        ...selectedMonthParts,
-        direction,
-      });
-    },
-    [loadCategoryBreakdown, selectedMonthParts],
-  );
+    categoryBreakdownLoading,
+    current,
+    financialAccounts,
+    handleCategoryBreakdownDirectionChange,
+    handleSelectedFinancialAccountChange,
+    handleSelectedMonthChange,
+    hasBaseCurrency,
+    hasMultipleFinancialAccounts,
+    hasTimeZone,
+    hasTransactions,
+    history,
+    loading,
+    monthHeadingDate,
+    profile,
+    recentTransactions,
+    refreshProfileFromOnboarding,
+    resolveRecentTransactionAccountName,
+    selectedFinancialAccountId,
+    selectedFinancialAccountName,
+    selectedMonth,
+    showOnboarding,
+    site,
+    timeZone,
+    totalSkippedTransactions,
+  } = useBalancePageState();
+  const t = site.pages.balance;
 
   return (
     <div className="space-y-6">
@@ -360,6 +93,35 @@ export default function BalancePage() {
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+          {hasMultipleFinancialAccounts ? (
+            <div className="space-y-1.5">
+              <Label htmlFor="balance-account">{t.accountLabel}</Label>
+              <Select
+                value={selectedFinancialAccountId || "__all__"}
+                onValueChange={(value) =>
+                  handleSelectedFinancialAccountChange(
+                    value === "__all__" ? "" : value,
+                  )
+                }
+              >
+                <SelectTrigger id="balance-account" className="w-52">
+                  <SelectValue placeholder={t.allAccountsLabel} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">{t.allAccountsLabel}</SelectItem>
+                  {financialAccounts.map((account) => (
+                    <SelectItem key={account.id} value={account.id}>
+                      {getFinancialAccountDisplayName(
+                        account,
+                        site.common.mainFinancialAccount,
+                      )}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
+
           <div className="space-y-1.5">
             <label className="px-2 text-sm font-medium" htmlFor="balance-month">
               {t.monthLabel}
@@ -369,14 +131,7 @@ export default function BalancePage() {
               type="month"
               value={selectedMonth}
               disabled={!hasBaseCurrency}
-              onChange={(event) => {
-                const value = event.target.value;
-                setSelectedMonth(value);
-                const [year, month] = value.split("-").map(Number);
-                if (year && month) {
-                  loadBalance({ year, month });
-                }
-              }}
+              onChange={(event) => handleSelectedMonthChange(event.target.value)}
               className="w-44"
             />
           </div>
@@ -394,9 +149,7 @@ export default function BalancePage() {
           timeZone={profile?.timezone ?? null}
           onProfileUpdated={refreshProfileFromOnboarding}
           onCategoryCreated={() => invalidateCacheKey(cacheKeys.categories)}
-          onTransactionCreated={() =>
-            invalidateCacheKey(cacheKeys.transactions)
-          }
+          onTransactionCreated={() => invalidateCacheKey(cacheKeys.transactions)}
         />
       ) : null}
 
@@ -409,7 +162,10 @@ export default function BalancePage() {
           </CardTitle>
           <CardDescription>
             {hasBaseCurrency
-              ? t.currentCardDescription(balanceCurrency)
+              ? t.currentCardDescription(
+                  balanceCurrency,
+                  selectedFinancialAccountName,
+                )
               : t.currentCardPendingDescription}
           </CardDescription>
         </CardHeader>
@@ -496,6 +252,7 @@ export default function BalancePage() {
                 <RecentTransactionItem
                   key={transaction.id}
                   transaction={transaction}
+                  accountName={resolveRecentTransactionAccountName(transaction)}
                   locale={displayLocale(site.metadata.htmlLang)}
                   timeZone={timeZone}
                 />
@@ -618,10 +375,12 @@ function BalanceStatCard({
 
 function RecentTransactionItem({
   transaction,
+  accountName,
   locale,
   timeZone,
 }: {
   transaction: AnalyticsSummaryTransaction;
+  accountName?: string | null;
   locale: string;
   timeZone: string;
 }) {
@@ -646,6 +405,11 @@ function RecentTransactionItem({
         <p className="mt-1 text-sm text-muted-foreground">
           {occurredAtFormatter.format(new Date(transaction.occurred_at))}
         </p>
+        {accountName ? (
+          <p className="mt-1 text-xs font-medium text-muted-foreground">
+            {accountName}
+          </p>
+        ) : null}
         {transaction.description?.trim() ? (
           <p className="mt-2 text-sm text-muted-foreground">
             {transaction.description}
@@ -677,48 +441,4 @@ function formatMonthLabel(value: string, locale: string) {
 
 function displayLocale(language: string) {
   return language === "en" ? "en-US" : "es-CO";
-}
-
-function parseMonthValue(value: string) {
-  const [year, month] = value.split("-").map(Number);
-  if (!year || !month) {
-    return null;
-  }
-  return { year, month };
-}
-
-function getProfileAnalyticsKey(profile: UserProfile | null) {
-  if (!profile) {
-    return "anonymous";
-  }
-
-  return [profile.id, profile.base_currency ?? "", profile.timezone ?? ""].join(
-    ":",
-  );
-}
-
-function getCategoryBreakdownRequestKey({
-  baseCurrency,
-  year,
-  month,
-  direction,
-}: {
-  baseCurrency: string;
-  year: number;
-  month: number;
-  direction?: "expense" | "income";
-}) {
-  return [baseCurrency, year, month, direction ?? ""].join(":");
-}
-
-function getFreshCategoriesCache() {
-  return getCache<Category[]>(cacheKeys.categories, {
-    maxAgeMs: cacheTtls.categories,
-  });
-}
-
-function getFreshTransactionsCache() {
-  return getCache<TransactionsPageResponse>(cacheKeys.transactions, {
-    maxAgeMs: cacheTtls.transactions,
-  });
 }

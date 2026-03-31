@@ -3,7 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { FiEdit2, FiTrash2 } from "react-icons/fi";
 
-import { type Category, type Transaction } from "@/lib/api";
+import {
+  type Category,
+  type FinancialAccount,
+  type Transaction,
+} from "@/lib/api";
+import { resolveFinancialAccountName } from "@/lib/financial-accounts";
 import { useSitePreferences } from "@/components/providers/site-preferences-provider";
 import { cn } from "@/lib/utils";
 import { getPaginationSummary } from "@/lib/pagination";
@@ -29,6 +34,7 @@ type TransactionTableRow =
     };
 
 interface TransactionsViewProps {
+  financialAccounts: FinancialAccount[];
   categories: Category[];
   transactions: Transaction[];
   totalCount: number;
@@ -45,6 +51,7 @@ interface TransactionsViewProps {
 }
 
 export function TransactionsView({
+  financialAccounts,
   categories,
   transactions,
   totalCount,
@@ -79,6 +86,7 @@ export function TransactionsView({
 
     return map;
   }, [categories]);
+  const showFinancialAccountNames = financialAccounts.length > 1;
 
   const transactionDateFormatters = useMemo(
     () => ({
@@ -199,8 +207,34 @@ export function TransactionsView({
     return categoryMap.get(id)?.name ?? id;
   }
 
-  function getCategoryDirection(id: string) {
-    return categoryMap.get(id)?.direction ?? null;
+  function getCategoryDirection(id: string | null) {
+    return id ? (categoryMap.get(id)?.direction ?? null) : null;
+  }
+
+  function getFinancialAccountName(transaction: Transaction) {
+    return resolveFinancialAccountName(
+      financialAccounts,
+      transaction.financial_account_id,
+      site.common.mainFinancialAccount,
+    );
+  }
+
+  function getTransactionType(transaction: Transaction) {
+    return transaction.transaction_type ?? getCategoryDirection(transaction.category_id);
+  }
+
+  function getTransactionTypeLabel(transactionType: string | null | undefined) {
+    if (transactionType === "income") return site.common.income;
+    if (transactionType === "expense") return site.common.expense;
+    if (!transactionType) return site.common.dash;
+    return capitalizeFirstLetter(transactionType);
+  }
+
+  function getTransactionCategoryName(transaction: Transaction) {
+    if (transaction.category_id) {
+      return getCategoryName(transaction.category_id);
+    }
+    return getTransactionTypeLabel(transaction.transaction_type);
   }
 
   function getTransactionDescription(transaction: Transaction) {
@@ -208,8 +242,8 @@ export function TransactionsView({
     return description?.length ? description : null;
   }
 
-  function renderDirectionBadge(direction: Category["direction"] | null) {
-    if (direction === "income") {
+  function renderDirectionBadge(transactionType: string | null | undefined) {
+    if (transactionType === "income") {
       return (
         <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">
           {site.common.income}
@@ -217,7 +251,7 @@ export function TransactionsView({
       );
     }
 
-    if (direction === "expense") {
+    if (transactionType === "expense") {
       return (
         <Badge className="bg-rose-100 text-rose-800 hover:bg-rose-100">
           {site.common.expense}
@@ -225,22 +259,27 @@ export function TransactionsView({
       );
     }
 
-    return (
-      <span className="text-sm text-muted-foreground">{site.common.dash}</span>
-    );
+    if (!transactionType) {
+      return (
+        <span className="text-sm text-muted-foreground">{site.common.dash}</span>
+      );
+    }
+
+    return <Badge variant="secondary">{getTransactionTypeLabel(transactionType)}</Badge>;
   }
 
-  function getAmountClassName(direction: Category["direction"] | null) {
+  function getAmountClassName(transactionType: string | null | undefined) {
     return cn(
       "font-medium tabular-nums whitespace-nowrap",
-      direction === "income" && "text-emerald-700 dark:text-emerald-300",
-      direction === "expense" && "text-rose-700 dark:text-rose-300",
+      transactionType === "income" && "text-emerald-700 dark:text-emerald-300",
+      transactionType === "expense" && "text-rose-700 dark:text-rose-300",
     );
   }
 
   return (
     <div className="space-y-3">
       <TransactionsMobileList
+        financialAccounts={financialAccounts}
         categories={categories}
         rows={paginatedRows}
         totalCount={totalCount}
@@ -316,7 +355,7 @@ export function TransactionsView({
                 }
 
                 const transaction = row.transaction;
-                const direction = getCategoryDirection(transaction.category_id);
+                const transactionType = getTransactionType(transaction);
                 const description = getTransactionDescription(transaction);
 
                 return (
@@ -335,15 +374,22 @@ export function TransactionsView({
                       </time>
                     </TableCell>
                     <TableCell className={cn(rowPaddingClass, "font-medium")}>
-                      {getCategoryName(transaction.category_id)}
+                      <div className="space-y-0.5">
+                        <p>{getTransactionCategoryName(transaction)}</p>
+                        {showFinancialAccountNames ? (
+                          <p className="text-xs font-normal text-muted-foreground">
+                            {getFinancialAccountName(transaction) ?? site.common.dash}
+                          </p>
+                        ) : null}
+                      </div>
                     </TableCell>
                     <TableCell className={rowPaddingClass}>
-                      {renderDirectionBadge(direction)}
+                      {renderDirectionBadge(transactionType)}
                     </TableCell>
                     <TableCell
                       className={cn(
                         rowPaddingClass,
-                        getAmountClassName(direction),
+                        getAmountClassName(transactionType),
                       )}
                     >
                       {formatAmount(transaction.amount, transaction.currency)}

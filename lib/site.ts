@@ -79,6 +79,7 @@ const siteTexts = {
       loading: "Cargando...",
       unexpectedError: "Error inesperado",
       mobileTableScrollHint: "Desliza para ver mas columnas.",
+      mainFinancialAccount: "Cuenta principal",
       none: "Ninguno",
       all: "Todos",
       clearFilters: "Limpiar filtros",
@@ -159,10 +160,14 @@ const siteTexts = {
         subtitle: "Resumen financiero del mes seleccionado y su historico.",
         heading: (monthLabel: string) => `Resumen financiero - ${monthLabel}`,
         monthLabel: "Mes",
+        accountLabel: "Cuenta",
+        allAccountsLabel: "Todas las cuentas",
         latestMonthHint:
           "Si no eliges un mes, se muestra el ultimo mes con movimientos.",
-        currentCardDescription: (currency: string) =>
-          `Vista consolidada de ingresos, gastos y balance en ${currency}.`,
+        currentCardDescription: (currency: string, accountName?: string | null) =>
+          accountName
+            ? `Vista de ingresos, gastos y balance en ${currency} para ${accountName}.`
+            : `Vista consolidada de ingresos, gastos y balance en ${currency}.`,
         currentCardPendingDescription:
           "Completa tu perfil financiero para ver analytics coherentes en tu moneda base.",
         categoryBreakdownTitle: "Distribucion por categoria",
@@ -292,12 +297,14 @@ const siteTexts = {
         newCardTitle: "Nueva transaccion",
         newCardDescription: "Registra un ingreso o un gasto.",
         addTransaction: "Agregar transaccion",
+        account: "Cuenta",
         category: "Categoria",
         parentCategory: "Grupo",
         amount: "Monto",
         currency: "Moneda",
         dateTime: "Fecha y hora",
         descriptionOptional: "Descripcion (opcional)",
+        accountPlaceholder: "Selecciona cuenta",
         categoryPlaceholder: "Selecciona categoria",
         amountPlaceholder: "Ej: 50000",
         currencyPlaceholder: "COP",
@@ -350,6 +357,7 @@ const siteTexts = {
         failedUpdate: "No se pudo actualizar la transaccion",
         failedDelete: "No se pudo eliminar la transaccion",
         validations: {
+          accountRequired: "La cuenta es obligatoria",
           categoryRequired: "La categoria es obligatoria",
           amountRequired: "El monto es obligatorio",
           amountInvalid: "El monto solo puede contener numeros",
@@ -403,6 +411,41 @@ const siteTexts = {
         timezoneExamples:
           "Ejemplos: America/Bogota, America/New_York, Europe/Madrid.",
         timezoneInvalid: "Selecciona una zona horaria IANA valida.",
+        financialAccountsTitle: "Cuentas financieras",
+        financialAccountsDescription:
+          "Administra las cuentas donde registras movimientos. La cuenta por defecto se preselecciona en nuevas transacciones.",
+        financialAccountsDefaultHint:
+          "La cuenta por defecto se usa automaticamente cuando registras una nueva transaccion.",
+        financialAccountsAdd: "Agregar cuenta",
+        financialAccountsCreateTitle: "Nueva cuenta",
+        financialAccountsEditTitle: "Editar cuenta",
+        financialAccountsNameLabel: "Nombre de la cuenta",
+        financialAccountsNamePlaceholder: "Ej: Billetera",
+        financialAccountsDefaultBadge: "Por defecto",
+        financialAccountsSetDefault: "Usar por defecto",
+        financialAccountsDeleteTitle: "Eliminar cuenta?",
+        financialAccountsDeleteDescription: (name: string) =>
+          `Seguro que quieres eliminar la cuenta \"${name}\"? Esta accion no se puede deshacer.`,
+        financialAccountsCreated: "Cuenta creada",
+        financialAccountsUpdated: "Cuenta actualizada",
+        financialAccountsDeleted: "Cuenta eliminada",
+        financialAccountsDefaultUpdated: "Cuenta por defecto actualizada",
+        financialAccountsFailedLoad: "No se pudieron cargar las cuentas",
+        financialAccountsFailedCreate: "No se pudo crear la cuenta",
+        financialAccountsFailedUpdate: "No se pudo actualizar la cuenta",
+        financialAccountsFailedDelete: "No se pudo eliminar la cuenta",
+        financialAccountsFailedSetDefault:
+          "No se pudo cambiar la cuenta por defecto",
+        financialAccountsNameRequired: "El nombre de la cuenta es obligatorio",
+        financialAccountsCannotDeleteLast:
+          "No puedes eliminar la unica cuenta financiera.",
+        financialAccountsDeleteBlockedByTransactions: (count: number) =>
+          count === 1
+            ? "No puedes eliminar esta cuenta porque tiene 1 transaccion."
+            : `No puedes eliminar esta cuenta porque tiene ${count} transacciones.`,
+        financialAccountsDefaultRequired:
+          "Siempre debe existir una cuenta por defecto.",
+        financialAccountsNotFound: "No se encontro la cuenta financiera.",
         dangerTitle: "Zona de peligro",
         dangerDescription:
           "Desactiva tu perfil local en Dinerance sin eliminar el historial.",
@@ -432,6 +475,7 @@ const siteTexts = {
       loading: "Loading...",
       unexpectedError: "Unexpected error",
       mobileTableScrollHint: "Swipe to view more columns.",
+      mainFinancialAccount: "Main account",
       none: "None",
       all: "All",
       clearFilters: "Clear filters",
@@ -512,10 +556,14 @@ const siteTexts = {
         subtitle: "Financial summary for the selected month and full history.",
         heading: (monthLabel: string) => `Financial summary - ${monthLabel}`,
         monthLabel: "Month",
+        accountLabel: "Account",
+        allAccountsLabel: "All accounts",
         latestMonthHint:
           "Without a filter, the latest month with activity is shown.",
-        currentCardDescription: (currency: string) =>
-          `Consolidated view of income, expenses, and balance in ${currency}.`,
+        currentCardDescription: (currency: string, accountName?: string | null) =>
+          accountName
+            ? `View of income, expenses, and balance in ${currency} for ${accountName}.`
+            : `Consolidated view of income, expenses, and balance in ${currency}.`,
         currentCardPendingDescription:
           "Complete your financial profile to unlock coherent analytics in your base currency.",
         categoryBreakdownTitle: "Category breakdown",
@@ -647,12 +695,14 @@ const siteTexts = {
         newCardTitle: "New transaction",
         newCardDescription: "Record a new income or expense.",
         addTransaction: "Add transaction",
+        account: "Account",
         category: "Category",
         parentCategory: "Group",
         amount: "Amount",
         currency: "Currency",
         dateTime: "Date & time",
         descriptionOptional: "Description (optional)",
+        accountPlaceholder: "Select account",
         categoryPlaceholder: "Select category",
         amountPlaceholder: "e.g. 50000",
         currencyPlaceholder: "COP",
@@ -705,6 +755,7 @@ const siteTexts = {
         failedUpdate: "Failed to update transaction",
         failedDelete: "Failed to delete transaction",
         validations: {
+          accountRequired: "Account is required",
           categoryRequired: "Category is required",
           amountRequired: "Amount is required",
           amountInvalid: "Amount can only contain numbers",
@@ -757,6 +808,41 @@ const siteTexts = {
         timezoneExamples:
           "Examples: America/Bogota, America/New_York, Europe/Madrid.",
         timezoneInvalid: "Select a valid IANA time zone.",
+        financialAccountsTitle: "Financial accounts",
+        financialAccountsDescription:
+          "Manage the accounts where you record activity. The default account is preselected for new transactions when needed.",
+        financialAccountsDefaultHint:
+          "The default account is used automatically when you record a transaction without choosing another one.",
+        financialAccountsAdd: "Add account",
+        financialAccountsCreateTitle: "New account",
+        financialAccountsEditTitle: "Edit account",
+        financialAccountsNameLabel: "Account name",
+        financialAccountsNamePlaceholder: "e.g. Wallet",
+        financialAccountsDefaultBadge: "Default",
+        financialAccountsSetDefault: "Set default",
+        financialAccountsDeleteTitle: "Delete account?",
+        financialAccountsDeleteDescription: (name: string) =>
+          `Are you sure you want to delete the account \"${name}\"? This action cannot be undone.`,
+        financialAccountsCreated: "Account created",
+        financialAccountsUpdated: "Account updated",
+        financialAccountsDeleted: "Account deleted",
+        financialAccountsDefaultUpdated: "Default account updated",
+        financialAccountsFailedLoad: "Failed to load accounts",
+        financialAccountsFailedCreate: "Failed to create account",
+        financialAccountsFailedUpdate: "Failed to update account",
+        financialAccountsFailedDelete: "Failed to delete account",
+        financialAccountsFailedSetDefault:
+          "Failed to update the default account",
+        financialAccountsNameRequired: "Account name is required",
+        financialAccountsCannotDeleteLast:
+          "You cannot delete the only financial account.",
+        financialAccountsDeleteBlockedByTransactions: (count: number) =>
+          count === 1
+            ? "You cannot delete this account because it has 1 transaction."
+            : `You cannot delete this account because it has ${count} transactions.`,
+        financialAccountsDefaultRequired:
+          "A default financial account is always required.",
+        financialAccountsNotFound: "Financial account not found.",
         dangerTitle: "Danger zone",
         dangerDescription:
           "Deactivate your local Dinerance profile without purging its history.",

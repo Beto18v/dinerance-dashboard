@@ -3,7 +3,12 @@
 import { useMemo } from "react";
 import { FiEdit2, FiTrash2 } from "react-icons/fi";
 
-import { type Category, type Transaction } from "@/lib/api";
+import {
+  type Category,
+  type FinancialAccount,
+  type Transaction,
+} from "@/lib/api";
+import { resolveFinancialAccountName } from "@/lib/financial-accounts";
 import { useSitePreferences } from "@/components/providers/site-preferences-provider";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -18,6 +23,7 @@ type TransactionsMobileRow =
     };
 
 interface TransactionsMobileListProps {
+  financialAccounts: FinancialAccount[];
   categories: Category[];
   rows: TransactionsMobileRow[];
   totalCount: number;
@@ -31,6 +37,7 @@ interface TransactionsMobileListProps {
 }
 
 export function TransactionsMobileList({
+  financialAccounts,
   categories,
   rows,
   totalCount,
@@ -44,6 +51,7 @@ export function TransactionsMobileList({
 }: TransactionsMobileListProps) {
   const { site } = useSitePreferences();
   const t = site.pages.transactions;
+  const showFinancialAccountNames = financialAccounts.length > 1;
 
   const categoryMap = useMemo(() => {
     const map = new Map<string, Category>();
@@ -59,8 +67,34 @@ export function TransactionsMobileList({
     return categoryMap.get(id)?.name ?? id;
   }
 
-  function getCategoryDirection(id: string) {
-    return categoryMap.get(id)?.direction ?? null;
+  function getCategoryDirection(id: string | null) {
+    return id ? (categoryMap.get(id)?.direction ?? null) : null;
+  }
+
+  function getFinancialAccountName(transaction: Transaction) {
+    return resolveFinancialAccountName(
+      financialAccounts,
+      transaction.financial_account_id,
+      site.common.mainFinancialAccount,
+    );
+  }
+
+  function getTransactionType(transaction: Transaction) {
+    return transaction.transaction_type ?? getCategoryDirection(transaction.category_id);
+  }
+
+  function getTransactionTypeLabel(transactionType: string | null | undefined) {
+    if (transactionType === "income") return site.common.income;
+    if (transactionType === "expense") return site.common.expense;
+    if (!transactionType) return site.common.dash;
+    return transactionType.charAt(0).toUpperCase() + transactionType.slice(1);
+  }
+
+  function getTransactionCategoryName(transaction: Transaction) {
+    if (transaction.category_id) {
+      return getCategoryName(transaction.category_id);
+    }
+    return getTransactionTypeLabel(transaction.transaction_type);
   }
 
   function getTransactionDescription(transaction: Transaction) {
@@ -68,8 +102,8 @@ export function TransactionsMobileList({
     return description?.length ? description : null;
   }
 
-  function renderDirectionBadge(direction: Category["direction"] | null) {
-    if (direction === "income") {
+  function renderDirectionBadge(transactionType: string | null | undefined) {
+    if (transactionType === "income") {
       return (
         <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">
           {site.common.income}
@@ -77,7 +111,7 @@ export function TransactionsMobileList({
       );
     }
 
-    if (direction === "expense") {
+    if (transactionType === "expense") {
       return (
         <Badge className="bg-rose-100 text-rose-800 hover:bg-rose-100">
           {site.common.expense}
@@ -85,16 +119,20 @@ export function TransactionsMobileList({
       );
     }
 
-    return (
-      <span className="text-sm text-muted-foreground">{site.common.dash}</span>
-    );
+    if (!transactionType) {
+      return (
+        <span className="text-sm text-muted-foreground">{site.common.dash}</span>
+      );
+    }
+
+    return <Badge variant="secondary">{getTransactionTypeLabel(transactionType)}</Badge>;
   }
 
-  function getAmountClassName(direction: Category["direction"] | null) {
+  function getAmountClassName(transactionType: string | null | undefined) {
     return cn(
       "font-medium tabular-nums whitespace-nowrap",
-      direction === "income" && "text-emerald-700 dark:text-emerald-300",
-      direction === "expense" && "text-rose-700 dark:text-rose-300",
+      transactionType === "income" && "text-emerald-700 dark:text-emerald-300",
+      transactionType === "expense" && "text-rose-700 dark:text-rose-300",
     );
   }
 
@@ -122,7 +160,7 @@ export function TransactionsMobileList({
           }
 
           const transaction = row.transaction;
-          const direction = getCategoryDirection(transaction.category_id);
+          const transactionType = getTransactionType(transaction);
           const description = getTransactionDescription(transaction);
 
           return (
@@ -139,15 +177,20 @@ export function TransactionsMobileList({
                     {formatTime(row.occurredAt)}
                   </time>
                   <p className="mt-1 wrap-break-word font-semibold">
-                    {getCategoryName(transaction.category_id)}
+                    {getTransactionCategoryName(transaction)}
                   </p>
+                  {showFinancialAccountNames ? (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {getFinancialAccountName(transaction) ?? site.common.dash}
+                    </p>
+                  ) : null}
                 </div>
 
                 <div className="shrink-0 text-right">
                   <p
                     className={cn(
                       "text-base font-semibold",
-                      getAmountClassName(direction),
+                      getAmountClassName(transactionType),
                     )}
                   >
                     {formatAmount(transaction.amount, transaction.currency)}
@@ -159,7 +202,9 @@ export function TransactionsMobileList({
               </div>
 
               <div className="mt-3 flex items-center justify-between gap-3">
-                <div className="min-w-0">{renderDirectionBadge(direction)}</div>
+                <div className="min-w-0">
+                  {renderDirectionBadge(transactionType)}
+                </div>
                 <div className="flex shrink-0 justify-end gap-1">
                   <button
                     type="button"
