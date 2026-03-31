@@ -71,7 +71,9 @@ export default function BalancePage() {
   const [categories, setCategories] = useState<Category[]>(
     () => cachedCategories ?? [],
   );
-  const [categoriesReady, setCategoriesReady] = useState(() => !!cachedCategories);
+  const [categoriesReady, setCategoriesReady] = useState(
+    () => !!cachedCategories,
+  );
   const [transactionsReady, setTransactionsReady] = useState(
     () => cachedTransactions !== null,
   );
@@ -290,7 +292,7 @@ export default function BalancePage() {
   }, [loadBalance, selectedMonth]);
 
   useEffect(() => {
-    loadBalance(undefined, profile);
+    loadBalance();
   }, [loadBalance, profileAnalyticsKey]);
 
   useEffect(() => {
@@ -392,7 +394,9 @@ export default function BalancePage() {
           timeZone={profile?.timezone ?? null}
           onProfileUpdated={refreshProfileFromOnboarding}
           onCategoryCreated={() => invalidateCacheKey(cacheKeys.categories)}
-          onTransactionCreated={() => invalidateCacheKey(cacheKeys.transactions)}
+          onTransactionCreated={() =>
+            invalidateCacheKey(cacheKeys.transactions)
+          }
         />
       ) : null}
 
@@ -413,17 +417,29 @@ export default function BalancePage() {
           <div className="grid gap-4 md:grid-cols-3">
             <BalanceStatCard
               label={site.common.income}
-              value={formatMoney(current?.income ?? "0", balanceCurrency, displayLocale(site.metadata.htmlLang))}
+              value={formatMoney(
+                current?.income ?? "0",
+                balanceCurrency,
+                displayLocale(site.metadata.htmlLang),
+              )}
               tone="emerald"
             />
             <BalanceStatCard
               label={site.common.expense}
-              value={formatMoney(current?.expense ?? "0", balanceCurrency, displayLocale(site.metadata.htmlLang))}
+              value={formatMoney(
+                current?.expense ?? "0",
+                balanceCurrency,
+                displayLocale(site.metadata.htmlLang),
+              )}
               tone="rose"
             />
             <BalanceStatCard
               label={t.title}
-              value={formatMoney(current?.balance ?? "0", balanceCurrency, displayLocale(site.metadata.htmlLang))}
+              value={formatMoney(
+                current?.balance ?? "0",
+                balanceCurrency,
+                displayLocale(site.metadata.htmlLang),
+              )}
               tone="sky"
             />
           </div>
@@ -467,7 +483,9 @@ export default function BalancePage() {
         </CardHeader>
         <CardContent>
           {loading && recentTransactions.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{site.common.loading}</p>
+            <p className="text-sm text-muted-foreground">
+              {site.common.loading}
+            </p>
           ) : recentTransactions.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               {t.recentTransactionsEmpty}
@@ -563,7 +581,10 @@ export default function BalancePage() {
           </div>
           {totalSkippedTransactions > 0 ? (
             <p className="mt-4 text-sm text-muted-foreground">
-              {t.historySkippedNotice(totalSkippedTransactions, balanceCurrency)}
+              {t.historySkippedNotice(
+                totalSkippedTransactions,
+                balanceCurrency,
+              )}
             </p>
           ) : null}
         </CardContent>
@@ -619,7 +640,9 @@ function RecentTransactionItem({
   return (
     <div className="flex items-start justify-between gap-4 rounded-xl border bg-muted/20 px-4 py-3 shadow-sm">
       <div className="min-w-0">
-        <p className="font-medium text-foreground">{transaction.category_name}</p>
+        <p className="font-medium text-foreground">
+          {transaction.category_name}
+        </p>
         <p className="mt-1 text-sm text-muted-foreground">
           {occurredAtFormatter.format(new Date(transaction.occurred_at))}
         </p>
@@ -669,11 +692,9 @@ function getProfileAnalyticsKey(profile: UserProfile | null) {
     return "anonymous";
   }
 
-  return [
-    profile.id,
-    profile.base_currency ?? "",
-    profile.timezone ?? "",
-  ].join(":");
+  return [profile.id, profile.base_currency ?? "", profile.timezone ?? ""].join(
+    ":",
+  );
 }
 
 function getCategoryBreakdownRequestKey({
