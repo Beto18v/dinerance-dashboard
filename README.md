@@ -91,6 +91,7 @@ lib/
 - Registro, login y logout con Supabase Auth.
 - Login y registro con Google via Supabase OAuth.
 - Callback dedicado en `/auth/callback` para terminar OAuth y llamar `POST /users/me/bootstrap`.
+- `POST /users/me/bootstrap` tambien reactiva el perfil local si la cuenta habia quedado soft-deleted en la API.
 - Rutas protegidas bajo `/app/*`.
 - Perfil editable, categorias, transacciones y balance.
 - `/app/balance` consume `/analytics/summary` para card principal, movimientos recientes del mes e historico, y `/analytics/category-breakdown` para la visual principal de categorias del mes seleccionado.
@@ -124,6 +125,7 @@ lib/
 - `timezone` tambien se configura en `/app/profile`.
 - El input de zona horaria acepta busqueda/escritura y puede rellenarse con la zona del navegador.
 - El onboarding de balance ahora muestra 4 pasos y solo desaparece cuando perfil, categorias y primera transaccion ya estan completos.
+- La accion de cuenta en Perfil desactiva el perfil local en la API; al volver a iniciar sesion, el bootstrap reactiva la misma cuenta con sus datos anteriores.
 
 ## Monedas y fechas
 

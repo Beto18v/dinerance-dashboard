@@ -201,7 +201,7 @@ export const api = {
       body: JSON.stringify(body),
     }),
 
-  deleteAccount: () => request<void>("/users/me", { method: "DELETE" }),
+  deactivateAccount: () => request<void>("/users/me", { method: "DELETE" }),
 
   getCategories: () => request<Category[]>("/categories/"),
 

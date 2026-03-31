@@ -30,21 +30,21 @@ export function DangerZoneCard() {
   const { site } = useSitePreferences();
   const t = site.pages.profile;
 
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+  const [confirmDeactivate, setConfirmDeactivate] = useState(false);
+  const [deactivating, setDeactivating] = useState(false);
 
-  async function handleDeleteAccount() {
-    setDeleting(true);
+  async function handleDeactivateAccount() {
+    setDeactivating(true);
     try {
-      await api.deleteAccount();
+      await api.deactivateAccount();
       await signOut();
-      toast.success(t.deleted);
-      router.replace("/auth/register");
+      toast.success(t.deactivated);
+      router.replace("/auth/login");
     } catch (err) {
-      setDeleting(false);
-      setConfirmDelete(false);
+      setDeactivating(false);
+      setConfirmDeactivate(false);
       if (err instanceof ApiError) toast.error(err.message);
-      else toast.error(t.failedDeleteAccount);
+      else toast.error(t.failedDeactivateAccount);
     }
   }
 
@@ -58,32 +58,37 @@ export function DangerZoneCard() {
           <CardDescription>{t.dangerDescription}</CardDescription>
         </CardHeader>
         <CardContent>
-          <Button variant="destructive" onClick={() => setConfirmDelete(true)}>
-            {t.deleteAccount}
+          <Button
+            variant="destructive"
+            onClick={() => setConfirmDeactivate(true)}
+          >
+            {t.deactivateAccount}
           </Button>
         </CardContent>
       </Card>
 
-      <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+      <Dialog open={confirmDeactivate} onOpenChange={setConfirmDeactivate}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{t.confirmDeleteTitle}</DialogTitle>
-            <DialogDescription>{t.confirmDeleteDescription}</DialogDescription>
+            <DialogTitle>{t.confirmDeactivateTitle}</DialogTitle>
+            <DialogDescription>
+              {t.confirmDeactivateDescription}
+            </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setConfirmDelete(false)}
-              disabled={deleting}
+              onClick={() => setConfirmDeactivate(false)}
+              disabled={deactivating}
             >
               {site.common.cancel}
             </Button>
             <Button
               variant="destructive"
-              onClick={handleDeleteAccount}
-              disabled={deleting}
+              onClick={handleDeactivateAccount}
+              disabled={deactivating}
             >
-              {deleting ? t.deleting : t.confirmDeleteButton}
+              {deactivating ? t.deactivating : t.confirmDeactivateButton}
             </Button>
           </DialogFooter>
         </DialogContent>
