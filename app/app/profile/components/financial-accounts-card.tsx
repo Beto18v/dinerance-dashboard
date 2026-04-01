@@ -218,8 +218,8 @@ export function FinancialAccountsCard() {
                 key={account.id}
                 className="rounded-xl border bg-muted/20 px-4 py-3"
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="font-medium text-foreground">
                         {getAccountDisplayName(account)}
@@ -235,12 +235,13 @@ export function FinancialAccountsCard() {
                     </p>
                   </div>
 
-                  <div className="flex shrink-0 flex-wrap justify-end gap-2">
+                  <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:shrink-0 sm:justify-end">
                     {!account.is_default ? (
                       <Button
                         type="button"
                         size="sm"
                         variant="outline"
+                        className="border-primary/25 text-primary hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
                         onClick={() => void handleSetDefault(account)}
                         disabled={updatingDefaultId === account.id}
                       >
@@ -251,6 +252,7 @@ export function FinancialAccountsCard() {
                       type="button"
                       size="sm"
                       variant="ghost"
+                      className="text-foreground/75 hover:bg-accent/60 hover:text-foreground"
                       onClick={() => openEditDialog(account)}
                     >
                       {site.common.edit}
@@ -259,6 +261,7 @@ export function FinancialAccountsCard() {
                       type="button"
                       size="sm"
                       variant="ghost"
+                      className="text-destructive/80 hover:bg-destructive/10 hover:text-destructive"
                       onClick={() => setConfirmDeleteAccount(account)}
                       disabled={accounts.length === 1 || deletingId === account.id}
                     >
