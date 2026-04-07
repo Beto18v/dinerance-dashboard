@@ -1,99 +1,247 @@
 "use client";
 
-import { type AnalyticsSummaryTransaction } from "@/lib/api";
-import { invalidateCacheKey, cacheKeys } from "@/lib/cache";
-import { formatCurrencyAmount } from "@/lib/finance";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { AnalyticsFiltersBar } from "../components/analytics-filters-bar";
-import { useBalancePageState } from "./use-balance-page-state";
-import { BalanceOnboardingCard } from "./components/balance-onboarding-card";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 
-const monthFormatters = {
-  es: new Intl.DateTimeFormat("es-CO", {
-    month: "long",
-    year: "numeric",
-  }),
-  en: new Intl.DateTimeFormat("en-US", {
-    month: "long",
-    year: "numeric",
-  }),
-};
+import {
+  api,
+  ApiError,
+  type LedgerMovement,
+} from "@/lib/api";
+import {
+  cacheKeys,
+  invalidateCacheKeys,
+} from "@/lib/cache";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { AccountBalancesCard } from "./components/account-balances-card";
+import { BalanceOnboardingCard } from "./components/balance-onboarding-card";
+import { CurrentCashCard } from "./components/current-cash-card";
+import { CreateAdjustmentModal } from "./components/create-adjustment-modal";
+import { CreateTransferModal } from "./components/create-transfer-modal";
+import { RecentActivityCard } from "./components/recent-activity-card";
+import { useBalanceOnboardingState } from "./use-balance-onboarding-state";
+import { useLedgerPageState } from "./use-ledger-page-state";
+
+const ALL_ACCOUNTS_FILTER = "__all_accounts__";
 
 export default function BalancePage() {
   const {
+    activity,
     balanceCurrency,
-    categories,
-    current,
+    consolidatedBalance,
+    displayedAccountBalances,
     financialAccounts,
     handleSelectedFinancialAccountChange,
-    handleSelectedMonthChange,
-    hasBaseCurrency,
     hasMultipleFinancialAccounts,
-    hasTimeZone,
-    hasTransactions,
-    history,
     loading,
-    monthHeadingDate,
-    profile,
-    recentTransactions,
-    refreshProfileFromOnboarding,
-    resolveRecentTransactionAccountName,
+    refreshLedger,
+    selectedAccountBalance,
     selectedFinancialAccountId,
     selectedFinancialAccountName,
-    selectedMonth,
-    showOnboarding,
     site,
     timeZone,
-    totalSkippedTransactions,
-  } = useBalancePageState({
-    includeCategoryBreakdown: false,
-    includeRecurringCandidates: false,
-  });
+  } = useLedgerPageState();
+  const {
+    categories,
+    hasBaseCurrency,
+    hasTimeZone,
+    hasTransactions,
+    isCheckingRequirements,
+    onProfileUpdated,
+    profile,
+    showOnboarding,
+  } = useBalanceOnboardingState();
   const t = site.pages.balance;
+  const locale = displayLocale(site.metadata.htmlLang);
+  const currentCashCardRef = useRef<HTMLDivElement | null>(null);
+  const [movementPendingDelete, setMovementPendingDelete] =
+    useState<LedgerMovement | null>(null);
+  const [deletingMovementId, setDeletingMovementId] = useState<string | null>(
+    null,
+  );
+  const [currentCashCardHeight, setCurrentCashCardHeight] = useState<
+    number | null
+  >(null);
+
+  const hasLedgerActivity = activity.length > 0;
+  const hasAccountBalances = displayedAccountBalances.length > 0;
+  const hasNonZeroBalances = displayedAccountBalances.some(
+    (account) => Number(account.balance) !== 0,
+  );
+  const showEmptyState =
+    !showOnboarding &&
+    !isCheckingRequirements &&
+    !hasLedgerActivity &&
+    !hasNonZeroBalances;
+  const showOperationalActions = !showOnboarding && !isCheckingRequirements;
+  const activityScopeLabel =
+    selectedFinancialAccountName ?? t.allAccountsActivityLabel;
+
+  useEffect(() => {
+    const element = currentCashCardRef.current;
+    if (!element || typeof ResizeObserver === "undefined") {
+      return;
+    }
+
+    const updateHeight = () => {
+      setCurrentCashCardHeight(Math.round(element.getBoundingClientRect().height));
+    };
+
+    updateHeight();
+
+    const observer = new ResizeObserver(() => {
+      updateHeight();
+    });
+    observer.observe(element);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [showEmptyState, displayedAccountBalances.length, selectedAccountBalance]);
+
+  const deleteDialog = useMemo(() => {
+    if (!movementPendingDelete) {
+      return {
+        title: "",
+        description: "",
+      };
+    }
+
+    if (movementPendingDelete.transaction_type === "transfer") {
+      return {
+        title: t.deleteTransferTitle,
+        description: t.deleteTransferDescription(
+          movementPendingDelete.description,
+        ),
+      };
+    }
+
+    return {
+      title: t.deleteAdjustmentTitle,
+      description: t.deleteAdjustmentDescription(
+        movementPendingDelete.description,
+      ),
+    };
+  }, [movementPendingDelete, t]);
+
+  async function handleDeleteConfirmed() {
+    if (!movementPendingDelete) {
+      return;
+    }
+
+    const movement = movementPendingDelete;
+    setDeletingMovementId(movement.id);
+    setMovementPendingDelete(null);
+
+    try {
+      if (
+        movement.transaction_type === "transfer" &&
+        movement.transfer_group_id
+      ) {
+        await api.deleteTransfer(movement.transfer_group_id);
+        toast.success(t.transferDeleted);
+      } else if (movement.transaction_type === "adjustment") {
+        await api.deleteAdjustment(movement.id);
+        toast.success(t.adjustmentDeleted);
+      }
+
+      invalidateCacheKeys([cacheKeys.ledgerBalances, cacheKeys.ledgerActivity]);
+      void refreshLedger({ silent: true });
+    } catch (error) {
+      if (error instanceof ApiError) {
+        toast.error(error.message);
+      } else if (movement.transaction_type === "transfer") {
+        toast.error(t.failedDeleteTransfer);
+      } else {
+        toast.error(t.failedDeleteAdjustment);
+      }
+    } finally {
+      setDeletingMovementId(null);
+    }
+  }
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div>
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+        <div className="space-y-2">
           <h1 className="text-2xl font-bold">{t.title}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{t.subtitle}</p>
-          <p className="mt-3 text-lg font-semibold text-foreground">
-            {t.heading(
-              formatMonthLabel(monthHeadingDate, site.metadata.htmlLang),
-            )}
-          </p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {t.latestMonthHint}
-          </p>
+          <p className="text-sm text-muted-foreground">{t.subtitle}</p>
         </div>
 
-        <AnalyticsFiltersBar
-          accountLabel={t.accountLabel}
-          allAccountsLabel={t.allAccountsLabel}
-          monthLabel={t.monthLabel}
-          hasBaseCurrency={hasBaseCurrency}
-          hasMultipleFinancialAccounts={hasMultipleFinancialAccounts}
-          financialAccounts={financialAccounts}
-          selectedFinancialAccountId={selectedFinancialAccountId}
-          selectedMonth={selectedMonth}
-          mainFinancialAccountLabel={site.common.mainFinancialAccount}
-          onSelectedFinancialAccountChange={handleSelectedFinancialAccountChange}
-          onSelectedMonthChange={handleSelectedMonthChange}
-        />
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+          {showOperationalActions && hasMultipleFinancialAccounts ? (
+            <div className="w-full sm:w-64">
+              <Label htmlFor="balance_account_filter">{t.accountLabel}</Label>
+              <Select
+                value={selectedFinancialAccountId || ALL_ACCOUNTS_FILTER}
+                onValueChange={(value) =>
+                  handleSelectedFinancialAccountChange(
+                    value === ALL_ACCOUNTS_FILTER ? null : value,
+                  )
+                }
+              >
+                <SelectTrigger id="balance_account_filter" className="mt-1.5">
+                  <SelectValue placeholder={t.allAccountsActivityLabel} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL_ACCOUNTS_FILTER}>
+                    {t.allAccountsActivityLabel}
+                  </SelectItem>
+                  {financialAccounts.map((account) => (
+                    <SelectItem key={account.id} value={account.id}>
+                      {displayedAccountBalances.find(
+                        (item) => item.financial_account_id === account.id,
+                      )?.financial_account_name ?? account.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
+
+          {showOperationalActions ? (
+            <div className="flex flex-wrap gap-2">
+              <CreateTransferModal
+                defaultCurrency={balanceCurrency}
+                financialAccounts={financialAccounts}
+                timeZone={profile?.timezone ?? "UTC"}
+                onCreated={() =>
+                  invalidateCacheKeys([
+                    cacheKeys.ledgerBalances,
+                    cacheKeys.ledgerActivity,
+                  ])
+                }
+              />
+              <CreateAdjustmentModal
+                defaultCurrency={balanceCurrency}
+                financialAccounts={financialAccounts}
+                timeZone={profile?.timezone ?? "UTC"}
+                onCreated={() =>
+                  invalidateCacheKeys([
+                    cacheKeys.ledgerBalances,
+                    cacheKeys.ledgerActivity,
+                  ])
+                }
+              />
+            </div>
+          ) : null}
+        </div>
       </div>
 
       {showOnboarding ? (
@@ -105,282 +253,94 @@ export default function BalancePage() {
           hasTransactions={hasTransactions}
           baseCurrency={profile?.base_currency ?? null}
           timeZone={profile?.timezone ?? null}
-          onProfileUpdated={refreshProfileFromOnboarding}
-          onCategoryCreated={() => invalidateCacheKey(cacheKeys.categories)}
-          onTransactionCreated={() => invalidateCacheKey(cacheKeys.transactions)}
+          onProfileUpdated={onProfileUpdated}
+          onCategoryCreated={() => invalidateCacheKeys([cacheKeys.categories])}
+          onTransactionCreated={() =>
+            invalidateCacheKeys([
+              cacheKeys.transactions,
+              cacheKeys.ledgerBalances,
+              cacheKeys.ledgerActivity,
+            ])
+          }
         />
       ) : null}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            {t.heading(
-              formatMonthLabel(monthHeadingDate, site.metadata.htmlLang),
-            )}
-          </CardTitle>
-          <CardDescription>
-            {hasBaseCurrency
-              ? t.currentCardDescription(
-                  balanceCurrency,
-                  selectedFinancialAccountName,
-                )
-              : t.currentCardPendingDescription}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
-            <BalanceStatCard
-              label={site.common.income}
-              value={formatMoney(
-                current?.income ?? "0",
-                balanceCurrency,
-                displayLocale(site.metadata.htmlLang),
-              )}
-              tone="emerald"
-            />
-            <BalanceStatCard
-              label={site.common.expense}
-              value={formatMoney(
-                current?.expense ?? "0",
-                balanceCurrency,
-                displayLocale(site.metadata.htmlLang),
-              )}
-              tone="rose"
-            />
-            <BalanceStatCard
-              label={t.title}
-              value={formatMoney(
-                current?.balance ?? "0",
-                balanceCurrency,
-                displayLocale(site.metadata.htmlLang),
-              )}
-              tone="sky"
-            />
-          </div>
-          {current &&
-            current.income === "0.00" &&
-            current.expense === "0.00" &&
-            current.balance === "0.00" && (
-              <p className="mt-4 text-sm text-muted-foreground">
-                {t.selectedMonthEmpty}
-              </p>
-            )}
-          {(current?.skipped_transactions ?? 0) > 0 ? (
-            <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-              {t.selectedMonthSkippedNotice(
-                current?.skipped_transactions ?? 0,
-                balanceCurrency,
-              )}
-            </p>
-          ) : null}
+      <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr] xl:items-start">
+        <div ref={currentCashCardRef}>
+          <CurrentCashCard
+            accounts={displayedAccountBalances}
+            balanceCurrency={balanceCurrency}
+            consolidatedBalance={consolidatedBalance}
+            financialAccountsCount={financialAccounts.length}
+            locale={locale}
+            selectedAccountBalance={selectedAccountBalance}
+            selectedFinancialAccountName={selectedFinancialAccountName}
+            showEmptyState={showEmptyState}
+            text={t}
+          />
+        </div>
 
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>{t.recentTransactionsTitle}</CardTitle>
-          <CardDescription>{t.recentTransactionsDescription}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {loading && recentTransactions.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              {site.common.loading}
-            </p>
-          ) : recentTransactions.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              {t.recentTransactionsEmpty}
-            </p>
-          ) : (
-            <div className="space-y-3">
-              {recentTransactions.map((transaction) => (
-                <RecentTransactionItem
-                  key={transaction.id}
-                  transaction={transaction}
-                  accountName={resolveRecentTransactionAccountName(transaction)}
-                  locale={displayLocale(site.metadata.htmlLang)}
-                  timeZone={timeZone}
-                />
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>{t.historyTitle}</CardTitle>
-          <CardDescription>{t.historyDescription}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-hidden rounded-lg border bg-card shadow-sm">
-            <Table showMobileScrollHint>
-              <TableHeader>
-                <TableRow className="bg-muted/50">
-                  <TableHead>{t.monthLabel}</TableHead>
-                  <TableHead>{site.common.income}</TableHead>
-                  <TableHead>{site.common.expense}</TableHead>
-                  <TableHead>{t.title}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading && history.length === 0 ? (
-                  <TableRow>
-                    <TableCell
-                      colSpan={4}
-                      className="py-8 text-center text-muted-foreground"
-                    >
-                      {site.common.loading}
-                    </TableCell>
-                  </TableRow>
-                ) : history.length === 0 ? (
-                  <TableRow>
-                    <TableCell
-                      colSpan={4}
-                      className="py-8 text-center text-muted-foreground"
-                    >
-                      {hasBaseCurrency ? t.noHistory : t.historyPending}
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  history.map((item) => (
-                    <TableRow
-                      key={item.month_start}
-                      className="hover:bg-muted/30"
-                    >
-                      <TableCell className="font-medium">
-                        {formatMonthLabel(
-                          item.month_start,
-                          site.metadata.htmlLang,
-                        )}
-                      </TableCell>
-                      <TableCell className="font-mono text-emerald-700">
-                        {formatMoney(
-                          item.income,
-                          item.currency ?? balanceCurrency,
-                          displayLocale(site.metadata.htmlLang),
-                        )}
-                      </TableCell>
-                      <TableCell className="font-mono text-rose-700">
-                        {formatMoney(
-                          item.expense,
-                          item.currency ?? balanceCurrency,
-                          displayLocale(site.metadata.htmlLang),
-                        )}
-                      </TableCell>
-                      <TableCell className="font-mono text-sky-700">
-                        {formatMoney(
-                          item.balance,
-                          item.currency ?? balanceCurrency,
-                          displayLocale(site.metadata.htmlLang),
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-          {totalSkippedTransactions > 0 ? (
-            <p className="mt-4 text-sm text-muted-foreground">
-              {t.historySkippedNotice(
-                totalSkippedTransactions,
-                balanceCurrency,
-              )}
-            </p>
-          ) : null}
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-function BalanceStatCard({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: string;
-  tone: "emerald" | "rose" | "sky";
-}) {
-  const toneClasses = {
-    emerald: "border-emerald-200 bg-emerald-50 text-emerald-900",
-    rose: "border-rose-200 bg-rose-50 text-rose-900",
-    sky: "border-sky-200 bg-sky-50 text-sky-900",
-  };
-
-  return (
-    <div className={`rounded-xl border p-5 shadow-sm ${toneClasses[tone]}`}>
-      <p className="text-sm font-medium">{label}</p>
-      <p className="mt-3 text-3xl font-bold tracking-tight">{value}</p>
-    </div>
-  );
-}
-
-function RecentTransactionItem({
-  transaction,
-  accountName,
-  locale,
-  timeZone,
-}: {
-  transaction: AnalyticsSummaryTransaction;
-  accountName?: string | null;
-  locale: string;
-  timeZone: string;
-}) {
-  const occurredAtFormatter = new Intl.DateTimeFormat(locale, {
-    dateStyle: "medium",
-    timeStyle: "short",
-    timeZone,
-  });
-  const amountColorClass =
-    transaction.direction === "income"
-      ? "text-emerald-700"
-      : transaction.direction === "expense"
-        ? "text-rose-700"
-        : "text-foreground";
-
-  return (
-    <div className="flex items-start justify-between gap-4 rounded-xl border bg-muted/20 px-4 py-3 shadow-sm">
-      <div className="min-w-0">
-        <p className="font-medium text-foreground">
-          {transaction.category_name}
-        </p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {occurredAtFormatter.format(new Date(transaction.occurred_at))}
-        </p>
-        {accountName ? (
-          <p className="mt-1 text-xs font-medium text-muted-foreground">
-            {accountName}
-          </p>
-        ) : null}
-        {transaction.description?.trim() ? (
-          <p className="mt-2 text-sm text-muted-foreground">
-            {transaction.description}
-          </p>
-        ) : null}
+        <AccountBalancesCard
+          accounts={displayedAccountBalances}
+          balanceCurrency={balanceCurrency}
+          emptyLabel={t.recentActivityEmpty}
+          loading={loading && !hasAccountBalances}
+          loadingLabel={site.common.loading}
+          locale={locale}
+          matchHeight={currentCashCardHeight}
+          onAccountCreated={() =>
+            invalidateCacheKeys([cacheKeys.ledgerBalances])
+          }
+          selectedFinancialAccountId={selectedFinancialAccountId}
+          showCreateAction={showOperationalActions}
+          text={t}
+          onToggleAccount={(financialAccountId, isSelected) =>
+            handleSelectedFinancialAccountChange(
+              isSelected ? null : financialAccountId,
+            )
+          }
+        />
       </div>
 
-      <div className="shrink-0 text-right">
-        <p className={`font-semibold tabular-nums ${amountColorClass}`}>
-          {formatMoney(transaction.amount, transaction.currency, locale)}
-        </p>
-        <p className="mt-1 text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">
-          {transaction.currency}
-        </p>
-      </div>
+      <RecentActivityCard
+        activity={activity}
+        activityScopeLabel={activityScopeLabel}
+        balanceCurrency={balanceCurrency}
+        deletingMovementId={deletingMovementId}
+        loading={loading}
+        locale={locale}
+        onDeleteMovement={setMovementPendingDelete}
+        site={site}
+        timeZone={timeZone}
+      />
+
+      <Dialog
+        open={movementPendingDelete != null}
+        onOpenChange={(open) => !open && setMovementPendingDelete(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{deleteDialog.title}</DialogTitle>
+            <DialogDescription>{deleteDialog.description}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setMovementPendingDelete(null)}
+            >
+              {site.common.cancel}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteConfirmed}
+              disabled={deletingMovementId != null}
+            >
+              {site.common.delete}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
-  );
-}
-
-function formatMoney(value: string, currency: string, locale: string) {
-  return formatCurrencyAmount(value, currency, locale);
-}
-
-function formatMonthLabel(value: string, locale: string) {
-  return (locale === "es" ? monthFormatters.es : monthFormatters.en).format(
-    new Date(`${value}T00:00:00`),
   );
 }
 

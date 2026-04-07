@@ -93,6 +93,8 @@ export type TransactionType =
   | "adjustment"
   | string;
 
+export type BalanceDirection = "in" | "out" | string;
+
 export interface FinancialAccount {
   id: string;
   name: string;
@@ -214,6 +216,50 @@ export interface AnalyticsRecurringCandidates {
   month_start: string;
   history_window_start: string;
   candidates: AnalyticsRecurringCandidate[];
+}
+
+export interface LedgerBalanceAccount {
+  financial_account_id: string;
+  financial_account_name: string;
+  currency?: string | null;
+  balance: string;
+}
+
+export interface LedgerBalances {
+  currency?: string | null;
+  consolidated_balance: string;
+  accounts: LedgerBalanceAccount[];
+}
+
+export interface LedgerMovement {
+  id: string;
+  category_id?: string | null;
+  category_name?: string | null;
+  financial_account_id: string;
+  financial_account_name?: string | null;
+  counterparty_financial_account_id?: string | null;
+  counterparty_financial_account_name?: string | null;
+  transaction_type: TransactionType;
+  balance_direction: BalanceDirection;
+  transfer_group_id?: string | null;
+  amount: string;
+  currency: string;
+  base_currency?: string | null;
+  amount_in_base_currency?: string | null;
+  description?: string | null;
+  occurred_at: string;
+  created_at: string;
+}
+
+export interface LedgerActivity {
+  items: LedgerMovement[];
+  limit: number;
+}
+
+export interface TransferResponse {
+  transfer_group_id: string;
+  source_transaction: LedgerMovement;
+  destination_transaction: LedgerMovement;
 }
 
 // ── Endpoints ────────────────────────────────────────────────────────────────
@@ -401,6 +447,53 @@ export const api = {
       `/analytics/recurring-candidates?${qs.toString()}`,
     );
   },
+
+  getLedgerBalances: () => request<LedgerBalances>("/ledger/balances"),
+
+  getLedgerActivity: (params?: {
+    financial_account_id?: string;
+    limit?: number;
+  }) => {
+    const qs = new URLSearchParams();
+    if (params?.financial_account_id) {
+      qs.set("financial_account_id", params.financial_account_id);
+    }
+    if (params?.limit != null) qs.set("limit", String(params.limit));
+    const query = qs.toString() ? `?${qs.toString()}` : "";
+    return request<LedgerActivity>(`/ledger/activity${query}`);
+  },
+
+  createTransfer: (body: {
+    source_financial_account_id: string;
+    destination_financial_account_id: string;
+    amount: string;
+    currency: string;
+    description: string;
+    occurred_at: string;
+  }) =>
+    request<TransferResponse>("/transfers/", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  deleteTransfer: (transferGroupId: string) =>
+    request<void>(`/transfers/${transferGroupId}`, { method: "DELETE" }),
+
+  createAdjustment: (body: {
+    financial_account_id?: string;
+    balance_direction: BalanceDirection;
+    amount: string;
+    currency: string;
+    description: string;
+    occurred_at: string;
+  }) =>
+    request<LedgerMovement>("/adjustments/", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  deleteAdjustment: (adjustmentId: string) =>
+    request<void>(`/adjustments/${adjustmentId}`, { method: "DELETE" }),
 
   createTransaction: (body: {
     category_id: string;

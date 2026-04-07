@@ -132,6 +132,9 @@ describe("FinancialAccountsCard", () => {
 
     await screen.findByText("Cuenta principal");
     expect(getFinancialAccountsMock).toHaveBeenCalledTimes(1);
+    expect(
+      screen.getByRole("button", { name: "Para que sirven las cuentas?" }),
+    ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Agregar cuenta" }));
     fireEvent.change(screen.getByLabelText("Nombre de la cuenta"), {

@@ -158,11 +158,106 @@ const siteTexts = {
       main: mainPageContent.es,
       balance: {
         title: "Resumen",
-        subtitle: "Resumen financiero del mes seleccionado y su historico.",
+        subtitle:
+          "Ve tu dinero disponible hoy, el total entre cuentas y los ultimos movimientos.",
         heading: (monthLabel: string) => `Resumen financiero - ${monthLabel}`,
         monthLabel: "Mes",
         accountLabel: "Cuenta",
         allAccountsLabel: "Todas las cuentas",
+        allAccountsActivityLabel: "Todas las cuentas",
+        currentCashTitle: "Dinero disponible hoy",
+        currentCashDescription: (
+          currency: string,
+          accountName?: string | null,
+        ) =>
+          accountName
+            ? `Lo que tienes disponible hoy en ${accountName}, en ${currency}.`
+            : `Lo que tienes disponible hoy entre todas tus cuentas, en ${currency}.`,
+        currentCashHelpTitle: "Como funciona este resumen?",
+        currentCashHelpDescription:
+          "Aqui ves tu dinero disponible de hoy. Sumamos ingresos, restamos gastos y tambien contamos movimientos entre tus cuentas y ajustes manuales.",
+        currentCashDistributionTitle: "Como se reparte hoy",
+        currentCashDistributionDescription:
+          "Una vista rapida de donde esta tu dinero disponible en este momento.",
+        currentCashDistributionHelpTitle: "Como leer esta visual?",
+        currentCashDistributionHelpDescription:
+          "Cada barra muestra que parte de tu dinero disponible esta en una cuenta hoy. Te ayuda a ubicar rapido donde se concentra el efectivo.",
+        currentCashDistributionOtherAccounts: (count: number) =>
+          count === 1 ? "+1 cuenta mas" : `+${count} cuentas mas`,
+        consolidatedBalanceLabel: "Total entre tus cuentas",
+        consolidatedBalanceHelpTitle: "Que significa este total?",
+        consolidatedBalanceHelpDescription:
+          "Es la suma del dinero disponible en todas tus cuentas. Mover dinero entre tus propias cuentas no cambia este total.",
+        selectedAccountBalanceLabel: (accountName: string) =>
+          `Disponible en ${accountName}`,
+        selectedAccountBalanceFallback: "Saldo seleccionado",
+        accountsTitle: "Dinero por cuenta",
+        accountsDescription:
+          "Toca una cuenta para ver solo su dinero disponible y sus ultimos movimientos.",
+        accountsHelpTitle: "Que cuenta aqui?",
+        accountsHelpDescription:
+          "Cada cuenta sube o baja con ingresos, gastos, movimientos entre cuentas y ajustes manuales.",
+        recentActivityTitle: "Ultimos movimientos",
+        recentActivityDescription:
+          "Lo mas reciente que cambio tu dinero disponible.",
+        recentActivityHelpTitle: "Que veras aqui?",
+        recentActivityHelpDescription:
+          "Aqui aparecen ingresos, gastos, movimientos entre cuentas y ajustes manuales, porque todos cambian tu dinero disponible. En Analisis solo veras ingresos y gastos del mes.",
+        recentActivityEmpty: "Todavia no hay cuentas para mostrar.",
+        actionsTitle: "Cuentas activas",
+        actionsDescription:
+          "Mueve dinero entre cuentas o corrige un saldo sin mezclarlo con el analisis mensual.",
+        addTransfer: "Mover entre cuentas",
+        addAdjustment: "Ajustar saldo",
+        transferTitle: "Mover entre cuentas",
+        transferDescription:
+          "Pasa dinero de una cuenta a otra. Esto no cuenta como ingreso ni como gasto.",
+        transferFrom: "Cuenta origen",
+        transferTo: "Cuenta destino",
+        adjustmentTitle: "Ajustar saldo",
+        adjustmentDescription:
+          "Usalo si tu dinero real no coincide con la app o para registrar con cuanto empezaste.",
+        adjustmentType: "Para que lo haces?",
+        adjustmentTypeOpening: "Saldo inicial",
+        adjustmentTypeCorrection: "Corregir diferencia",
+        adjustmentDirection: "Que paso con el dinero?",
+        adjustmentDirectionIn: "Entro dinero",
+        adjustmentDirectionOut: "Salio dinero",
+        createTransfer: "Guardar movimiento",
+        creatingTransfer: "Guardando movimiento...",
+        createAdjustment: "Guardar ajuste",
+        creatingAdjustment: "Creando ajuste...",
+        transferCreated: "Transferencia creada",
+        adjustmentCreated: "Ajuste creado",
+        transferDeleted: "Transferencia eliminada",
+        adjustmentDeleted: "Ajuste eliminado",
+        failedLoadLedger: "No se pudo cargar la caja actual",
+        failedCreateTransfer: "No se pudo crear la transferencia",
+        failedCreateAdjustment: "No se pudo crear el ajuste",
+        failedDeleteTransfer: "No se pudo eliminar la transferencia",
+        failedDeleteAdjustment: "No se pudo eliminar el ajuste",
+        emptyStateTitle: "Empieza a mover tu caja real",
+        emptyStateDescription:
+          "Tu resumen se alimenta de ingresos, gastos, transferencias y ajustes.",
+        distinctAccountsRequired: "Debes elegir dos cuentas diferentes",
+        deleteTransferTitle: "Eliminar transferencia?",
+        deleteTransferDescription: (description?: string | null) =>
+          description
+            ? `Se eliminaran ambos movimientos de la transferencia "${description}".`
+            : "Se eliminaran ambos movimientos de la transferencia.",
+        deleteAdjustmentTitle: "Eliminar ajuste?",
+        deleteAdjustmentDescription: (description?: string | null) =>
+          description
+            ? `Se eliminara el ajuste "${description}".`
+            : "Se eliminara este ajuste.",
+        activityTransferLabel: "Entre cuentas",
+        activityAdjustmentLabel: "Ajuste manual",
+        activityIncomingLabel: "Entrada",
+        activityOutgoingLabel: "Salida",
+        onboardingCashTitle:
+          "Completa tu perfil para activar tu dinero disponible",
+        onboardingCashDescription:
+          "Define moneda base y zona horaria antes de empezar a usar este resumen.",
         latestMonthHint:
           "Si no eliges un mes, se muestra el ultimo mes con movimientos.",
         currentCardDescription: (
@@ -176,7 +271,10 @@ const siteTexts = {
           "Completa tu perfil financiero para ver analytics coherentes en tu moneda base.",
         categoryBreakdownTitle: "Distribucion por categoria",
         categoryBreakdownDescription:
-          "Que categorias concentran mas dinero en el mes seleccionado.",
+          "Muestra en que categorias se concentraron tus ingresos o tus gastos del mes.",
+        categoryBreakdownHelpTitle: "Como leer esta distribucion?",
+        categoryBreakdownHelpDescription:
+          "Aqui agrupamos solo ingresos o solo gastos del mes seleccionado. No incluimos movimientos entre tus cuentas ni ajustes manuales.",
         categoryBreakdownExpenseTab: "Gastos",
         categoryBreakdownIncomeTab: "Ingresos",
         categoryBreakdownExpenseTotal: "Total de gastos",
@@ -224,7 +322,10 @@ const siteTexts = {
           "No hay movimientos en el mes seleccionado para mostrar aqui.",
         recurringCandidatesTitle: "Ingresos y gastos frecuentes",
         recurringCandidatesDescription:
-          "Movimientos que parecen repetirse en tu historial.",
+          "Posibles movimientos que se repiten y te ayudan a entender tus habitos.",
+        recurringCandidatesHelpTitle: "Que significa frecuente?",
+        recurringCandidatesHelpDescription:
+          "Son pistas basadas en movimientos parecidos que vimos repetirse. No son reglas fijas ni recordatorios confirmados.",
         recurringCandidatesEmpty:
           "Todavia no encontramos ingresos o gastos frecuentes con suficiente evidencia.",
         recurringCandidatesViewAll: "Ver analisis",
@@ -265,26 +366,38 @@ const siteTexts = {
       analysis: {
         title: "Analisis",
         subtitle:
-          "Explora patrones, categorias y senales utiles del mes seleccionado.",
+          "Entiende tus ingresos y gastos del mes sin mezclar movimientos entre tus cuentas.",
         heading: (monthLabel: string) => `Analisis del periodo - ${monthLabel}`,
+        analysisHelpTitle: "Que veras en Analisis?",
+        analysisHelpDescription:
+          "Aqui solo mostramos ingresos y gastos del mes seleccionado. Las transferencias entre tus cuentas y los ajustes manuales no entran en esta vista.",
         monthLabel: "Mes",
         accountLabel: "Cuenta",
         allAccountsLabel: "Todas las cuentas",
         latestMonthHint:
-          "Usa el mismo mes y cuenta para comparar distribucion y movimientos frecuentes.",
+          "Usa el mismo mes y cuenta para comparar mejor categorias y patrones repetidos.",
       },
       categories: {
         title: "Categorias",
-        subtitle: "Organiza tus transacciones por ingresos y gastos.",
+        subtitle:
+          "Organiza mejor tus ingresos y gastos con categorias y grupos.",
+        categoriesHelpTitle: "Para que sirven las categorias?",
+        categoriesHelpDescription:
+          "Te ayudan a clasificar tus ingresos y gastos para entender mejor en que gastas y de donde entra tu dinero.",
         newCardTitle: "Nueva categoria",
         newCardDescription:
-          "Agrega una categoria para agrupar tus movimientos.",
+          "Crea una categoria para clasificar un ingreso o un gasto.",
         name: "Nombre",
-        direction: "Direccion",
-        parentOptional: "Agrupar en (opcional)",
-        parentHelpTitle: "Para que sirve?",
+        direction: "Tipo",
+        directionHelpTitle: "Que significa el tipo?",
+        directionHelpDescription:
+          "Define si la categoria se usa para ingresos o para gastos. Asi no mezclas dinero que entra con dinero que sale.",
+        parentOptional: "Grupo (opcional)",
+        parentHelpTitle: "Que es un grupo?",
         parentHelpDescription:
           "Si eliges un grupo, la nueva categoría creada se convierte en una subcategoría. Esto te ayuda a organizar mejor en qué gastaste tu dinero o de dónde provino, por ejemplo: Grupo: Hogar > Subcategoría: Mercado.",
+        parentHelpDescriptionSimple:
+          "Un grupo te ayuda a reunir categorias parecidas. Por ejemplo: Hogar puede agrupar Mercado, Arriendo y Servicios.",
         namePlaceholder: "Ej: Mercado",
         addCategory: "Agregar categoria",
         create: "Crear categoria",
@@ -339,9 +452,13 @@ const siteTexts = {
       },
       transactions: {
         title: "Transacciones",
-        subtitle: "Haz seguimiento de tus ingresos y gastos.",
+        subtitle:
+          "Registra y revisa tus ingresos y gastos del dia a dia. Los movimientos entre cuentas y los ajustes se manejan en Resumen.",
+        transactionsHelpTitle: "Que entra aqui?",
+        transactionsHelpDescription:
+          "En esta pantalla solo van ingresos y gastos normales. Si moviste dinero entre tus cuentas o corregiste un saldo, eso se hace desde Resumen.",
         newCardTitle: "Nueva transaccion",
-        newCardDescription: "Registra un ingreso o un gasto.",
+        newCardDescription: "Registra un ingreso o un gasto normal.",
         addTransaction: "Agregar transaccion",
         account: "Cuenta",
         category: "Categoria",
@@ -368,11 +485,15 @@ const siteTexts = {
         desktopView: "PC",
         mobileView: "Movil",
         moreFilters: "Mas filtros",
+        summaryTitle: "Resumen de estos movimientos",
+        summaryHelpTitle: "Como leer este resumen?",
+        summaryHelpDescription:
+          "Estos totales se calculan solo con los movimientos que ves aqui y con los filtros que tengas activos.",
         summaryTransactions: "Movimientos",
         summaryIncome: "Ingresos",
         summaryExpense: "Gastos",
-        summaryBalance: "Balance",
-        summaryCategories: "Categorias activas",
+        summaryBalance: "Neto",
+        summaryCategories: "Categorias usadas",
         summarySkippedNotice: (count: number, currency: string) =>
           `${count} transacciones quedaron fuera de este resumen porque no se pueden llevar con seguridad a ${currency}.`,
         startDate: "Fecha inicial",
@@ -409,6 +530,7 @@ const siteTexts = {
           amountInvalid: "El monto solo puede contener numeros",
           currencyRequired: "La moneda es obligatoria",
           dateRequired: "La fecha es obligatoria",
+          descriptionRequired: "La descripcion es obligatoria",
         },
       },
       profile: {
@@ -435,18 +557,24 @@ const siteTexts = {
         saved: "Guardado",
         financeTitle: "Perfil financiero",
         financeCardDescription:
-          "Configura la moneda fija de tu cuenta y la zona horaria usada en onboarding, balance y transacciones.",
+          "Define la moneda principal y la zona horaria que usara Dinerance para mostrar bien tus movimientos.",
         financeDescription:
-          "Elige la moneda fija de tu cuenta y la zona horaria que usaremos para ordenar dias y meses.",
+          "Estos datos ayudan a que tus montos y fechas se entiendan igual en toda la app.",
+        financeHelpTitle: "Para que sirve esto?",
+        financeHelpDescription:
+          "La moneda principal se usa para tus totales y la zona horaria ayuda a ubicar cada movimiento en el dia y el mes correctos.",
         financeSave: "Guardar perfil financiero",
         financeSaving: "Guardando perfil...",
         financeSaved: "Perfil guardado",
-        baseCurrencyLabel: "Moneda base",
+        baseCurrencyLabel: "Moneda principal",
         baseCurrencyPlaceholder: "COP",
         baseCurrencyHint:
-          "Elige la moneda principal de tu cuenta. Todas las transacciones nuevas usaran esta moneda.",
+          "Usaremos esta moneda para tus totales y para las cuentas nuevas en esta etapa.",
         baseCurrencyLockedHint:
-          "Como ya tienes movimientos registrados, la moneda base queda fija para conservar la consistencia del historial.",
+          "Como ya tienes movimientos registrados, esta moneda queda fija para no alterar tu historial.",
+        baseCurrencyHelpTitle: "Que es la moneda principal?",
+        baseCurrencyHelpDescription:
+          "Es la moneda con la que Dinerance resume tus totales. En este milestone todas tus cuentas usan esa misma moneda.",
         baseCurrencyInvalid:
           "La moneda base debe ser un codigo ISO de 3 letras, por ejemplo COP o USD.",
         timezoneLabel: "Zona horaria",
@@ -456,12 +584,18 @@ const siteTexts = {
           `Puedes escribir para buscar una zona horaria o usar la detectada en este navegador: ${browserTimeZone}.`,
         timezoneExamples:
           "Ejemplos: America/Bogota, America/New_York, Europe/Madrid.",
+        timezoneHelpTitle: "Por que importa la zona horaria?",
+        timezoneHelpDescription:
+          "Sirve para que un movimiento quede en el dia y en el mes correctos segun tu ubicacion, sobre todo cerca de la medianoche.",
         timezoneInvalid: "Selecciona una zona horaria IANA valida.",
         financialAccountsTitle: "Cuentas financieras",
         financialAccountsDescription:
-          "Administra las cuentas donde registras movimientos. La cuenta por defecto se preselecciona en nuevas transacciones.",
+          "Administra los lugares donde guardas o mueves tu dinero, por ejemplo cuenta principal, billetera o ahorro.",
         financialAccountsDefaultHint:
-          "La cuenta por defecto se usa automaticamente cuando registras una nueva transaccion.",
+          "La cuenta por defecto se selecciona automaticamente cuando registras un ingreso o un gasto nuevo.",
+        financialAccountsHelpTitle: "Para que sirven las cuentas?",
+        financialAccountsHelpDescription:
+          "Te ayudan a separar donde esta tu dinero. Asi puedes ver cuanto tienes en cada lugar y mover dinero entre cuentas sin contarlo como ingreso o gasto.",
         financialAccountsAdd: "Agregar cuenta",
         financialAccountsCreateTitle: "Nueva cuenta",
         financialAccountsEditTitle: "Editar cuenta",
@@ -600,11 +734,106 @@ const siteTexts = {
       main: mainPageContent.en,
       balance: {
         title: "Overview",
-        subtitle: "Financial summary for the selected month and full history.",
+        subtitle:
+          "See the money you have available today, the total across accounts, and the latest movements.",
         heading: (monthLabel: string) => `Financial summary - ${monthLabel}`,
         monthLabel: "Month",
         accountLabel: "Account",
         allAccountsLabel: "All accounts",
+        allAccountsActivityLabel: "All accounts",
+        currentCashTitle: "Money available today",
+        currentCashDescription: (
+          currency: string,
+          accountName?: string | null,
+        ) =>
+          accountName
+            ? `What you have available today in ${accountName}, in ${currency}.`
+            : `What you have available today across all your accounts, in ${currency}.`,
+        currentCashHelpTitle: "How does this overview work?",
+        currentCashHelpDescription:
+          "This shows the money you have available today. We add income, subtract expenses, and also count moves between your accounts plus manual balance adjustments.",
+        currentCashDistributionTitle: "How it is split today",
+        currentCashDistributionDescription:
+          "A quick view of where your available money is right now.",
+        currentCashDistributionHelpTitle: "How should I read this visual?",
+        currentCashDistributionHelpDescription:
+          "Each bar shows how much of your available money sits in one account today. It helps you spot where cash is concentrated at a glance.",
+        currentCashDistributionOtherAccounts: (count: number) =>
+          count === 1 ? "+1 more account" : `+${count} more accounts`,
+        consolidatedBalanceLabel: "Total across your accounts",
+        consolidatedBalanceHelpTitle: "What does this total mean?",
+        consolidatedBalanceHelpDescription:
+          "It is the sum of the money available in all your accounts. Moving money between your own accounts does not change this total.",
+        selectedAccountBalanceLabel: (accountName: string) =>
+          `Available in ${accountName}`,
+        selectedAccountBalanceFallback: "Selected balance",
+        accountsTitle: "Money by account",
+        accountsDescription:
+          "Tap an account to focus on its available money and latest movements.",
+        accountsHelpTitle: "What counts here?",
+        accountsHelpDescription:
+          "Each account goes up or down with income, expenses, moves between accounts, and manual balance adjustments.",
+        recentActivityTitle: "Latest movements",
+        recentActivityDescription:
+          "The latest changes to your available money.",
+        recentActivityHelpTitle: "What will you see here?",
+        recentActivityHelpDescription:
+          "This list includes income, expenses, moves between accounts, and manual adjustments because they all change your available money. Analysis only shows monthly income and expenses.",
+        recentActivityEmpty: "There is no cash activity to show yet.",
+        actionsTitle: "Active accounts",
+        actionsDescription:
+          "Move money between accounts or correct a balance without mixing it into monthly analysis.",
+        addTransfer: "Move between accounts",
+        addAdjustment: "Adjust balance",
+        transferTitle: "Move between accounts",
+        transferDescription:
+          "Move money from one account to another. This does not count as income or expense.",
+        transferFrom: "Source account",
+        transferTo: "Destination account",
+        adjustmentTitle: "Adjust balance",
+        adjustmentDescription:
+          "Use this if the real amount of money does not match the app, or to record your starting balance.",
+        adjustmentType: "Why are you doing this?",
+        adjustmentTypeOpening: "Starting balance",
+        adjustmentTypeCorrection: "Fix a difference",
+        adjustmentDirection: "What happened to the money?",
+        adjustmentDirectionIn: "Money came in",
+        adjustmentDirectionOut: "Money went out",
+        createTransfer: "Save movement",
+        creatingTransfer: "Saving movement...",
+        createAdjustment: "Save adjustment",
+        creatingAdjustment: "Creating adjustment...",
+        transferCreated: "Transfer created",
+        adjustmentCreated: "Adjustment created",
+        transferDeleted: "Transfer deleted",
+        adjustmentDeleted: "Adjustment deleted",
+        failedLoadLedger: "Failed to load current cash",
+        failedCreateTransfer: "Failed to create transfer",
+        failedCreateAdjustment: "Failed to create adjustment",
+        failedDeleteTransfer: "Failed to delete transfer",
+        failedDeleteAdjustment: "Failed to delete adjustment",
+        emptyStateTitle: "Start operating your real cash",
+        emptyStateDescription:
+          "This overview is powered by income, expenses, transfers, and adjustments.",
+        distinctAccountsRequired: "You must choose two different accounts",
+        deleteTransferTitle: "Delete transfer?",
+        deleteTransferDescription: (description?: string | null) =>
+          description
+            ? `Both legs of the transfer \"${description}\" will be deleted.`
+            : "Both legs of this transfer will be deleted.",
+        deleteAdjustmentTitle: "Delete adjustment?",
+        deleteAdjustmentDescription: (description?: string | null) =>
+          description
+            ? `The adjustment \"${description}\" will be deleted.`
+            : "This adjustment will be deleted.",
+        activityTransferLabel: "Between accounts",
+        activityAdjustmentLabel: "Manual adjustment",
+        activityIncomingLabel: "Inflow",
+        activityOutgoingLabel: "Outflow",
+        onboardingCashTitle:
+          "Complete your profile to unlock your available money",
+        onboardingCashDescription:
+          "Set your base currency and time zone before using this overview.",
         latestMonthHint:
           "Without a filter, the latest month with activity is shown.",
         currentCardDescription: (
@@ -618,7 +847,10 @@ const siteTexts = {
           "Complete your financial profile to unlock coherent analytics in your base currency.",
         categoryBreakdownTitle: "Category breakdown",
         categoryBreakdownDescription:
-          "See which categories hold the most money in the selected month.",
+          "See which categories held most of your income or expenses in the selected month.",
+        categoryBreakdownHelpTitle: "How do I read this breakdown?",
+        categoryBreakdownHelpDescription:
+          "This groups only income or only expenses from the selected month. Moves between your accounts and manual adjustments are not included here.",
         categoryBreakdownExpenseTab: "Expenses",
         categoryBreakdownIncomeTab: "Income",
         categoryBreakdownExpenseTotal: "Total expenses",
@@ -668,7 +900,10 @@ const siteTexts = {
           "There is no activity in the selected month to show here.",
         recurringCandidatesTitle: "Frequent income and expenses",
         recurringCandidatesDescription:
-          "Activity that seems to repeat in your history. These are helpful hints, not confirmed rules.",
+          "Possible repeating movements that help you understand your habits.",
+        recurringCandidatesHelpTitle: "What does frequent mean?",
+        recurringCandidatesHelpDescription:
+          "These are hints based on similar movements we saw repeating. They are not fixed rules or confirmed reminders.",
         recurringCandidatesEmpty:
           "We have not found frequent income or expenses with enough evidence yet.",
         recurringCandidatesViewAll: "Open analysis",
@@ -709,26 +944,37 @@ const siteTexts = {
       analysis: {
         title: "Analysis",
         subtitle:
-          "Explore patterns, categories, and useful signals for the selected month.",
+          "Understand your monthly income and expenses without mixing in account-to-account moves.",
         heading: (monthLabel: string) => `Period analysis - ${monthLabel}`,
+        analysisHelpTitle: "What will you see in Analysis?",
+        analysisHelpDescription:
+          "This view only shows income and expenses for the selected month. Moves between your own accounts and manual adjustments stay out of this section.",
         monthLabel: "Month",
         accountLabel: "Account",
         allAccountsLabel: "All accounts",
         latestMonthHint:
-          "Use the same month and account to compare distribution and frequent activity.",
+          "Use the same month and account to compare categories and repeating patterns more easily.",
       },
       categories: {
         title: "Categories",
         subtitle:
-          "Organize your transactions by income and expense categories.",
+          "Organize your income and expenses with categories and groups.",
+        categoriesHelpTitle: "What are categories for?",
+        categoriesHelpDescription:
+          "They help you classify income and expenses so it is easier to understand where your money goes and where it comes from.",
         newCardTitle: "New category",
-        newCardDescription: "Add a category to group your transactions.",
+        newCardDescription: "Create a category for an income or an expense.",
         name: "Name",
-        direction: "Direction",
-        parentOptional: "Group into (optional)",
-        parentHelpTitle: "What is this for?",
+        direction: "Type",
+        directionHelpTitle: "What does the type mean?",
+        directionHelpDescription:
+          "Choose whether the category is for income or expenses. This keeps money coming in separate from money going out.",
+        parentOptional: "Group (optional)",
+        parentHelpTitle: "What is a group?",
         parentHelpDescription:
           "If you choose a group, this category becomes a subcategory. Use it to organize where your money went or where it came from, for example: Home > Groceries.",
+        parentHelpDescriptionSimple:
+          "A group helps you gather similar categories. For example: Home can group Groceries, Rent, and Utilities.",
         namePlaceholder: "e.g. Groceries",
         addCategory: "Add category",
         create: "Create category",
@@ -783,9 +1029,13 @@ const siteTexts = {
       },
       transactions: {
         title: "Transactions",
-        subtitle: "Track your income and expenses.",
+        subtitle:
+          "Record and review your day-to-day income and expenses. Account-to-account moves and balance adjustments live in Overview.",
+        transactionsHelpTitle: "What belongs here?",
+        transactionsHelpDescription:
+          "This screen is only for regular income and expenses. If you moved money between your own accounts or corrected a balance, do that from Overview.",
         newCardTitle: "New transaction",
-        newCardDescription: "Record a new income or expense.",
+        newCardDescription: "Record a regular income or expense.",
         addTransaction: "Add transaction",
         account: "Account",
         category: "Category",
@@ -812,11 +1062,15 @@ const siteTexts = {
         desktopView: "Desktop",
         mobileView: "Mobile",
         moreFilters: "More filters",
+        summaryTitle: "Summary of these movements",
+        summaryHelpTitle: "How should I read this summary?",
+        summaryHelpDescription:
+          "These totals are calculated only from the movements shown here and the filters you currently have active.",
         summaryTransactions: "Transactions",
         summaryIncome: "Income",
         summaryExpense: "Expenses",
-        summaryBalance: "Balance",
-        summaryCategories: "Active categories",
+        summaryBalance: "Net",
+        summaryCategories: "Categories used",
         summarySkippedNotice: (count: number, currency: string) =>
           `${count} transactions were excluded from this summary because they cannot be mapped safely to ${currency}.`,
         startDate: "Start date",
@@ -853,6 +1107,7 @@ const siteTexts = {
           amountInvalid: "Amount can only contain numbers",
           currencyRequired: "Currency is required",
           dateRequired: "Date is required",
+          descriptionRequired: "Description is required",
         },
       },
       profile: {
@@ -878,18 +1133,24 @@ const siteTexts = {
         saved: "Saved",
         financeTitle: "Financial profile",
         financeCardDescription:
-          "Set the fixed account currency and time zone used by onboarding, balance, and transactions.",
+          "Set the main currency and time zone Dinerance uses to show your money correctly.",
         financeDescription:
-          "Choose the fixed currency for your account and the time zone used for day and month boundaries.",
+          "These settings help every amount and date mean the same thing across the app.",
+        financeHelpTitle: "What is this for?",
+        financeHelpDescription:
+          "Your main currency is used for totals, and your time zone helps place each movement in the correct day and month.",
         financeSave: "Save financial profile",
         financeSaving: "Saving profile...",
         financeSaved: "Profile saved",
-        baseCurrencyLabel: "Base currency",
+        baseCurrencyLabel: "Main currency",
         baseCurrencyPlaceholder: "USD",
         baseCurrencyHint:
-          "Choose the main currency for your account. Every new transaction will use this currency.",
+          "We use this currency for your totals and for new accounts in this milestone.",
         baseCurrencyLockedHint:
-          "Because you already have recorded activity, the base currency is now locked to preserve historical consistency.",
+          "Because you already have recorded activity, this currency is now locked to preserve your history.",
+        baseCurrencyHelpTitle: "What is the main currency?",
+        baseCurrencyHelpDescription:
+          "It is the currency Dinerance uses to summarize your totals. In this milestone all of your accounts use that same currency.",
         baseCurrencyInvalid:
           "Base currency must be a 3-letter ISO code, for example USD or COP.",
         timezoneLabel: "Time zone",
@@ -899,12 +1160,18 @@ const siteTexts = {
           `You can type to search for a time zone or reuse the one detected in this browser: ${browserTimeZone}.`,
         timezoneExamples:
           "Examples: America/Bogota, America/New_York, Europe/Madrid.",
+        timezoneHelpTitle: "Why does the time zone matter?",
+        timezoneHelpDescription:
+          "It makes sure a movement lands on the correct day and month for your location, especially around midnight.",
         timezoneInvalid: "Select a valid IANA time zone.",
         financialAccountsTitle: "Financial accounts",
         financialAccountsDescription:
-          "Manage the accounts where you record activity. The default account is preselected for new transactions when needed.",
+          "Manage the places where your money lives, such as your main account, wallet, or savings.",
         financialAccountsDefaultHint:
-          "The default account is used automatically when you record a transaction without choosing another one.",
+          "The default account is selected automatically when you record a new income or expense.",
+        financialAccountsHelpTitle: "What are accounts for?",
+        financialAccountsHelpDescription:
+          "They help you separate where your money is. That lets you see how much you have in each place and move money between accounts without counting it as income or expense.",
         financialAccountsAdd: "Add account",
         financialAccountsCreateTitle: "New account",
         financialAccountsEditTitle: "Edit account",

@@ -8,6 +8,7 @@ const {
   cacheStore,
   getCategoriesMock,
   getFinancialAccountsMock,
+  getProfileMock,
   getTransactionsMock,
   setProfileMock,
   toastErrorMock,
@@ -15,6 +16,7 @@ const {
   cacheStore: new Map<string, unknown>(),
   getCategoriesMock: vi.fn(),
   getFinancialAccountsMock: vi.fn(),
+  getProfileMock: vi.fn(),
   getTransactionsMock: vi.fn(),
   setProfileMock: vi.fn(),
   toastErrorMock: vi.fn(),
@@ -40,15 +42,7 @@ vi.mock("@/lib/api", () => ({
 
 vi.mock("@/components/providers/profile-provider", () => ({
   useProfile: () => ({
-    profile: {
-      id: "user-1",
-      name: "Test User",
-      email: "test@example.com",
-      base_currency: "COP",
-      timezone: "America/Bogota",
-      created_at: "2026-03-01T00:00:00Z",
-      deleted_at: null,
-    },
+    profile: getProfileMock(),
     setProfile: setProfileMock,
   }),
 }));
@@ -145,9 +139,20 @@ describe("TransactionsPage", () => {
     cacheStore.clear();
     getCategoriesMock.mockReset();
     getFinancialAccountsMock.mockReset();
+    getProfileMock.mockReset();
     getTransactionsMock.mockReset();
     setProfileMock.mockReset();
     toastErrorMock.mockReset();
+
+    getProfileMock.mockReturnValue({
+      id: "user-1",
+      name: "Test User",
+      email: "test@example.com",
+      base_currency: "COP",
+      timezone: "America/Bogota",
+      created_at: "2026-03-01T00:00:00Z",
+      deleted_at: null,
+    });
 
     getCategoriesMock.mockResolvedValue([
       {
@@ -210,6 +215,13 @@ describe("TransactionsPage", () => {
       expect(screen.getByTestId("transactions-loading")).toHaveTextContent("ready");
     });
 
+    expect(
+      screen.getByRole("button", { name: "Que entra aqui?" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Como leer este resumen?" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Resumen de estos movimientos")).toBeInTheDocument();
     expect(screen.getByTestId("transactions-count")).toHaveTextContent("12");
     expect(screen.getByTestId("transactions-total")).toHaveTextContent("125");
     expect(screen.getByTestId("transactions-first-id")).toHaveTextContent("txn-1");
@@ -370,6 +382,30 @@ describe("TransactionsPage", () => {
         offset: 0,
       }),
     );
+  });
+
+  it("does not render the financial profile card when the profile is incomplete", async () => {
+    getProfileMock.mockReturnValue({
+      id: "user-1",
+      name: "Test User",
+      email: "test@example.com",
+      base_currency: null,
+      timezone: null,
+      created_at: "2026-03-01T00:00:00Z",
+      deleted_at: null,
+    });
+    getTransactionsMock.mockResolvedValue(
+      buildTransactionsPage(0, "cat-1", 0, true),
+    );
+
+    render(<TransactionsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("transactions-loading")).toHaveTextContent("ready");
+    });
+
+    expect(screen.queryByText("Perfil financiero")).not.toBeInTheDocument();
+    expect(screen.getByText("Resumen de estos movimientos")).toBeInTheDocument();
   });
 });
 

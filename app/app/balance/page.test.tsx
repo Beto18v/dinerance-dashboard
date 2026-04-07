@@ -4,57 +4,45 @@ import {
   render,
   screen,
   waitFor,
-  within,
 } from "@testing-library/react";
-import type { AnchorHTMLAttributes } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import BalancePage from "./page";
 import { getSiteText } from "@/lib/site";
 
-vi.mock("next/link", () => ({
-  default: ({
-    children,
-    href,
-    ...props
-  }: AnchorHTMLAttributes<HTMLAnchorElement> & { href: string }) => (
-    <a href={href} {...props}>
-      {children}
-    </a>
-  ),
-}));
-
 const {
-  getAnalyticsCategoryBreakdownMock,
-  getAnalyticsRecurringCandidatesMock,
-  getAnalyticsSummaryMock,
   getCategoriesMock,
+  deleteAdjustmentMock,
+  deleteTransferMock,
   getFinancialAccountsMock,
+  getLedgerActivityMock,
+  getLedgerBalancesMock,
   getProfileMock,
+  getTransactionsMock,
   navigationState,
   pushMock,
-  replaceMock,
-  getTransactionsMock,
-  updateProfileMock,
   setProfileMock,
   toastErrorMock,
+  toastSuccessMock,
+  updateProfileMock,
 } = vi.hoisted(() => ({
-  getAnalyticsCategoryBreakdownMock: vi.fn(),
-  getAnalyticsRecurringCandidatesMock: vi.fn(),
-  getAnalyticsSummaryMock: vi.fn(),
   getCategoriesMock: vi.fn(),
+  deleteAdjustmentMock: vi.fn(),
+  deleteTransferMock: vi.fn(),
   getFinancialAccountsMock: vi.fn(),
+  getLedgerActivityMock: vi.fn(),
+  getLedgerBalancesMock: vi.fn(),
   getProfileMock: vi.fn(),
+  getTransactionsMock: vi.fn(),
   navigationState: {
     pathname: "/app/balance",
     search: "",
   },
   pushMock: vi.fn(),
-  replaceMock: vi.fn(),
-  getTransactionsMock: vi.fn(),
-  updateProfileMock: vi.fn(),
   setProfileMock: vi.fn(),
   toastErrorMock: vi.fn(),
+  toastSuccessMock: vi.fn(),
+  updateProfileMock: vi.fn(),
 }));
 
 vi.mock("@/lib/api", () => ({
@@ -67,11 +55,12 @@ vi.mock("@/lib/api", () => ({
     }
   },
   api: {
-    getAnalyticsCategoryBreakdown: getAnalyticsCategoryBreakdownMock,
-    getAnalyticsRecurringCandidates: getAnalyticsRecurringCandidatesMock,
-    getAnalyticsSummary: getAnalyticsSummaryMock,
     getCategories: getCategoriesMock,
+    deleteAdjustment: deleteAdjustmentMock,
+    deleteTransfer: deleteTransferMock,
     getFinancialAccounts: getFinancialAccountsMock,
+    getLedgerActivity: getLedgerActivityMock,
+    getLedgerBalances: getLedgerBalancesMock,
     getProfile: getProfileMock,
     getTransactions: getTransactionsMock,
     updateProfile: updateProfileMock,
@@ -83,6 +72,19 @@ vi.mock("@/components/providers/profile-provider", () => ({
     profile: getProfileMock(),
     setProfile: setProfileMock,
   }),
+}));
+
+vi.mock("@/components/providers/site-preferences-provider", () => ({
+  useSitePreferences: () => ({
+    site: getSiteText("es"),
+  }),
+}));
+
+vi.mock("sonner", () => ({
+  toast: {
+    error: toastErrorMock,
+    success: toastSuccessMock,
+  },
 }));
 
 vi.mock("next/navigation", async () => {
@@ -120,25 +122,9 @@ vi.mock("next/navigation", async () => {
         pushMock(href, options);
         updateNavigation(href);
       },
-      replace: (href: string, options?: { scroll?: boolean }) => {
-        replaceMock(href, options);
-        updateNavigation(href);
-      },
     }),
   };
 });
-
-vi.mock("@/components/providers/site-preferences-provider", () => ({
-  useSitePreferences: () => ({
-    site: getSiteText("es"),
-  }),
-}));
-
-vi.mock("sonner", () => ({
-  toast: {
-    error: toastErrorMock,
-  },
-}));
 
 vi.mock("@/components/ui/select", async () => {
   const React = await import("react");
@@ -152,20 +138,16 @@ vi.mock("@/components/ui/select", async () => {
     if (typeof node === "string" || typeof node === "number") {
       return String(node);
     }
-
     if (!node || typeof node !== "object") {
       return "";
     }
-
     if (Array.isArray(node)) {
       return node.map((item) => readText(item)).join("");
     }
-
     if (React.isValidElement(node)) {
       const element = node as React.ReactElement<ElementProps>;
       return readText(element.props.children);
     }
-
     return "";
   }
 
@@ -254,86 +236,24 @@ vi.mock("@/components/ui/select", async () => {
   };
 });
 
-vi.mock("@/components/ui/tabs", async () => {
-  const React = await import("react");
-
-  const TabsContext = React.createContext<{
-    value?: string;
-    onValueChange?: (value: string) => void;
-  }>({});
-
-  function Tabs({
-    value,
-    onValueChange,
-    children,
-  }: {
-    value?: string;
-    onValueChange?: (value: string) => void;
-    children: React.ReactNode;
-  }) {
-    return (
-      <TabsContext.Provider value={{ value, onValueChange }}>
-        <div>{children}</div>
-      </TabsContext.Provider>
-    );
-  }
-
-  function TabsList({ children }: { children: React.ReactNode }) {
-    return <div role="tablist">{children}</div>;
-  }
-
-  function TabsTrigger({
-    value,
-    children,
-  }: {
-    value: string;
-    children: React.ReactNode;
-  }) {
-    const context = React.useContext(TabsContext);
-    const isActive = context.value === value;
-
-    return (
-      <button
-        type="button"
-        role="tab"
-        data-state={isActive ? "active" : "inactive"}
-        aria-selected={isActive}
-        onClick={() => context.onValueChange?.(value)}
-      >
-        {children}
-      </button>
-    );
-  }
-
-  return {
-    Tabs,
-    TabsList,
-    TabsTrigger,
-  };
-});
-
 describe("BalancePage", () => {
-  afterEach(() => {
-    window.localStorage.clear();
-    cleanup();
-  });
-
   beforeEach(() => {
     window.localStorage.clear();
-    getAnalyticsCategoryBreakdownMock.mockReset();
-    getAnalyticsRecurringCandidatesMock.mockReset();
-    getAnalyticsSummaryMock.mockReset();
+    deleteAdjustmentMock.mockReset();
+    deleteTransferMock.mockReset();
     getCategoriesMock.mockReset();
     getFinancialAccountsMock.mockReset();
+    getLedgerActivityMock.mockReset();
+    getLedgerBalancesMock.mockReset();
     getProfileMock.mockReset();
+    getTransactionsMock.mockReset();
     navigationState.pathname = "/app/balance";
     navigationState.search = "";
     pushMock.mockReset();
-    replaceMock.mockReset();
-    getTransactionsMock.mockReset();
-    updateProfileMock.mockReset();
     setProfileMock.mockReset();
     toastErrorMock.mockReset();
+    toastSuccessMock.mockReset();
+    updateProfileMock.mockReset();
 
     getProfileMock.mockReturnValue({
       id: "user-1",
@@ -352,585 +272,217 @@ describe("BalancePage", () => {
         is_default: true,
         created_at: "2026-03-01T00:00:00Z",
       },
-    ]);
-    getTransactionsMock.mockResolvedValue(buildTransactionsPresenceResponse(1));
-    getAnalyticsCategoryBreakdownMock.mockResolvedValue({
-      month_start: "2026-03-01",
-      currency: "COP",
-      direction: "income",
-      total: "2500000.00",
-      skipped_transactions: 0,
-      breakdown: [
-        {
-          category_id: "cat-income",
-          category_name: "Salario",
-          direction: "income",
-          amount: "2500000.00",
-          percentage: "100.00",
-          transaction_count: 1,
-        },
-      ],
-    });
-    getAnalyticsRecurringCandidatesMock.mockResolvedValue({
-      month_start: "2026-03-01",
-      history_window_start: "2025-03-01",
-      candidates: [],
-    });
-  });
-
-  it("loads and renders the current balance overview", async () => {
-    getCategoriesMock.mockResolvedValue([
       {
-        id: "cat-1",
-        name: "Salario",
-        direction: "income",
-        parent_id: null,
+        id: "acc-2",
+        name: "Wallet",
+        currency: "COP",
+        is_default: false,
+        created_at: "2026-03-02T00:00:00Z",
       },
     ]);
-    getAnalyticsSummaryMock.mockResolvedValue({
+    getLedgerBalancesMock.mockResolvedValue({
       currency: "COP",
-      current: {
-        month_start: "2026-03-01",
-        currency: "COP",
-        income: "2500000.00",
-        expense: "1200000.00",
-        balance: "1300000.00",
-        skipped_transactions: 0,
-      },
-      series: [
+      consolidated_balance: "1500000.00",
+      accounts: [
         {
-          month_start: "2026-03-01",
+          financial_account_id: "acc-1",
+          financial_account_name: "Main account",
           currency: "COP",
-          income: "2500000.00",
-          expense: "1200000.00",
-          balance: "1300000.00",
-          skipped_transactions: 0,
+          balance: "1200000.00",
+        },
+        {
+          financial_account_id: "acc-2",
+          financial_account_name: "Wallet",
+          currency: "COP",
+          balance: "300000.00",
         },
       ],
-      recent_transactions: [
+    });
+    getLedgerActivityMock.mockResolvedValue({
+      limit: 20,
+      items: [
         {
-          id: "txn-1",
-          category_id: "cat-1",
-          category_name: "Salario",
-          direction: "income",
+          id: "mov-1",
+          financial_account_id: "acc-1",
+          financial_account_name: "Main account",
+          transaction_type: "income",
+          balance_direction: "in",
           amount: "2500000.00",
           currency: "COP",
-          base_currency: "COP",
-          amount_in_base_currency: "2500000.00",
           description: "Nomina",
           occurred_at: "2026-03-10T12:00:00Z",
+          created_at: "2026-03-10T12:00:00Z",
         },
       ],
     });
-    getAnalyticsRecurringCandidatesMock.mockResolvedValue({
-      month_start: "2026-03-01",
-      history_window_start: "2025-03-01",
-      candidates: [
-        {
-          label: "Nomina",
-          description: null,
-          category_id: "cat-1",
-          category_name: "Salario",
-          direction: "income",
-          cadence: "monthly",
-          match_basis: "category_amount",
-          amount_pattern: "exact",
-          currency: "COP",
-          typical_amount: "2500000.00",
-          amount_min: "2500000.00",
-          amount_max: "2500000.00",
-          occurrence_count: 3,
-          interval_days: [29, 30],
-          first_occurred_at: "2026-01-30T12:00:00Z",
-          last_occurred_at: "2026-03-30T12:00:00Z",
-        },
-      ],
+    getCategoriesMock.mockResolvedValue([
+      {
+        id: "cat-1",
+        name: "Salario",
+        direction: "income",
+        parent_id: null,
+      },
+    ]);
+    getTransactionsMock.mockResolvedValue({
+      items: [{ id: "txn-1" }],
+      total_count: 1,
+      limit: 1,
+      offset: 0,
+      summary: {
+        active_categories_count: 1,
+        skipped_transactions: 0,
+        income_totals: [],
+        expense_totals: [],
+        balance_totals: [],
+      },
     });
+  });
 
+  afterEach(() => {
+    window.localStorage.clear();
+    cleanup();
+  });
+
+  it("renders current cash, account balances, and recent ledger activity", async () => {
     render(<BalancePage />);
 
-    expect(screen.getAllByText("Cargando...").length).toBeGreaterThan(0);
-
     await waitFor(() => {
-      expect(getAnalyticsSummaryMock).toHaveBeenCalledWith(undefined);
+      expect(getLedgerBalancesMock).toHaveBeenCalledTimes(1);
     });
+    expect(getLedgerActivityMock).toHaveBeenCalledWith({ limit: 20 });
+
+    expect(screen.getByText("Resumen")).toBeInTheDocument();
+    expect(screen.getByText("Dinero disponible hoy")).toBeInTheDocument();
+    expect(screen.getByText("Dinero por cuenta")).toBeInTheDocument();
+    expect(screen.getAllByText(/Cuenta principal/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Wallet").length).toBeGreaterThan(0);
+    expect(screen.getByText("Ultimos movimientos")).toBeInTheDocument();
+    expect(screen.getByText("Nomina")).toBeInTheDocument();
     expect(
-      await screen.findAllByText(/Resumen financiero - marzo de 2026/i),
-    ).toHaveLength(2);
-    expect(screen.getAllByText(/\$\s?2\.500\.000/).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/\$\s?1\.200\.000/).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/\$\s?1\.300\.000/).length).toBeGreaterThan(0);
-    expect(screen.getByText("Movimientos recientes")).toBeInTheDocument();
-    expect(screen.getAllByText("Salario").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Nomina").length).toBeGreaterThan(0);
-    expect(screen.queryByText("Ingresos y gastos frecuentes")).not.toBeInTheDocument();
-    expect(screen.getByText("Balance mensual")).toBeInTheDocument();
-    expect(getAnalyticsRecurringCandidatesMock).not.toHaveBeenCalled();
+      await screen.findByRole("button", { name: "Mover entre cuentas" }),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: "Ajustar saldo" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Como funciona este resumen?" }),
+    ).toBeInTheDocument();
   });
 
-  it("hides the account selector when there is only one financial account", async () => {
-    getCategoriesMock.mockResolvedValue([
-      {
-        id: "cat-1",
-        name: "Salario",
-        direction: "income",
-        parent_id: null,
-      },
-    ]);
-    getAnalyticsSummaryMock.mockResolvedValue({
-      currency: "COP",
-      current: {
-        month_start: "2026-03-01",
-        currency: "COP",
-        income: "2500000.00",
-        expense: "1200000.00",
-        balance: "1300000.00",
-        skipped_transactions: 0,
-      },
-      series: [],
-      recent_transactions: [],
-    });
-
-    render(<BalancePage />);
-
-    await waitFor(() => {
-      expect(getFinancialAccountsMock).toHaveBeenCalledTimes(1);
-    });
-    expect(screen.queryByLabelText("Cuenta")).not.toBeInTheDocument();
-  });
-
-  it("refetches balance when the selected month changes", async () => {
-    getCategoriesMock.mockResolvedValue([
-      {
-        id: "cat-1",
-        name: "Salario",
-        direction: "income",
-        parent_id: null,
-      },
-    ]);
-    getAnalyticsSummaryMock
+  it("filters recent activity by financial account", async () => {
+    getLedgerActivityMock
       .mockResolvedValueOnce({
-        currency: "COP",
-        current: {
-          month_start: "2026-03-01",
-          currency: "COP",
-          income: "2500000.00",
-          expense: "1200000.00",
-          balance: "1300000.00",
-          skipped_transactions: 0,
-        },
-        series: [],
-        recent_transactions: [],
-      })
-      .mockResolvedValueOnce({
-        currency: "COP",
-        current: {
-          month_start: "2026-02-01",
-          currency: "COP",
-          income: "2000000.00",
-          expense: "800000.00",
-          balance: "1200000.00",
-          skipped_transactions: 0,
-        },
-        series: [],
-        recent_transactions: [],
-      });
-    render(<BalancePage />);
-
-    const monthInput = await screen.findByLabelText("Mes");
-    fireEvent.change(monthInput, { target: { value: "2026-02" } });
-
-    await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith("/app/balance?month=2026-02", {
-        scroll: false,
-      });
-    });
-    await waitFor(() => {
-      expect(getAnalyticsSummaryMock).toHaveBeenNthCalledWith(2, {
-        year: 2026,
-        month: 2,
-      });
-    });
-    expect(screen.getByDisplayValue("2026-02")).toBeInTheDocument();
-    expect(getAnalyticsRecurringCandidatesMock).not.toHaveBeenCalled();
-  });
-
-  it("hydrates filters from the URL on first render", async () => {
-    navigationState.search = "month=2026-02&financial_account_id=acc-2";
-    getFinancialAccountsMock.mockResolvedValue([
-      {
-        id: "acc-1",
-        name: "Main account",
-        currency: "COP",
-        is_default: true,
-        created_at: "2026-03-01T00:00:00Z",
-      },
-      {
-        id: "acc-2",
-        name: "Wallet",
-        currency: "COP",
-        is_default: false,
-        created_at: "2026-03-02T00:00:00Z",
-      },
-    ]);
-    getCategoriesMock.mockResolvedValue([
-      {
-        id: "cat-1",
-        name: "Salario",
-        direction: "income",
-        parent_id: null,
-      },
-    ]);
-    getAnalyticsSummaryMock.mockResolvedValue({
-      currency: "COP",
-      current: {
-        month_start: "2026-02-01",
-        currency: "COP",
-        income: "800000.00",
-        expense: "300000.00",
-        balance: "500000.00",
-        skipped_transactions: 0,
-      },
-      series: [],
-      recent_transactions: [],
-    });
-    getAnalyticsCategoryBreakdownMock.mockResolvedValue({
-      month_start: "2026-02-01",
-      currency: "COP",
-      direction: "income",
-      total: "800000.00",
-      skipped_transactions: 0,
-      breakdown: [],
-    });
-
-    render(<BalancePage />);
-
-    await waitFor(() => {
-      expect(getAnalyticsSummaryMock).toHaveBeenCalledWith({
-        year: 2026,
-        month: 2,
-        financial_account_id: "acc-2",
-      });
-    });
-    expect(await screen.findByLabelText("Cuenta")).toHaveValue("acc-2");
-    expect(screen.getByDisplayValue("2026-02")).toBeInTheDocument();
-    expect(getAnalyticsRecurringCandidatesMock).not.toHaveBeenCalled();
-  });
-
-  it("shows a local account selector for multiple accounts and passes the filter to analytics", async () => {
-    getFinancialAccountsMock.mockResolvedValue([
-      {
-        id: "acc-1",
-        name: "Main account",
-        currency: "COP",
-        is_default: true,
-        created_at: "2026-03-01T00:00:00Z",
-      },
-      {
-        id: "acc-2",
-        name: "Wallet",
-        currency: "COP",
-        is_default: false,
-        created_at: "2026-03-02T00:00:00Z",
-      },
-    ]);
-    getCategoriesMock.mockResolvedValue([
-      {
-        id: "cat-1",
-        name: "Salario",
-        direction: "income",
-        parent_id: null,
-      },
-      {
-        id: "cat-2",
-        name: "Mercado",
-        direction: "expense",
-        parent_id: null,
-      },
-    ]);
-    getAnalyticsSummaryMock
-      .mockResolvedValueOnce({
-        currency: "COP",
-        current: {
-          month_start: "2026-03-01",
-          currency: "COP",
-          income: "3000000.00",
-          expense: "1200000.00",
-          balance: "1800000.00",
-          skipped_transactions: 0,
-        },
-        series: [],
-        recent_transactions: [
+        limit: 20,
+        items: [
           {
-            id: "txn-1",
+            id: "mov-1",
             financial_account_id: "acc-1",
-            category_id: "cat-1",
-            category_name: "Salario",
-            direction: "income",
+            financial_account_name: "Main account",
+            transaction_type: "income",
+            balance_direction: "in",
             amount: "2500000.00",
             currency: "COP",
-            description: "Nomina principal",
+            description: "Nomina",
             occurred_at: "2026-03-10T12:00:00Z",
+            created_at: "2026-03-10T12:00:00Z",
           },
           {
-            id: "txn-2",
+            id: "mov-2",
             financial_account_id: "acc-2",
-            category_id: "cat-2",
-            category_name: "Mercado",
-            direction: "expense",
-            amount: "1200000.00",
+            financial_account_name: "Wallet",
+            transaction_type: "adjustment",
+            balance_direction: "in",
+            amount: "300000.00",
             currency: "COP",
-            description: "Mercado billetera",
-            occurred_at: "2026-03-09T12:00:00Z",
+            description: "Apertura: Fondo inicial",
+            occurred_at: "2026-03-11T12:00:00Z",
+            created_at: "2026-03-11T12:00:00Z",
           },
         ],
       })
       .mockResolvedValueOnce({
-        currency: "COP",
-        current: {
-          month_start: "2026-03-01",
-          currency: "COP",
-          income: "500000.00",
-          expense: "200000.00",
-          balance: "300000.00",
-          skipped_transactions: 0,
-        },
-        series: [],
-        recent_transactions: [
+        limit: 20,
+        items: [
           {
-            id: "txn-3",
+            id: "mov-2",
             financial_account_id: "acc-2",
-            category_id: "cat-1",
-            category_name: "Salario",
-            direction: "income",
-            amount: "500000.00",
+            financial_account_name: "Wallet",
+            transaction_type: "adjustment",
+            balance_direction: "in",
+            amount: "300000.00",
             currency: "COP",
-            description: "Ingreso billetera",
+            description: "Apertura: Fondo inicial",
             occurred_at: "2026-03-11T12:00:00Z",
+            created_at: "2026-03-11T12:00:00Z",
           },
         ],
       });
+
     render(<BalancePage />);
 
-    const accountSelect = await screen.findByLabelText("Cuenta");
-    expect(screen.getByRole("option", { name: "Todas las cuentas" })).toBeInTheDocument();
-
-    await waitFor(() => {
-      expect(getAnalyticsSummaryMock).toHaveBeenCalledWith(undefined);
-    });
-    expect(screen.getAllByText("Cuenta principal").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Wallet").length).toBeGreaterThan(0);
-
-    fireEvent.change(accountSelect, { target: { value: "acc-2" } });
+    const accountFilter = await screen.findByLabelText("Cuenta");
+    fireEvent.change(accountFilter, { target: { value: "acc-2" } });
 
     await waitFor(() => {
       expect(pushMock).toHaveBeenCalledWith(
-        "/app/balance?month=2026-03&financial_account_id=acc-2",
+        "/app/balance?financial_account_id=acc-2",
         {
           scroll: false,
         },
       );
     });
     await waitFor(() => {
-      expect(getAnalyticsSummaryMock).toHaveBeenNthCalledWith(2, {
-        year: 2026,
-        month: 3,
+      expect(getLedgerActivityMock).toHaveBeenNthCalledWith(2, {
+        limit: 20,
         financial_account_id: "acc-2",
       });
     });
-    expect(getAnalyticsRecurringCandidatesMock).not.toHaveBeenCalled();
+    expect(screen.getByText("Apertura: Fondo inicial")).toBeInTheDocument();
   });
 
-  it("always keeps the monthly history visible in the overview", async () => {
-    getCategoriesMock.mockResolvedValue([
-      {
-        id: "cat-1",
-        name: "Salario",
-        direction: "income",
-        parent_id: null,
-      },
-      {
-        id: "cat-2",
-        name: "Mercado",
-        direction: "expense",
-        parent_id: null,
-      },
-    ]);
-    getAnalyticsSummaryMock.mockResolvedValue({
-      currency: "COP",
-      current: {
-        month_start: "2026-03-01",
-        currency: "COP",
-        income: "1000000.00",
-        expense: "400000.00",
-        balance: "600000.00",
-        skipped_transactions: 0,
-      },
-      series: [
-        {
-          month_start: "2026-03-01",
-          currency: "COP",
-          income: "950000.00",
-          expense: "350000.00",
-          balance: "600000.00",
-          skipped_transactions: 0,
-        },
-      ],
-      recent_transactions: [],
+  it("shows onboarding and keeps the summary visible when the financial profile is incomplete", async () => {
+    getProfileMock.mockReturnValue({
+      id: "user-1",
+      name: "Test User",
+      email: "test@example.com",
+      base_currency: null,
+      timezone: null,
+      created_at: "2026-03-01T00:00:00Z",
+      deleted_at: null,
     });
+
     render(<BalancePage />);
 
-    expect(await screen.findByText(/\$\s?950\.000/)).toBeInTheDocument();
-    expect(screen.getByText("Balance mensual")).toBeInTheDocument();
     expect(
-      screen.queryByText("Ingresos y gastos frecuentes"),
+      await screen.findByText("Configura tu balance"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Completa tu perfil para activar tu dinero disponible"),
     ).not.toBeInTheDocument();
-    expect(getAnalyticsRecurringCandidatesMock).not.toHaveBeenCalled();
+    expect(screen.queryByText("Mover entre cuentas")).not.toBeInTheDocument();
+    expect(screen.getByText("Dinero disponible hoy")).toBeInTheDocument();
+    expect(screen.getByText("Dinero por cuenta")).toBeInTheDocument();
+    expect(getLedgerBalancesMock).not.toHaveBeenCalled();
+    expect(getLedgerActivityMock).not.toHaveBeenCalled();
   });
 
-  it("does not refetch analytics when the profile object changes but analytics fields stay equal", async () => {
-    getProfileMock
-      .mockReturnValueOnce({
-        id: "user-1",
-        name: "Test User",
-        email: "test@example.com",
-        base_currency: "COP",
-        timezone: "America/Bogota",
-        created_at: "2026-03-01T00:00:00Z",
-        deleted_at: null,
-      })
-      .mockReturnValue({
-        id: "user-1",
-        name: "Updated Name",
-        email: "test@example.com",
-        base_currency: "COP",
-        timezone: "America/Bogota",
-        created_at: "2026-03-01T00:00:00Z",
-        deleted_at: null,
-      });
-    getCategoriesMock.mockResolvedValue([
-      {
-        id: "cat-1",
-        name: "Salario",
-        direction: "income",
-        parent_id: null,
-      },
-    ]);
-    getAnalyticsSummaryMock.mockResolvedValue({
-      currency: "COP",
-      current: {
-        month_start: "2026-03-01",
-        currency: "COP",
-        income: "2500000.00",
-        expense: "1200000.00",
-        balance: "1300000.00",
-        skipped_transactions: 0,
-      },
-      series: [],
-      recent_transactions: [],
-    });
-
-    const { rerender } = render(<BalancePage />);
-
-    await waitFor(() => {
-      expect(getAnalyticsSummaryMock).toHaveBeenCalledTimes(1);
-    });
-    rerender(<BalancePage />);
-
-    await waitFor(() => {
-      expect(getAnalyticsSummaryMock).toHaveBeenCalledTimes(1);
-    });
-    expect(getAnalyticsRecurringCandidatesMock).not.toHaveBeenCalled();
-  });
-
-  it("shows onboarding when there are no categories or transactions", async () => {
-    getCategoriesMock.mockResolvedValue([]);
-    getTransactionsMock.mockResolvedValue(buildTransactionsPresenceResponse(0));
-    getAnalyticsSummaryMock.mockResolvedValue({
-      currency: "COP",
-      current: {
-        month_start: "2026-03-01",
-        currency: "COP",
-        income: "0.00",
-        expense: "0.00",
-        balance: "0.00",
-        skipped_transactions: 0,
-      },
-      series: [],
-      recent_transactions: [],
-    });
-
-    const { container } = render(<BalancePage />);
-    const scoped = within(container);
-
-    expect(
-      await scoped.findByText("Configura tu balance"),
-    ).toBeInTheDocument();
-    expect(scoped.getByText("Elegir moneda base")).toBeInTheDocument();
-    expect(scoped.getByText("Elegir zona horaria")).toBeInTheDocument();
-    expect(scoped.getByText("Crear una categoria")).toBeInTheDocument();
-    expect(
-      scoped.getByRole("button", { name: "Agregar categoria" }),
-    ).toBeInTheDocument();
-  });
-
-  it("renders inline financial onboarding instead of redirecting to profile", async () => {
-    getProfileMock.mockReturnValue({
-      id: "user-1",
-      name: "Test User",
-      email: "test@example.com",
-      base_currency: null,
-      timezone: null,
-      created_at: "2026-03-01T00:00:00Z",
-      deleted_at: null,
-    });
-    getCategoriesMock.mockResolvedValue([]);
-    getTransactionsMock.mockResolvedValue(buildTransactionsPresenceResponse(0));
-
-    const { container } = render(<BalancePage />);
-    const scoped = within(container);
-
-    expect(scoped.getByText("Configura tu balance")).toBeInTheDocument();
-    expect(scoped.getByText("Completa tu perfil financiero")).toBeInTheDocument();
-    expect(scoped.getByLabelText("Moneda base")).toBeInTheDocument();
-    expect(scoped.getByLabelText("Zona horaria")).toBeInTheDocument();
-    expect(scoped.queryByText("Falta tu moneda base")).not.toBeInTheDocument();
-  });
-
-  it("shows the onboarding immediately while background data is still loading", () => {
-    getProfileMock.mockReturnValue({
-      id: "user-1",
-      name: "Test User",
-      email: "test@example.com",
-      base_currency: null,
-      timezone: null,
-      created_at: "2026-03-01T00:00:00Z",
-      deleted_at: null,
-    });
+  it("keeps onboarding hidden while setup requirements are still loading", () => {
     getCategoriesMock.mockImplementation(() => new Promise(() => {}));
     getTransactionsMock.mockImplementation(() => new Promise(() => {}));
 
-    const { container } = render(<BalancePage />);
-    const scoped = within(container);
+    render(<BalancePage />);
 
-    expect(scoped.getByText("Configura tu balance")).toBeInTheDocument();
-    expect(scoped.getByText("Completa tu perfil financiero")).toBeInTheDocument();
-    expect(scoped.queryByText("Falta tu moneda base")).not.toBeInTheDocument();
+    expect(screen.queryByText("Configura tu balance")).not.toBeInTheDocument();
+    expect(screen.getByText("Dinero disponible hoy")).toBeInTheDocument();
+    expect(screen.getByText("Dinero por cuenta")).toBeInTheDocument();
+    expect(
+      screen.queryByText("Empieza a mover tu caja real"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Mover entre cuentas" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Ajustar saldo" }),
+    ).not.toBeInTheDocument();
   });
 });
-
-function buildTransactionsPresenceResponse(totalCount: number) {
-  return {
-    items: totalCount > 0 ? [{ id: "txn-1" }] : [],
-    total_count: totalCount,
-    limit: 1,
-    offset: 0,
-    summary: {
-      active_categories_count: 0,
-      skipped_transactions: 0,
-      income_totals: [],
-      expense_totals: [],
-      balance_totals: [],
-    },
-  };
-}

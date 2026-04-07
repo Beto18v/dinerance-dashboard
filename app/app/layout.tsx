@@ -56,7 +56,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const handledUserIdRef = useRef<string | null>(null);
   const navLinks = [
     { href: "/app/balance", label: site.appLayout.nav.balance },
-    { href: "/app/analisis", label: site.appLayout.nav.analysis },
+    { href: "/app/analysis", label: site.appLayout.nav.analysis },
     { href: "/app/transactions", label: site.appLayout.nav.transactions },
     { href: "/app/categories", label: site.appLayout.nav.categories },
     { href: "/app/profile", label: site.appLayout.nav.profile },
@@ -88,7 +88,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       handledUserIdRef.current = session.user.id;
       let cancelled = false;
       void (async () => {
-        const initialProfileState = await getInitialProfileState(session.user.id);
+        const initialProfileState = await getInitialProfileState(
+          session.user.id,
+        );
         if (cancelled) return;
 
         setPreparedSessionUserId(session.user.id);
@@ -106,7 +108,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         } catch (err) {
           if (cancelled) return;
 
-          if (err instanceof ApiError && (err.status === 401 || err.status === 409)) {
+          if (
+            err instanceof ApiError &&
+            (err.status === 401 || err.status === 409)
+          ) {
             handledUserIdRef.current = null;
             setPreparedSessionUserId(null);
             setProfile(null);
@@ -131,9 +136,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         cancelled = true;
       };
     }
-  }, [loading, router, session, setProfile, signOut, site.common.unexpectedError]);
+  }, [
+    loading,
+    router,
+    session,
+    setProfile,
+    signOut,
+    site.common.unexpectedError,
+  ]);
 
-  if (loading || (session && (!profileReady || preparedSessionUserId !== session.user.id))) {
+  if (
+    loading ||
+    (session && (!profileReady || preparedSessionUserId !== session.user.id))
+  ) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3">

@@ -5,7 +5,7 @@ import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { FiHelpCircle, FiPlus } from "react-icons/fi";
+import { FiPlus } from "react-icons/fi";
 
 import { api, ApiError, type Category } from "@/lib/api";
 import {
@@ -17,6 +17,7 @@ import { useSitePreferences } from "@/components/providers/site-preferences-prov
 import { getSiteText } from "@/lib/site";
 
 import { Button } from "@/components/ui/button";
+import { InfoHint } from "@/components/ui/info-hint";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -57,8 +58,6 @@ export function CreateCategoryModal({
   const { site } = useSitePreferences();
   const t = site.pages.categories;
   const [open, setOpen] = useState(false);
-  const [parentHelpOpen, setParentHelpOpen] = useState(false);
-  const [parentHelpUsesHover, setParentHelpUsesHover] = useState(false);
 
   const {
     register,
@@ -98,33 +97,6 @@ export function CreateCategoryModal({
     }
   }, [groupOptions, parentIdValue, setValue]);
 
-  useEffect(() => {
-    if (typeof window.matchMedia !== "function") return;
-
-    const mediaQuery = window.matchMedia("(hover: hover) and (pointer: fine)");
-
-    function syncInteractionMode() {
-      setParentHelpUsesHover(mediaQuery.matches);
-      setParentHelpOpen(false);
-    }
-
-    syncInteractionMode();
-
-    if (typeof mediaQuery.addEventListener === "function") {
-      mediaQuery.addEventListener("change", syncInteractionMode);
-    } else {
-      mediaQuery.addListener(syncInteractionMode);
-    }
-
-    return () => {
-      if (typeof mediaQuery.removeEventListener === "function") {
-        mediaQuery.removeEventListener("change", syncInteractionMode);
-      } else {
-        mediaQuery.removeListener(syncInteractionMode);
-      }
-    };
-  }, []);
-
   async function onSubmit(values: FormValues) {
     const normalizedName = normalizeCategoryName(values.name);
     const selectedParent = groupOptions.find(
@@ -150,7 +122,6 @@ export function CreateCategoryModal({
       });
       toast.success(t.created);
       reset({ direction: "expense" });
-      setParentHelpOpen(false);
       setOpen(false);
       onCreated();
     } catch (err) {
@@ -181,7 +152,6 @@ export function CreateCategoryModal({
       <Button
         size="sm"
         onClick={() => {
-          setParentHelpOpen(false);
           setOpen(true);
         }}
       >
@@ -194,7 +164,6 @@ export function CreateCategoryModal({
         onOpenChange={(o) => {
           if (!o) {
             reset({ direction: "expense" });
-            setParentHelpOpen(false);
           }
           setOpen(o);
         }}
@@ -221,7 +190,13 @@ export function CreateCategoryModal({
             </div>
 
             <div className="space-y-1.5">
-              <Label>{t.direction}</Label>
+              <div className="flex items-center gap-2">
+                <Label>{t.direction}</Label>
+                <InfoHint
+                  title={t.directionHelpTitle}
+                  description={t.directionHelpDescription}
+                />
+              </div>
               <Select
                 value={directionValue}
                 onValueChange={(v) =>
@@ -239,43 +214,12 @@ export function CreateCategoryModal({
             </div>
 
             <div className="space-y-1.5">
-              <div
-                className="relative flex items-center gap-2"
-                onMouseEnter={() => {
-                  if (parentHelpUsesHover) setParentHelpOpen(true);
-                }}
-                onMouseLeave={() => {
-                  if (parentHelpUsesHover) setParentHelpOpen(false);
-                }}
-              >
+              <div className="flex items-center gap-2">
                 <Label>{t.parentOptional}</Label>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!parentHelpUsesHover) {
-                      setParentHelpOpen((current) => !current);
-                    }
-                  }}
-                  onFocus={() => setParentHelpOpen(true)}
-                  onBlur={() => {
-                    if (!parentHelpUsesHover) return;
-                    setParentHelpOpen(false);
-                  }}
-                  aria-label={t.parentHelpTitle}
-                  aria-expanded={parentHelpOpen}
-                  className="inline-flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  <FiHelpCircle size={15} />
-                </button>
-
-                {parentHelpOpen && (
-                  <div className="absolute left-0 top-full z-10 mt-2 w-72 max-w-[calc(100vw-6rem)] rounded-md border bg-popover p-3 text-sm text-popover-foreground shadow-md">
-                    <p className="font-medium">{t.parentHelpTitle}</p>
-                    <p className="mt-1 text-muted-foreground">
-                      {t.parentHelpDescription}
-                    </p>
-                  </div>
-                )}
+                <InfoHint
+                  title={t.parentHelpTitle}
+                  description={t.parentHelpDescriptionSimple}
+                />
               </div>
               <Select
                 value={parentIdValue ?? "__none__"}
@@ -303,7 +247,6 @@ export function CreateCategoryModal({
                 type="button"
                 onClick={() => {
                   reset({ direction: "expense" });
-                  setParentHelpOpen(false);
                   setOpen(false);
                 }}
               >

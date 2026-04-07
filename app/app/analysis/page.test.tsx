@@ -447,6 +447,9 @@ describe("AnalysisPage", () => {
     });
 
     expect(await screen.findByText("Analisis")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Que veras en Analisis?" }),
+    ).toBeInTheDocument();
     expect(screen.getByText("Ingresos y gastos frecuentes")).toBeInTheDocument();
     expect(screen.getByText("Distribucion por categoria")).toBeInTheDocument();
     expect(screen.getByText("Vimos 3 movimientos sin descripcion, pero con la misma categoria y el mismo monto.")).toBeInTheDocument();
@@ -524,5 +527,39 @@ describe("AnalysisPage", () => {
         "Todavia no encontramos ingresos o gastos frecuentes con suficiente evidencia.",
       ),
     ).not.toBeInTheDocument();
+  });
+
+  it("does not render onboarding in analysis when the profile is incomplete", async () => {
+    getProfileMock.mockReturnValue({
+      id: "user-1",
+      name: "Test User",
+      email: "test@example.com",
+      base_currency: null,
+      timezone: null,
+      created_at: "2026-03-01T00:00:00Z",
+      deleted_at: null,
+    });
+    getCategoriesMock.mockResolvedValue([]);
+    getTransactionsMock.mockResolvedValue({
+      items: [],
+      total_count: 0,
+      limit: 1,
+      offset: 0,
+      summary: {
+        active_categories_count: 0,
+        skipped_transactions: 0,
+        income_totals: [],
+        expense_totals: [],
+        balance_totals: [],
+      },
+    });
+
+    render(<AnalysisPage />);
+
+    expect(await screen.findByText("Analisis")).toBeInTheDocument();
+    expect(screen.queryByText("Configura tu balance")).not.toBeInTheDocument();
+    expect(
+      screen.getByText("Distribucion por categoria"),
+    ).toBeInTheDocument();
   });
 });

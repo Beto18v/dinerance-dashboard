@@ -5,6 +5,7 @@ import { type AnalyticsRecurringCandidates } from "@/lib/api";
 import { type SiteText } from "@/lib/site";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { InfoHint } from "@/components/ui/info-hint";
 import {
   Card,
   CardAction,
@@ -58,7 +59,13 @@ export function RecurringCandidatesCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{text.recurringCandidatesTitle}</CardTitle>
+        <div className="flex items-center gap-2">
+          <CardTitle>{text.recurringCandidatesTitle}</CardTitle>
+          <InfoHint
+            title={text.recurringCandidatesHelpTitle}
+            description={text.recurringCandidatesHelpDescription}
+          />
+        </div>
         <CardDescription>{text.recurringCandidatesDescription}</CardDescription>
         {viewAllHref && viewAllLabel && totalItems > 0 ? (
           <CardAction>

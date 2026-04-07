@@ -2,6 +2,7 @@
 
 import { type AnalyticsCategoryBreakdown } from "@/lib/api";
 import { type SiteText } from "@/lib/site";
+import { InfoHint } from "@/components/ui/info-hint";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Card,
@@ -76,7 +77,13 @@ export function CategoryBreakdownCard({
     <Card>
       <CardHeader>
         <div>
-          <CardTitle>{text.categoryBreakdownTitle}</CardTitle>
+          <div className="flex items-center gap-2">
+            <CardTitle>{text.categoryBreakdownTitle}</CardTitle>
+            <InfoHint
+              title={text.categoryBreakdownHelpTitle}
+              description={text.categoryBreakdownHelpDescription}
+            />
+          </div>
           <CardDescription>{text.categoryBreakdownDescription}</CardDescription>
         </div>
         <CardAction>

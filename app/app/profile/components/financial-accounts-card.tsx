@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 import { api, ApiError, type FinancialAccount } from "@/lib/api";
 import { useSitePreferences } from "@/components/providers/site-preferences-provider";
+import { CreateFinancialAccountModal } from "@/app/app/components/create-financial-account-modal";
 import {
   cacheKeys,
   invalidateCacheKey,
@@ -24,14 +25,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { InfoHint } from "@/components/ui/info-hint";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -91,12 +86,6 @@ export function FinancialAccountsCard() {
     });
   }, [loadAccounts]);
 
-  function openCreateDialog() {
-    setEditingAccount(null);
-    setDraftName("");
-    setDialogOpen(true);
-  }
-
   function openEditDialog(account: FinancialAccount) {
     setEditingAccount(account);
     setDraftName(getAccountDisplayName(account));
@@ -108,6 +97,10 @@ export function FinancialAccountsCard() {
   }
 
   async function handleSaveAccount() {
+    if (!editingAccount) {
+      return;
+    }
+
     const normalizedName = draftName.trim();
     if (!normalizedName) {
       toast.error(t.financialAccountsNameRequired);
@@ -116,15 +109,10 @@ export function FinancialAccountsCard() {
 
     setSubmitting(true);
     try {
-      if (editingAccount) {
-        await api.updateFinancialAccount(editingAccount.id, {
-          name: normalizedName,
-        });
-        toast.success(t.financialAccountsUpdated);
-      } else {
-        await api.createFinancialAccount({ name: normalizedName });
-        toast.success(t.financialAccountsCreated);
-      }
+      await api.updateFinancialAccount(editingAccount.id, {
+        name: normalizedName,
+      });
+      toast.success(t.financialAccountsUpdated);
 
       setDialogOpen(false);
       setDraftName("");
@@ -134,11 +122,7 @@ export function FinancialAccountsCard() {
       if (error instanceof ApiError) {
         toast.error(getFinancialAccountErrorMessage(error, t));
       } else {
-        toast.error(
-          editingAccount
-            ? t.financialAccountsFailedUpdate
-            : t.financialAccountsFailedCreate,
-        );
+        toast.error(t.financialAccountsFailedUpdate);
       }
     } finally {
       setSubmitting(false);
@@ -194,16 +178,20 @@ export function FinancialAccountsCard() {
         <CardHeader className="gap-3">
           <div className="flex items-start justify-between gap-3">
             <div className="space-y-1">
-              <CardTitle className="text-base">
-                {t.financialAccountsTitle}
-              </CardTitle>
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-base">
+                  {t.financialAccountsTitle}
+                </CardTitle>
+                <InfoHint
+                  title={t.financialAccountsHelpTitle}
+                  description={t.financialAccountsHelpDescription}
+                />
+              </div>
               <CardDescription>
                 {t.financialAccountsDescription}
               </CardDescription>
             </div>
-            <Button type="button" size="sm" onClick={openCreateDialog}>
-              {t.financialAccountsAdd}
-            </Button>
+            <CreateFinancialAccountModal size="sm" />
           </div>
           <p className="text-xs text-muted-foreground">
             {t.financialAccountsDefaultHint}
@@ -287,11 +275,7 @@ export function FinancialAccountsCard() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>
-              {editingAccount
-                ? t.financialAccountsEditTitle
-                : t.financialAccountsCreateTitle}
-            </DialogTitle>
+            <DialogTitle>{t.financialAccountsEditTitle}</DialogTitle>
             <DialogDescription>
               {t.financialAccountsDescription}
             </DialogDescription>
@@ -323,11 +307,7 @@ export function FinancialAccountsCard() {
               onClick={() => void handleSaveAccount()}
               disabled={submitting}
             >
-              {submitting
-                ? t.saving
-                : editingAccount
-                  ? site.common.saveChanges
-                  : t.financialAccountsAdd}
+              {submitting ? t.saving : site.common.saveChanges}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -26,6 +26,7 @@ import { getSiteText } from "@/lib/site";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { InfoHint } from "@/components/ui/info-hint";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -285,7 +286,13 @@ export default function CategoriesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">{t.title}</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-bold">{t.title}</h1>
+          <InfoHint
+            title={t.categoriesHelpTitle}
+            description={t.categoriesHelpDescription}
+          />
+        </div>
         <p className="mt-1 text-sm text-muted-foreground">{t.subtitle}</p>
       </div>
 
@@ -293,7 +300,13 @@ export default function CategoriesPage() {
         <h2 className="text-base font-semibold">{t.filters}</h2>
         <div className="flex flex-wrap items-end gap-3">
           <div className="space-y-1.5">
-            <Label>{t.direction}</Label>
+            <div className="flex items-center gap-2">
+              <Label>{t.direction}</Label>
+              <InfoHint
+                title={t.directionHelpTitle}
+                description={t.directionHelpDescription}
+              />
+            </div>
             <Select
               value={filterDirection || "__all__"}
               onValueChange={(value) =>
@@ -397,7 +410,13 @@ export default function CategoriesPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label>{t.direction}</Label>
+              <div className="flex items-center gap-2">
+                <Label>{t.direction}</Label>
+                <InfoHint
+                  title={t.directionHelpTitle}
+                  description={t.directionHelpDescription}
+                />
+              </div>
               <Select
                 value={editDirectionValue}
                 onValueChange={(value) =>
@@ -416,7 +435,13 @@ export default function CategoriesPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label>{t.parentOptional}</Label>
+              <div className="flex items-center gap-2">
+                <Label>{t.parentOptional}</Label>
+                <InfoHint
+                  title={t.parentHelpTitle}
+                  description={t.parentHelpDescriptionSimple}
+                />
+              </div>
               <Select
                 value={editParentIdValue ?? "__none__"}
                 onValueChange={(value) =>

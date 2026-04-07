@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { api, ApiError } from "@/lib/api";
@@ -19,6 +19,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { InfoHint } from "@/components/ui/info-hint";
 import { FinancialProfileForm } from "./financial-profile-form";
 
 export function FinancialProfileCard() {
@@ -26,31 +27,12 @@ export function FinancialProfileCard() {
   const { site } = useSitePreferences();
   const t = site.pages.profile;
   const [hasTransactions, setHasTransactions] = useState(
-    () => readTransactionsPresenceFromCache() ?? false,
+    () => readRecordedActivityPresenceFromCache() ?? false,
   );
   const formKey = `${profile?.base_currency ?? ""}:${profile?.timezone ?? ""}:${hasTransactions ? 1 : 0}`;
 
-  const loadTransactionPresence = useCallback(async () => {
-    const cachedPresence = readTransactionsPresenceFromCache();
-    if (cachedPresence != null) {
-      setHasTransactions(cachedPresence);
-      return;
-    }
-
-    try {
-      const transactions = await api.getTransactions({ limit: 1 });
-      setHasTransactions((transactions.total_count ?? 0) > 0);
-    } catch (error) {
-      if (error instanceof ApiError) {
-        toast.error(error.message);
-      } else {
-        toast.error(t.failedLoadTransactionPresence);
-      }
-    }
-  }, [t.failedLoadTransactionPresence]);
-
   useEffect(() => {
-    if (readTransactionsPresenceFromCache() != null) {
+    if (readRecordedActivityPresenceFromCache() != null) {
       return;
     }
 
@@ -58,9 +40,11 @@ export function FinancialProfileCard() {
 
     async function fetchTransactionPresence() {
       try {
-        const transactions = await api.getTransactions({ limit: 1 });
+        const hasRecordedActivity = await resolveRecordedActivityPresence(
+          Boolean(profile?.base_currency),
+        );
         if (!cancelled) {
-          setHasTransactions((transactions.total_count ?? 0) > 0);
+          setHasTransactions(hasRecordedActivity);
         }
       } catch (error) {
         if (cancelled) return;
@@ -78,18 +62,48 @@ export function FinancialProfileCard() {
     return () => {
       cancelled = true;
     };
-  }, [t.failedLoadTransactionPresence]);
+  }, [profile?.base_currency, t.failedLoadTransactionPresence]);
 
   useEffect(() => {
-    return subscribeToCacheKeys([cacheKeys.transactions], () => {
-      void loadTransactionPresence();
-    });
-  }, [loadTransactionPresence]);
+    async function refreshTransactionPresence() {
+      const cachedPresence = readRecordedActivityPresenceFromCache();
+      if (cachedPresence != null) {
+        setHasTransactions(cachedPresence);
+        return;
+      }
+
+      try {
+        const hasRecordedActivity = await resolveRecordedActivityPresence(
+          Boolean(profile?.base_currency),
+        );
+        setHasTransactions(hasRecordedActivity);
+      } catch (error) {
+        if (error instanceof ApiError) {
+          toast.error(error.message);
+        } else {
+          toast.error(t.failedLoadTransactionPresence);
+        }
+      }
+    }
+
+    return subscribeToCacheKeys(
+      [cacheKeys.transactions, cacheKeys.ledgerActivity],
+      () => {
+        void refreshTransactionPresence();
+      },
+    );
+  }, [profile?.base_currency, t.failedLoadTransactionPresence]);
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">{t.financeTitle}</CardTitle>
+        <div className="flex items-center gap-2">
+          <CardTitle className="text-base">{t.financeTitle}</CardTitle>
+          <InfoHint
+            title={t.financeHelpTitle}
+            description={t.financeHelpDescription}
+          />
+        </div>
         <CardDescription>{t.financeCardDescription}</CardDescription>
       </CardHeader>
       <CardContent>
@@ -104,7 +118,17 @@ export function FinancialProfileCard() {
   );
 }
 
-function readTransactionsPresenceFromCache() {
+function readRecordedActivityPresenceFromCache() {
+  const cachedLedgerActivity = getCache<{ items?: Array<{ id: string }> }>(
+    cacheKeys.ledgerActivity,
+    {
+      maxAgeMs: cacheTtls.ledgerActivity,
+    },
+  );
+  if (cachedLedgerActivity) {
+    return (cachedLedgerActivity.items?.length ?? 0) > 0;
+  }
+
   const cachedTransactions = getCache<{ total_count: number }>(
     cacheKeys.transactions,
     {
@@ -113,4 +137,14 @@ function readTransactionsPresenceFromCache() {
   );
 
   return cachedTransactions ? (cachedTransactions.total_count ?? 0) > 0 : null;
+}
+
+async function resolveRecordedActivityPresence(hasBaseCurrency: boolean) {
+  if (hasBaseCurrency) {
+    const ledgerActivity = await api.getLedgerActivity({ limit: 1 });
+    return ledgerActivity.items.length > 0;
+  }
+
+  const transactions = await api.getTransactions({ limit: 1 });
+  return (transactions.total_count ?? 0) > 0;
 }

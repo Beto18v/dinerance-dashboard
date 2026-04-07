@@ -1,10 +1,9 @@
 "use client";
 
-import { invalidateCacheKey, cacheKeys } from "@/lib/cache";
 import { formatCurrencyAmount } from "@/lib/finance";
+import { InfoHint } from "@/components/ui/info-hint";
 import { AnalyticsFiltersBar } from "../components/analytics-filters-bar";
 import { useBalancePageState } from "../balance/use-balance-page-state";
-import { BalanceOnboardingCard } from "../balance/components/balance-onboarding-card";
 import { CategoryBreakdownCard } from "../balance/components/category-breakdown-card";
 import { RecurringCandidatesCard } from "../balance/components/recurring-candidates-card";
 
@@ -22,7 +21,6 @@ const monthFormatters = {
 export default function AnalysisPage() {
   const {
     balanceCurrency,
-    categories,
     categoryBreakdown,
     categoryBreakdownDirection,
     categoryBreakdownLoading,
@@ -32,16 +30,11 @@ export default function AnalysisPage() {
     handleSelectedMonthChange,
     hasBaseCurrency,
     hasMultipleFinancialAccounts,
-    hasTimeZone,
-    hasTransactions,
     monthHeadingDate,
-    profile,
     recurringCandidates,
     recurringCandidatesLoading,
-    refreshProfileFromOnboarding,
     selectedFinancialAccountId,
     selectedMonth,
-    showOnboarding,
     site,
     timeZone,
   } = useBalancePageState({
@@ -59,7 +52,13 @@ export default function AnalysisPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">{analysisText.title}</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold">{analysisText.title}</h1>
+            <InfoHint
+              title={analysisText.analysisHelpTitle}
+              description={analysisText.analysisHelpDescription}
+            />
+          </div>
           <p className="mt-1 text-sm text-muted-foreground">
             {analysisText.subtitle}
           </p>
@@ -83,25 +82,12 @@ export default function AnalysisPage() {
           selectedFinancialAccountId={selectedFinancialAccountId}
           selectedMonth={selectedMonth}
           mainFinancialAccountLabel={site.common.mainFinancialAccount}
-          onSelectedFinancialAccountChange={handleSelectedFinancialAccountChange}
+          onSelectedFinancialAccountChange={
+            handleSelectedFinancialAccountChange
+          }
           onSelectedMonthChange={handleSelectedMonthChange}
         />
       </div>
-
-      {showOnboarding ? (
-        <BalanceOnboardingCard
-          profile={profile}
-          categories={categories}
-          hasBaseCurrency={hasBaseCurrency}
-          hasTimeZone={hasTimeZone}
-          hasTransactions={hasTransactions}
-          baseCurrency={profile?.base_currency ?? null}
-          timeZone={profile?.timezone ?? null}
-          onProfileUpdated={refreshProfileFromOnboarding}
-          onCategoryCreated={() => invalidateCacheKey(cacheKeys.categories)}
-          onTransactionCreated={() => invalidateCacheKey(cacheKeys.transactions)}
-        />
-      ) : null}
 
       <CategoryBreakdownCard
         breakdown={categoryBreakdown}

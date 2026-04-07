@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { useProfile } from "@/components/providers/profile-provider";
 import { useSitePreferences } from "@/components/providers/site-preferences-provider";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -18,6 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { InfoHint } from "@/components/ui/info-hint";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -57,7 +58,6 @@ import {
   getQuickRangeDates,
   resolveTimeZone,
 } from "@/lib/timezone";
-import { FinancialProfileForm } from "../profile/components/financial-profile-form";
 import {
   CreateTransactionModal,
   TransactionsFilters,
@@ -107,9 +107,8 @@ const EMPTY_TRANSACTIONS_SUMMARY: NonNullable<
 
 export default function TransactionsPage() {
   const { site } = useSitePreferences();
-  const { profile, setProfile } = useProfile();
+  const { profile } = useProfile();
   const t = site.pages.transactions;
-  const profileTexts = site.pages.profile;
   const displayLocale = site.metadata.htmlLang === "en" ? "en-US" : "es-CO";
   const timeZone = resolveTimeZone(profile?.timezone);
   const baseCurrency = profile?.base_currency
@@ -130,9 +129,6 @@ export default function TransactionsPage() {
     cachedTransactionsPage,
   );
   const previousFilterKeyRef = useRef<string | null>(null);
-  const [hasAnyTransactions, setHasAnyTransactions] = useState(
-    () => (cachedTransactionsPage?.total_count ?? 0) > 0,
-  );
   const [listLoading, setListLoading] = useState(() => !cachedTransactionsPage);
   const [editingTxn, setEditingTxn] = useState<Transaction | null>(null);
   const [confirmDeleteTxn, setConfirmDeleteTxn] = useState<Transaction | null>(
@@ -244,25 +240,6 @@ export default function TransactionsPage() {
     [t.failedLoad],
   );
 
-  const loadTransactionsPresence = useCallback(async () => {
-    const freshTransactions = getFreshTransactionCache();
-    if (freshTransactions) {
-      setHasAnyTransactions((freshTransactions.total_count ?? 0) > 0);
-      return;
-    }
-
-    try {
-      const data = await api.getTransactions({ limit: 1 });
-      setHasAnyTransactions((data.total_count ?? 0) > 0);
-    } catch (error) {
-      if (error instanceof ApiError) {
-        toast.error(error.message);
-      } else {
-        toast.error(t.failedLoad);
-      }
-    }
-  }, [t.failedLoad]);
-
   const loadTransactions = useCallback(
     async (
       params: TransactionFilters,
@@ -324,12 +301,6 @@ export default function TransactionsPage() {
           nextTransactionsPage.summary != null
         ) {
           setCache(cacheKeys.transactions, nextTransactionsPage);
-          setHasAnyTransactions(nextTransactionsPage.total_count > 0);
-        } else if (
-          (nextTransactionsPage.total_count ?? 0) > 0 ||
-          nextTransactionsPage.items.length > 0
-        ) {
-          setHasAnyTransactions(true);
         }
       } catch (error) {
         if (error instanceof ApiError) {
@@ -342,16 +313,6 @@ export default function TransactionsPage() {
       }
     },
     [t.failedLoad],
-  );
-
-  const handleProfileUpdated = useCallback(
-    (updatedProfile: typeof profile) => {
-      if (!updatedProfile) return;
-      setProfile(updatedProfile);
-      invalidateCacheKey(cacheKeys.financialAccounts);
-      invalidateCacheKey(cacheKeys.transactions);
-    },
-    [setProfile],
   );
 
   useEffect(() => {
@@ -399,7 +360,6 @@ export default function TransactionsPage() {
             includeMetadata: true,
             silent: true,
           });
-          void loadTransactionsPresence();
         }
       },
     );
@@ -409,7 +369,6 @@ export default function TransactionsPage() {
     loadCategories,
     loadFinancialAccounts,
     loadTransactions,
-    loadTransactionsPresence,
   ]);
 
   useEffect(() => {
@@ -530,26 +489,15 @@ export default function TransactionsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">{t.title}</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-bold">{t.title}</h1>
+          <InfoHint
+            title={t.transactionsHelpTitle}
+            description={t.transactionsHelpDescription}
+          />
+        </div>
         <p className="mt-1 text-sm text-muted-foreground">{t.subtitle}</p>
       </div>
-
-      {!hasFinanceProfile ? (
-        <Card className="border-primary/15 bg-primary/5">
-          <CardHeader>
-            <CardTitle>{profileTexts.financeTitle}</CardTitle>
-            <CardDescription>{profileTexts.financeCardDescription}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <FinancialProfileForm
-              compact
-              profile={profile}
-              hasTransactions={hasAnyTransactions}
-              onProfileUpdated={handleProfileUpdated}
-            />
-          </CardContent>
-        </Card>
-      ) : null}
 
       <TransactionsFilters
         financialAccounts={financialAccounts}
@@ -603,17 +551,26 @@ export default function TransactionsPage() {
         }}
       />
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-        {summaryItems.map((item) => (
-          <Card key={item.label} className="gap-0 py-0">
-            <CardContent className="space-y-1 px-4 py-4">
-              <p className="text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">
-                {item.label}
-              </p>
-              <p className="text-lg font-semibold">{item.value}</p>
-            </CardContent>
-          </Card>
-        ))}
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <h2 className="text-base font-semibold">{t.summaryTitle}</h2>
+          <InfoHint
+            title={t.summaryHelpTitle}
+            description={t.summaryHelpDescription}
+          />
+        </div>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+          {summaryItems.map((item) => (
+            <Card key={item.label} className="gap-0 py-0">
+              <CardContent className="space-y-1 px-4 py-4">
+                <p className="text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">
+                  {item.label}
+                </p>
+                <p className="text-lg font-semibold">{item.value}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
 
       {baseCurrency && transactionsSummary.skipped_transactions > 0 ? (

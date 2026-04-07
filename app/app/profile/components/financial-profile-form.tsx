@@ -18,6 +18,7 @@ import {
   isValidTimeZone,
 } from "@/lib/timezone";
 import { Button } from "@/components/ui/button";
+import { InfoHint } from "@/components/ui/info-hint";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -144,9 +145,15 @@ export function FinancialProfileForm({
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor={compact ? "onboarding_base_currency" : "base_currency"}>
-          {t.baseCurrencyLabel}
-        </Label>
+        <div className="flex items-center gap-2">
+          <Label htmlFor={compact ? "onboarding_base_currency" : "base_currency"}>
+            {t.baseCurrencyLabel}
+          </Label>
+          <InfoHint
+            title={t.baseCurrencyHelpTitle}
+            description={t.baseCurrencyHelpDescription}
+          />
+        </div>
         <Input
           id={compact ? "onboarding_base_currency" : "base_currency"}
           list="profile-base-currency-options"
@@ -173,9 +180,15 @@ export function FinancialProfileForm({
 
       <div className="space-y-1.5">
         <div className="flex items-center justify-between gap-3">
-          <Label htmlFor={compact ? "onboarding_timezone" : "timezone"}>
-            {t.timezoneLabel}
-          </Label>
+          <div className="flex items-center gap-2">
+            <Label htmlFor={compact ? "onboarding_timezone" : "timezone"}>
+              {t.timezoneLabel}
+            </Label>
+            <InfoHint
+              title={t.timezoneHelpTitle}
+              description={t.timezoneHelpDescription}
+            />
+          </div>
           <Button
             type="button"
             variant="ghost"
