@@ -220,6 +220,12 @@ const siteTexts = {
         adjustmentType: "Para que lo haces?",
         adjustmentTypeOpening: "Saldo inicial",
         adjustmentTypeCorrection: "Corregir diferencia",
+        adjustmentTypeOpeningHelpTitle: "Cuando usar saldo inicial?",
+        adjustmentTypeOpeningHelpDescription:
+          "Usalo cuando una cuenta ya tenia dinero antes de empezar a usar Dinerance. Registra con cuanto arrancas esa cuenta, sin contarlo como ingreso del mes.",
+        adjustmentTypeCorrectionHelpTitle: "Cuando corregir una diferencia?",
+        adjustmentTypeCorrectionHelpDescription:
+          "Usalo cuando el saldo real de la cuenta no coincide con la app. Sirve para sumar o restar la diferencia y dejar el saldo actual alineado con la realidad.",
         adjustmentDirection: "Que paso con el dinero?",
         adjustmentDirectionIn: "Entro dinero",
         adjustmentDirectionOut: "Salio dinero",
@@ -796,6 +802,12 @@ const siteTexts = {
         adjustmentType: "Why are you doing this?",
         adjustmentTypeOpening: "Starting balance",
         adjustmentTypeCorrection: "Fix a difference",
+        adjustmentTypeOpeningHelpTitle: "When should you use starting balance?",
+        adjustmentTypeOpeningHelpDescription:
+          "Use it when an account already had money before you started using Dinerance. It records where that account starts, without counting it as income for the month.",
+        adjustmentTypeCorrectionHelpTitle: "When should you fix a difference?",
+        adjustmentTypeCorrectionHelpDescription:
+          "Use it when the real account balance does not match the app. It lets you add or subtract the difference so today's balance matches reality.",
         adjustmentDirection: "What happened to the money?",
         adjustmentDirectionIn: "Money came in",
         adjustmentDirectionOut: "Money went out",

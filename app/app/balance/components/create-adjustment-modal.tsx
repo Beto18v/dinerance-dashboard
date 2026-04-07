@@ -12,6 +12,7 @@ import { useSitePreferences } from "@/components/providers/site-preferences-prov
 import { getFinancialAccountDisplayName } from "@/lib/financial-accounts";
 import { dateTimeLocalToUtcIso } from "@/lib/timezone";
 import { Button } from "@/components/ui/button";
+import { InfoHint } from "@/components/ui/info-hint";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -113,6 +114,16 @@ export function CreateAdjustmentModal({
     control,
     name: "balance_direction",
   });
+  const adjustmentTypeHint =
+    adjustmentKind === "correction"
+      ? {
+          title: t.adjustmentTypeCorrectionHelpTitle,
+          description: t.adjustmentTypeCorrectionHelpDescription,
+        }
+      : {
+          title: t.adjustmentTypeOpeningHelpTitle,
+          description: t.adjustmentTypeOpeningHelpDescription,
+        };
   const amountField = register("amount", {
     onChange: (event) => {
       event.target.value = sanitizeAmountInput(event.target.value);
@@ -222,7 +233,13 @@ export function CreateAdjustmentModal({
               </div>
 
               <div className="space-y-1.5">
-                <Label>{t.adjustmentType}</Label>
+                <div className="flex items-center gap-2">
+                  <Label>{t.adjustmentType}</Label>
+                  <InfoHint
+                    title={adjustmentTypeHint.title}
+                    description={adjustmentTypeHint.description}
+                  />
+                </div>
                 <Select
                   value={adjustmentKind ?? "opening"}
                   onValueChange={(value) =>

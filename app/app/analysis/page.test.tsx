@@ -45,7 +45,7 @@ const {
   getFinancialAccountsMock: vi.fn(),
   getProfileMock: vi.fn(),
   navigationState: {
-    pathname: "/app/analisis",
+    pathname: "/app/analysis",
     search: "",
   },
   getTransactionsMock: vi.fn(),
@@ -96,7 +96,7 @@ vi.mock("next/navigation", async () => {
 
   function updateNavigation(href: string) {
     const [pathname, query = ""] = href.split("?");
-    navigationState.pathname = pathname || "/app/analisis";
+    navigationState.pathname = pathname || "/app/analysis";
     navigationState.search = query;
     notify();
   }
@@ -321,7 +321,7 @@ describe("AnalysisPage", () => {
     getCategoriesMock.mockReset();
     getFinancialAccountsMock.mockReset();
     getProfileMock.mockReset();
-    navigationState.pathname = "/app/analisis";
+    navigationState.pathname = "/app/analysis";
     navigationState.search = "";
     getTransactionsMock.mockReset();
     pushMock.mockReset();
