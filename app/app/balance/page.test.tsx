@@ -17,6 +17,7 @@ const {
   getFinancialAccountsMock,
   getLedgerActivityMock,
   getLedgerBalancesMock,
+  getUpcomingObligationsMock,
   getProfileMock,
   getTransactionsMock,
   navigationState,
@@ -32,6 +33,7 @@ const {
   getFinancialAccountsMock: vi.fn(),
   getLedgerActivityMock: vi.fn(),
   getLedgerBalancesMock: vi.fn(),
+  getUpcomingObligationsMock: vi.fn(),
   getProfileMock: vi.fn(),
   getTransactionsMock: vi.fn(),
   navigationState: {
@@ -61,6 +63,7 @@ vi.mock("@/lib/api", () => ({
     getFinancialAccounts: getFinancialAccountsMock,
     getLedgerActivity: getLedgerActivityMock,
     getLedgerBalances: getLedgerBalancesMock,
+    getUpcomingObligations: getUpcomingObligationsMock,
     getProfile: getProfileMock,
     getTransactions: getTransactionsMock,
     updateProfile: updateProfileMock,
@@ -245,6 +248,7 @@ describe("BalancePage", () => {
     getFinancialAccountsMock.mockReset();
     getLedgerActivityMock.mockReset();
     getLedgerBalancesMock.mockReset();
+    getUpcomingObligationsMock.mockReset();
     getProfileMock.mockReset();
     getTransactionsMock.mockReset();
     navigationState.pathname = "/app/balance";
@@ -299,7 +303,7 @@ describe("BalancePage", () => {
       ],
     });
     getLedgerActivityMock.mockResolvedValue({
-      limit: 20,
+      limit: 8,
       items: [
         {
           id: "mov-1",
@@ -312,6 +316,60 @@ describe("BalancePage", () => {
           description: "Nomina",
           occurred_at: "2026-03-10T12:00:00Z",
           created_at: "2026-03-10T12:00:00Z",
+        },
+      ],
+    });
+    getUpcomingObligationsMock.mockResolvedValue({
+      reference_date: "2026-03-10",
+      window_end_date: "2026-03-15",
+      summary: {
+        currency: "COP",
+        total_active: 2,
+        items_in_window: 2,
+        overdue_count: 0,
+        due_today_count: 1,
+        due_soon_count: 1,
+        expected_account_risk_count: 1,
+        total_expected_amount: "1380000.00",
+      },
+      items: [
+        {
+          id: "obl-1",
+          name: "Arriendo",
+          amount: "1200000.00",
+          currency: "COP",
+          cadence: "monthly",
+          next_due_date: "2026-03-10",
+          category_id: "cat-1",
+          category_name: "Salario",
+          expected_financial_account_id: "acc-1",
+          expected_financial_account_name: "Main account",
+          status: "active",
+          urgency: "today",
+          days_until_due: 0,
+          expected_account_current_balance: "900000.00",
+          expected_account_shortfall_amount: "300000.00",
+          created_at: "2026-03-01T00:00:00Z",
+          updated_at: null,
+        },
+        {
+          id: "obl-2",
+          name: "Internet",
+          amount: "180000.00",
+          currency: "COP",
+          cadence: "monthly",
+          next_due_date: "2026-03-12",
+          category_id: "cat-1",
+          category_name: "Salario",
+          expected_financial_account_id: null,
+          expected_financial_account_name: null,
+          status: "active",
+          urgency: "soon",
+          days_until_due: 2,
+          expected_account_current_balance: null,
+          expected_account_shortfall_amount: null,
+          created_at: "2026-03-02T00:00:00Z",
+          updated_at: null,
         },
       ],
     });
@@ -349,7 +407,11 @@ describe("BalancePage", () => {
     await waitFor(() => {
       expect(getLedgerBalancesMock).toHaveBeenCalledTimes(1);
     });
-    expect(getLedgerActivityMock).toHaveBeenCalledWith({ limit: 20 });
+    expect(getLedgerActivityMock).toHaveBeenCalledWith({ limit: 8 });
+    expect(getUpcomingObligationsMock).toHaveBeenCalledWith({
+      days_ahead: 5,
+      limit: 4,
+    });
 
     expect(screen.getByText("Resumen")).toBeInTheDocument();
     expect(screen.getByText("Dinero disponible hoy")).toBeInTheDocument();
@@ -367,12 +429,45 @@ describe("BalancePage", () => {
     expect(
       screen.getByRole("button", { name: "Como funciona este resumen?" }),
     ).toBeInTheDocument();
+    expect(screen.getByText("Proximos vencimientos")).toBeInTheDocument();
+    expect(screen.getByText("Arriendo")).toBeInTheDocument();
+    expect(
+      screen.getByText("La cuenta Cuenta principal hoy no cubre $300.000."),
+    ).toBeInTheDocument();
+  });
+
+  it("hides the upcoming obligations block when nothing is due within 5 days", async () => {
+    getUpcomingObligationsMock.mockResolvedValueOnce({
+      reference_date: "2026-03-10",
+      window_end_date: "2026-03-15",
+      summary: {
+        currency: "COP",
+        total_active: 0,
+        items_in_window: 0,
+        overdue_count: 0,
+        due_today_count: 0,
+        due_soon_count: 0,
+        expected_account_risk_count: 0,
+        total_expected_amount: "0.00",
+      },
+      items: [],
+    });
+
+    render(<BalancePage />);
+
+    await waitFor(() => {
+      expect(getUpcomingObligationsMock).toHaveBeenCalledWith({
+        days_ahead: 5,
+        limit: 4,
+      });
+    });
+    expect(screen.queryByText("Proximos vencimientos")).not.toBeInTheDocument();
   });
 
   it("filters recent activity by financial account", async () => {
     getLedgerActivityMock
       .mockResolvedValueOnce({
-        limit: 20,
+        limit: 8,
         items: [
           {
             id: "mov-1",
@@ -401,7 +496,7 @@ describe("BalancePage", () => {
         ],
       })
       .mockResolvedValueOnce({
-        limit: 20,
+        limit: 8,
         items: [
           {
             id: "mov-2",
@@ -433,7 +528,7 @@ describe("BalancePage", () => {
     });
     await waitFor(() => {
       expect(getLedgerActivityMock).toHaveBeenNthCalledWith(2, {
-        limit: 20,
+        limit: 8,
         financial_account_id: "acc-2",
       });
     });

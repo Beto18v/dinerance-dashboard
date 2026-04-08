@@ -38,6 +38,7 @@ export function RecentActivityCard({
   timeZone,
 }: RecentActivityCardProps) {
   const text = site.pages.balance;
+  const visibleActivity = activity.slice(0, 8);
 
   return (
     <Card>
@@ -55,15 +56,15 @@ export function RecentActivityCard({
       </CardHeader>
 
       <CardContent>
-        {loading && activity.length === 0 ? (
+        {loading && visibleActivity.length === 0 ? (
           <p className="text-sm text-muted-foreground">{site.common.loading}</p>
-        ) : activity.length === 0 ? (
+        ) : visibleActivity.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             {text.recentActivityEmpty}
           </p>
         ) : (
           <div className="space-y-3">
-            {activity.map((movement) => (
+            {visibleActivity.map((movement) => (
               <ActivityItem
                 key={movement.id}
                 balanceCurrency={balanceCurrency}

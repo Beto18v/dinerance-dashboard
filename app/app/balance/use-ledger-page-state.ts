@@ -117,7 +117,7 @@ export function useLedgerPageState() {
         const [nextBalances, nextActivity] = await Promise.all([
           api.getLedgerBalances(),
           api.getLedgerActivity({
-            limit: 20,
+            limit: 8,
             ...(selectedFinancialAccountId
               ? { financial_account_id: selectedFinancialAccountId }
               : {}),

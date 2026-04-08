@@ -390,6 +390,7 @@ describe("AnalysisPage", () => {
       history_window_start: "2025-03-01",
       candidates: [
         {
+          recurring_candidate_key: "candidate-income-1",
           label: "Nomina",
           description: null,
           category_id: "cat-1",
@@ -406,6 +407,8 @@ describe("AnalysisPage", () => {
           interval_days: [29, 30],
           first_occurred_at: "2026-01-30T12:00:00Z",
           last_occurred_at: "2026-03-30T12:00:00Z",
+          confirmed_obligation_id: null,
+          confirmed_obligation_status: null,
         },
       ],
     });
@@ -450,11 +453,16 @@ describe("AnalysisPage", () => {
     expect(
       screen.getByRole("button", { name: "Que veras en Analisis?" }),
     ).toBeInTheDocument();
-    expect(screen.getByText("Ingresos y gastos frecuentes")).toBeInTheDocument();
+    expect(screen.getByText("Patrones recurrentes detectados")).toBeInTheDocument();
+    expect(screen.getByText("Ingresos frecuentes")).toBeInTheDocument();
+    expect(screen.getByText("Inferido")).toBeInTheDocument();
     expect(screen.getByText("Distribucion por categoria")).toBeInTheDocument();
     expect(screen.getByText("Vimos 3 movimientos sin descripcion, pero con la misma categoria y el mismo monto.")).toBeInTheDocument();
     expect(screen.getAllByText("1 movimiento").length).toBeGreaterThan(0);
     expect(screen.getByText("100%")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Confirmar como obligacion" }),
+    ).not.toBeInTheDocument();
   });
 
   it("hides frequent income and expenses when there are no candidates", async () => {
@@ -520,11 +528,11 @@ describe("AnalysisPage", () => {
       within(distributionCard as HTMLElement).getByText("Total de ingresos"),
     ).toBeInTheDocument();
     expect(
-      screen.queryByText("Ingresos y gastos frecuentes"),
+      screen.queryByText("Patrones recurrentes detectados"),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByText(
-        "Todavia no encontramos ingresos o gastos frecuentes con suficiente evidencia.",
+        "Todavia no encontramos patrones recurrentes con suficiente evidencia.",
       ),
     ).not.toBeInTheDocument();
   });
@@ -561,5 +569,160 @@ describe("AnalysisPage", () => {
     expect(
       screen.getByText("Distribucion por categoria"),
     ).toBeInTheDocument();
+  });
+
+  it("offers converting expense candidates into prefilled obligations", async () => {
+    getCategoriesMock.mockResolvedValue([
+      {
+        id: "cat-expense",
+        name: "Arriendo",
+        direction: "expense",
+        parent_id: null,
+      },
+    ]);
+    getAnalyticsSummaryMock.mockResolvedValue({
+      currency: "COP",
+      current: {
+        month_start: "2026-03-01",
+        currency: "COP",
+        income: "0.00",
+        expense: "1200000.00",
+        balance: "-1200000.00",
+        skipped_transactions: 0,
+      },
+      series: [],
+      recent_transactions: [],
+    });
+    getAnalyticsRecurringCandidatesMock.mockResolvedValue({
+      month_start: "2026-03-01",
+      history_window_start: "2025-03-01",
+      candidates: [
+        {
+          recurring_candidate_key: "candidate-expense-1",
+          label: "Arriendo apartamento",
+          description: "Arriendo apartamento",
+          category_id: "cat-expense",
+          category_name: "Arriendo",
+          direction: "expense",
+          cadence: "monthly",
+          match_basis: "description",
+          amount_pattern: "exact",
+          currency: "COP",
+          typical_amount: "1200000.00",
+          amount_min: "1200000.00",
+          amount_max: "1200000.00",
+          occurrence_count: 3,
+          interval_days: [31, 28],
+          first_occurred_at: "2026-01-05T12:00:00Z",
+          last_occurred_at: "2026-03-05T12:00:00Z",
+          confirmed_obligation_id: null,
+          confirmed_obligation_status: null,
+        },
+      ],
+    });
+    getAnalyticsCategoryBreakdownMock.mockResolvedValue({
+      month_start: "2026-03-01",
+      currency: "COP",
+      direction: "expense",
+      total: "1200000.00",
+      skipped_transactions: 0,
+      breakdown: [
+        {
+          category_id: "cat-expense",
+          category_name: "Arriendo",
+          direction: "expense",
+          amount: "1200000.00",
+          percentage: "100.00",
+          transaction_count: 1,
+        },
+      ],
+    });
+
+    render(<AnalysisPage />);
+
+    expect(
+      await screen.findByText("Gastos candidatos a obligacion"),
+    ).toBeInTheDocument();
+    const link = await screen.findByRole("link", {
+      name: "Confirmar como obligacion",
+    });
+    expect(link).toHaveAttribute(
+      "href",
+      "/app/obligations?prefill_name=Arriendo+apartamento&prefill_amount=1200000.00&prefill_cadence=monthly&prefill_next_due_date=2026-04-05&prefill_category_id=cat-expense&prefill_recurring_candidate_key=candidate-expense-1",
+    );
+  });
+
+  it("hides the action when the recurring expense was already confirmed as an obligation", async () => {
+    getCategoriesMock.mockResolvedValue([
+      {
+        id: "cat-expense",
+        name: "Arriendo",
+        direction: "expense",
+        parent_id: null,
+      },
+    ]);
+    getAnalyticsSummaryMock.mockResolvedValue({
+      currency: "COP",
+      current: {
+        month_start: "2026-03-01",
+        currency: "COP",
+        income: "0.00",
+        expense: "1200000.00",
+        balance: "-1200000.00",
+        skipped_transactions: 0,
+      },
+      series: [],
+      recent_transactions: [],
+    });
+    getAnalyticsRecurringCandidatesMock.mockResolvedValue({
+      month_start: "2026-03-01",
+      history_window_start: "2025-03-01",
+      candidates: [
+        {
+          recurring_candidate_key: "candidate-expense-confirmed",
+          label: "Arriendo apartamento",
+          description: "Arriendo apartamento",
+          category_id: "cat-expense",
+          category_name: "Arriendo",
+          direction: "expense",
+          cadence: "monthly",
+          match_basis: "description",
+          amount_pattern: "exact",
+          currency: "COP",
+          typical_amount: "1200000.00",
+          amount_min: "1200000.00",
+          amount_max: "1200000.00",
+          occurrence_count: 3,
+          interval_days: [31, 28],
+          first_occurred_at: "2026-01-05T12:00:00Z",
+          last_occurred_at: "2026-03-05T12:00:00Z",
+          confirmed_obligation_id: "obl-1",
+          confirmed_obligation_status: "active",
+        },
+      ],
+    });
+    getAnalyticsCategoryBreakdownMock.mockResolvedValue({
+      month_start: "2026-03-01",
+      currency: "COP",
+      direction: "expense",
+      total: "1200000.00",
+      skipped_transactions: 0,
+      breakdown: [
+        {
+          category_id: "cat-expense",
+          category_name: "Arriendo",
+          direction: "expense",
+          amount: "1200000.00",
+          percentage: "100.00",
+          transaction_count: 1,
+        },
+      ],
+    });
+    render(<AnalysisPage />);
+
+    expect(await screen.findByText("Ya confirmada")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Confirmar como obligacion" }),
+    ).not.toBeInTheDocument();
   });
 });

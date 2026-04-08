@@ -194,6 +194,7 @@ export interface AnalyticsCategoryBreakdown {
 }
 
 export interface AnalyticsRecurringCandidate {
+  recurring_candidate_key: string;
   label: string;
   description?: string | null;
   category_id: string;
@@ -210,12 +211,73 @@ export interface AnalyticsRecurringCandidate {
   interval_days: number[];
   first_occurred_at: string;
   last_occurred_at: string;
+  confirmed_obligation_id?: string | null;
+  confirmed_obligation_status?: ObligationStatus | null;
 }
 
 export interface AnalyticsRecurringCandidates {
   month_start: string;
   history_window_start: string;
   candidates: AnalyticsRecurringCandidate[];
+}
+
+export type ObligationCadence = "weekly" | "biweekly" | "monthly";
+export type ObligationStatus = "active" | "paused" | "archived";
+export type ObligationUrgency = "overdue" | "today" | "soon" | "upcoming";
+
+export interface Obligation {
+  id: string;
+  name: string;
+  amount: string;
+  currency: string;
+  cadence: ObligationCadence;
+  next_due_date: string;
+  category_id: string;
+  category_name: string;
+  expected_financial_account_id?: string | null;
+  expected_financial_account_name?: string | null;
+  source_recurring_candidate_key?: string | null;
+  status: ObligationStatus;
+  urgency: ObligationUrgency;
+  days_until_due: number;
+  expected_account_current_balance?: string | null;
+  expected_account_shortfall_amount?: string | null;
+  created_at: string;
+  updated_at?: string | null;
+}
+
+export interface ObligationCounts {
+  active: number;
+  paused: number;
+  archived: number;
+}
+
+export interface ObligationsResponse {
+  items: Obligation[];
+  counts: ObligationCounts;
+}
+
+export interface UpcomingObligationsSummary {
+  currency: string;
+  total_active: number;
+  items_in_window: number;
+  overdue_count: number;
+  due_today_count: number;
+  due_soon_count: number;
+  expected_account_risk_count: number;
+  total_expected_amount: string;
+}
+
+export interface UpcomingObligationsResponse {
+  reference_date: string;
+  window_end_date: string;
+  summary: UpcomingObligationsSummary;
+  items: Obligation[];
+}
+
+export interface ObligationPaymentResponse {
+  obligation: Obligation;
+  transaction: Transaction;
 }
 
 export interface LedgerBalanceAccount {
@@ -447,6 +509,78 @@ export const api = {
       `/analytics/recurring-candidates?${qs.toString()}`,
     );
   },
+
+  getObligations: (params?: {
+    status?: ObligationStatus;
+  }) => {
+    const qs = new URLSearchParams();
+    if (params?.status) qs.set("status", params.status);
+    const query = qs.toString() ? `?${qs.toString()}` : "";
+    return request<ObligationsResponse>(`/obligations/${query}`);
+  },
+
+  getUpcomingObligations: (params?: {
+    days_ahead?: number;
+    limit?: number;
+  }) => {
+    const qs = new URLSearchParams();
+    if (params?.days_ahead != null) {
+      qs.set("days_ahead", String(params.days_ahead));
+    }
+    if (params?.limit != null) qs.set("limit", String(params.limit));
+    const query = qs.toString() ? `?${qs.toString()}` : "";
+    return request<UpcomingObligationsResponse>(`/obligations/upcoming${query}`);
+  },
+
+  createObligation: (body: {
+    name: string;
+    amount: string;
+    currency?: string;
+    cadence: ObligationCadence;
+    next_due_date: string;
+    category_id: string;
+    expected_financial_account_id?: string | null;
+    source_recurring_candidate_key?: string | null;
+    status?: ObligationStatus;
+  }) =>
+    request<Obligation>("/obligations/", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  updateObligation: (
+    id: string,
+    body: {
+      name?: string;
+      amount?: string;
+      currency?: string;
+      cadence?: ObligationCadence;
+      next_due_date?: string;
+      category_id?: string;
+      expected_financial_account_id?: string | null;
+      status?: ObligationStatus;
+    },
+  ) =>
+    request<Obligation>(`/obligations/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+
+  deleteObligation: (id: string) =>
+    request<void>(`/obligations/${id}`, { method: "DELETE" }),
+
+  markObligationPaid: (
+    id: string,
+    body?: {
+      financial_account_id?: string;
+      paid_at?: string;
+      description?: string | null;
+    },
+  ) =>
+    request<ObligationPaymentResponse>(`/obligations/${id}/mark-paid`, {
+      method: "POST",
+      body: JSON.stringify(body ?? {}),
+    }),
 
   getLedgerBalances: () => request<LedgerBalances>("/ledger/balances"),
 

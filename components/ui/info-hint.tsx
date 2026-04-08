@@ -49,13 +49,15 @@ export function InfoHint({
   }, []);
 
   const positionClassName =
-    align === "right" ? "right-0 origin-top-right" : "left-0 origin-top-left";
+    align === "right"
+      ? "left-1/2 -translate-x-1/2 sm:left-auto sm:right-0 sm:translate-x-0 sm:origin-top-right"
+      : "left-1/2 -translate-x-1/2 sm:left-0 sm:translate-x-0 sm:origin-top-left";
   const resolvedButtonClassName =
     buttonClassName ??
     "text-muted-foreground transition-colors hover:text-foreground";
   const resolvedPanelClassName =
     panelClassName ??
-    "left-0 top-full mt-2 border bg-popover text-popover-foreground";
+    "top-full border bg-popover text-popover-foreground";
 
   return (
     <div
@@ -86,14 +88,14 @@ export function InfoHint({
         }}
         aria-label={title}
         aria-expanded={open}
-        className={`inline-flex h-5 w-5 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${resolvedButtonClassName}`}
+        className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${resolvedButtonClassName}`}
       >
         <FiHelpCircle size={15} />
       </button>
 
       {open ? (
         <div
-          className={`absolute z-10 w-72 max-w-[calc(100vw-4rem)] rounded-md p-3 text-sm shadow-md ${positionClassName} ${resolvedPanelClassName}`}
+          className={`absolute top-full z-10 mt-2 w-[calc(100vw-1.5rem)] max-w-80 rounded-lg p-3 text-sm shadow-md sm:w-72 sm:max-w-[calc(100vw-4rem)] ${positionClassName} ${resolvedPanelClassName}`}
         >
           <p className="font-medium">{title}</p>
           <p className="mt-1 opacity-90">{description}</p>

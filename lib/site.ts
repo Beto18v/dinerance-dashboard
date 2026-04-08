@@ -105,6 +105,7 @@ const siteTexts = {
       nav: {
         balance: "Resumen",
         analysis: "Analisis",
+        obligations: "Obligaciones",
         transactions: "Transacciones",
         categories: "Categorias",
         profile: "Perfil",
@@ -237,12 +238,14 @@ const siteTexts = {
         adjustmentCreated: "Ajuste creado",
         transferDeleted: "Transferencia eliminada",
         adjustmentDeleted: "Ajuste eliminado",
-        failedLoadLedger: "No se pudo cargar la caja actual",
+        failedLoadLedger: "No se pudo cargar tu resumen",
         failedCreateTransfer: "No se pudo crear la transferencia",
         failedCreateAdjustment: "No se pudo crear el ajuste",
         failedDeleteTransfer: "No se pudo eliminar la transferencia",
         failedDeleteAdjustment: "No se pudo eliminar el ajuste",
-        emptyStateTitle: "Empieza a mover tu caja real",
+        failedLoadUpcomingObligations:
+          "No se pudieron cargar los proximos vencimientos",
+        emptyStateTitle: "Empieza a registrar tu dinero real",
         emptyStateDescription:
           "Tu resumen se alimenta de ingresos, gastos, transferencias y ajustes.",
         distinctAccountsRequired: "Debes elegir dos cuentas diferentes",
@@ -326,17 +329,26 @@ const siteTexts = {
           "Ultimos movimientos del mes seleccionado.",
         recentTransactionsEmpty:
           "No hay movimientos en el mes seleccionado para mostrar aqui.",
-        recurringCandidatesTitle: "Ingresos y gastos frecuentes",
+        recurringCandidatesTitle: "Patrones recurrentes detectados",
         recurringCandidatesDescription:
-          "Posibles movimientos que se repiten y te ayudan a entender tus habitos.",
-        recurringCandidatesHelpTitle: "Que significa frecuente?",
+          "Inferencias del historial reciente. Los gastos pueden confirmarse como obligaciones; los ingresos se quedan como lectura analitica.",
+        recurringCandidatesHelpTitle: "Como leer estos patrones?",
         recurringCandidatesHelpDescription:
-          "Son pistas basadas en movimientos parecidos que vimos repetirse. No son reglas fijas ni recordatorios confirmados.",
+          "Son inferencias basadas en movimientos parecidos que vimos repetirse. No son compromisos confirmados hasta que conviertes un gasto en obligacion.",
         recurringCandidatesEmpty:
-          "Todavia no encontramos ingresos o gastos frecuentes con suficiente evidencia.",
+          "Todavia no encontramos patrones recurrentes con suficiente evidencia.",
         recurringCandidatesViewAll: "Ver analisis",
         recurringCandidatesIncome: "Ingreso frecuente",
         recurringCandidatesExpense: "Gasto frecuente",
+        recurringCandidatesInferred: "Inferido",
+        recurringCandidatesConfirmed: "Ya confirmada",
+        recurringCandidatesExpenseSectionTitle:
+          "Gastos candidatos a obligacion",
+        recurringCandidatesExpenseSectionDescription:
+          "Gastos repetidos que puedes confirmar como compromisos futuros.",
+        recurringCandidatesIncomeSectionTitle: "Ingresos frecuentes",
+        recurringCandidatesIncomeSectionDescription:
+          "Entradas repetidas que se mantienen como lectura analitica.",
         recurringCandidatesWeekly: "Cada semana",
         recurringCandidatesBiweekly: "Cada 15 dias",
         recurringCandidatesMonthly: "Cada mes",
@@ -360,6 +372,30 @@ const siteTexts = {
           `Ultima vez visto: ${dateLabel}.`,
         recurringCandidatesCompactLine: (dateLabel: string) =>
           `Ultima vez visto: ${dateLabel}.`,
+        upcomingObligationsTitle: "Proximos vencimientos",
+        upcomingObligationsDescription:
+          "Una lectura compacta de lo que vence en los proximos 5 dias, sin mezclarlo con tu saldo actual.",
+        upcomingObligationsHelpTitle: "Como leer estas obligaciones?",
+        upcomingObligationsHelpDescription:
+          "Aqui solo ves obligaciones confirmadas con vencimiento cercano. No afectan tu dinero disponible hasta que las marcas como pagadas.",
+        upcomingObligationsViewAll: "Abrir obligaciones",
+        upcomingObligationsSummaryTotal: "Comprometido en ventana",
+        upcomingObligationsSummaryUrgent: "Con urgencia",
+        upcomingObligationsSummaryOverdue: "Vencidas",
+        upcomingObligationsSummaryRisk: "Riesgo de cuenta",
+        upcomingObligationsEmpty:
+          "Todavia no hay obligaciones activas en la ventana de proximos vencimientos.",
+        upcomingObligationsDueDate: (dateLabel: string) =>
+          `Vence el ${dateLabel}.`,
+        upcomingObligationsAccountRisk: (
+          accountName: string,
+          shortfallAmount: string,
+        ) => `La cuenta ${accountName} hoy no cubre ${shortfallAmount}.`,
+        upcomingObligationsNoAccount: "Sin cuenta esperada",
+        upcomingObligationsUrgencyOverdue: "Vencida",
+        upcomingObligationsUrgencyToday: "Vence hoy",
+        upcomingObligationsUrgencySoon: "Vence pronto",
+        upcomingObligationsUrgencyUpcoming: "Mas adelante",
         historyPending:
           "Completa tu perfil financiero para ver el historico mensual.",
         noHistory: "Todavia no hay movimientos para calcular el balance.",
@@ -382,6 +418,123 @@ const siteTexts = {
         allAccountsLabel: "Todas las cuentas",
         latestMonthHint:
           "Usa el mismo mes y cuenta para comparar mejor categorias y patrones repetidos.",
+      },
+      obligations: {
+        title: "Obligaciones",
+        subtitle:
+          "Confirma pagos futuros, revisa urgencia y conviertelos en gasto real solo cuando se paguen.",
+        helpTitle: "Que puedes hacer aqui?",
+        helpDescription:
+          "Esta vista solo muestra compromisos futuros confirmados. Los patrones recurrentes inferidos se quedan en Analisis hasta que confirmas un gasto como obligacion.",
+        summaryActive: "Activas",
+        summaryUrgent: "Con urgencia",
+        summaryRisk: "Riesgo de cuenta",
+        summaryRiskHelpTitle: "Que significa este riesgo?",
+        summaryRiskHelpDescription:
+          "Aqui puedes ver cuantas obligaciones activas tienen una cuenta esperada, pero hoy esa cuenta no alcanza para cubrir el monto completo.",
+        openCreateModal: "Nueva obligacion",
+        createFormTitle: "Nueva obligacion",
+        createFormDescription:
+          "Crea una obligacion manual o termina de confirmar una sugerida desde Analisis.",
+        editFormTitle: "Editar obligacion",
+        editFormDescription:
+          "Ajusta el monto, la frecuencia, el proximo vencimiento o la cuenta esperada.",
+        missingProfile:
+          "Completa tu moneda base y tu zona horaria antes de gestionar obligaciones.",
+        missingExpenseCategory:
+          "Necesitas al menos una categoria de gasto para crear obligaciones.",
+        prefillApplied:
+          "Se cargo una obligacion prellenada desde Analisis. Revísala y guardala si te sirve.",
+        prefillAppliedFriendly:
+          "Completamos los datos con este patron detectado. Revisa y guardalo si te sirve.",
+        name: "Nombre",
+        namePlaceholder: "Ej: Arriendo del estudio",
+        amount: "Monto esperado",
+        amountPlaceholder: "Ej: 1200000",
+        cadence: "Frecuencia",
+        cadencePlaceholder: "Selecciona frecuencia",
+        cadenceMonthly: "Cada mes",
+        cadenceBiweekly: "Cada 15 dias",
+        cadenceWeekly: "Cada semana",
+        nextDueDate: "Proximo vencimiento",
+        category: "Categoria",
+        categoryPlaceholder: "Selecciona una categoria de gasto",
+        expectedAccount: "Cuenta esperada",
+        expectedAccountPlaceholder: "Opcional",
+        noExpectedAccount: "Sin cuenta esperada",
+        createAction: "Crear obligacion",
+        creating: "Creando obligacion...",
+        updateAction: "Guardar cambios",
+        updating: "Guardando obligacion...",
+        cancelEdit: "Cancelar edicion",
+        activeSectionTitle: "Activas",
+        activeSectionDescription:
+          "Tus proximos compromisos listos para revisar, editar o marcar como pagados.",
+        pausedSectionTitle: "Pausadas",
+        pausedSectionDescription:
+          "Compromisos que quieres conservar sin urgencias activas por ahora.",
+        archivedSectionTitle: "Archivadas",
+        archivedSectionDescription:
+          "Obligaciones que ya no usas, pero quieres dejar como referencia.",
+        emptyActive: "No hay obligaciones activas.",
+        emptyPaused: "No hay obligaciones pausadas.",
+        emptyArchived: "No hay obligaciones archivadas.",
+        emptyState:
+          "Aqui veras solo obligaciones que ya confirmaste. Puedes crear una nueva o convertir un gasto recurrente desde Analisis.",
+        statusActive: "Activa",
+        statusPaused: "Pausada",
+        statusArchived: "Archivada",
+        urgencyOverdue: "Vencida",
+        urgencyToday: "Vence hoy",
+        urgencySoon: "Vence pronto",
+        urgencyUpcoming: "Mas adelante",
+        nextDueLabel: (dateLabel: string) => `Vence el ${dateLabel}.`,
+        cadenceLabel: (cadenceLabel: string) => `Frecuencia: ${cadenceLabel}.`,
+        expectedAccountLabel: (accountName: string) =>
+          `Cuenta esperada: ${accountName}.`,
+        accountRiskLabel: (amount: string) =>
+          `Hoy falta ${amount} en la cuenta esperada para cubrirla.`,
+        markPaid: "Marcar pagada",
+        confirmMarkPaid: "Confirmar pago",
+        markingPaid: "Marcando pago...",
+        paymentAccount: "Cuenta real del pago",
+        paymentAccountPlaceholder: "Selecciona una cuenta",
+        paymentDateTime: "Fecha y hora real",
+        paymentDescription: "Descripcion del gasto",
+        paymentDescriptionPlaceholder:
+          "Opcional. Si lo dejas vacio se usara el nombre de la obligacion.",
+        pause: "Pausar",
+        reactivate: "Reactivar",
+        archive: "Archivar",
+        deleteTitle: "Eliminar obligacion?",
+        deleteDescription: (name: string) =>
+          `La obligacion "${name}" dejara de aparecer en tus proximos vencimientos. Los gastos que ya registraste seguiran en Transacciones.`,
+        created: "Obligacion creada",
+        updated: "Obligacion actualizada",
+        paused: "Obligacion pausada",
+        archived: "Obligacion archivada",
+        reactivated: "Obligacion reactivada",
+        markedPaid: "Obligacion marcada como pagada",
+        deleted: "Obligacion eliminada",
+        failedLoad: "No se pudieron cargar las obligaciones",
+        failedCreate: "No se pudo crear la obligacion",
+        failedUpdate: "No se pudo actualizar la obligacion",
+        failedStatusUpdate: "No se pudo actualizar el estado de la obligacion",
+        failedMarkPaid: "No se pudo marcar la obligacion como pagada",
+        failedDelete: "No se pudo eliminar la obligacion",
+        deleting: "Eliminando...",
+        overdueNotice: (count: number) =>
+          count === 1
+            ? "Tienes 1 obligacion vencida que sigue activa."
+            : `Tienes ${count} obligaciones vencidas que siguen activas.`,
+        validations: {
+          requiredFields:
+            "Completa nombre, monto, proximo vencimiento y categoria.",
+          paymentAccountRequired:
+            "Selecciona la cuenta real desde la que pagaste.",
+          paymentDateRequired: "Completa la fecha y hora real del pago.",
+        },
+        createFromCandidate: "Confirmar como obligacion",
       },
       categories: {
         title: "Categorias",
@@ -580,7 +733,7 @@ const siteTexts = {
           "Como ya tienes movimientos registrados, esta moneda queda fija para no alterar tu historial.",
         baseCurrencyHelpTitle: "Que es la moneda principal?",
         baseCurrencyHelpDescription:
-          "Es la moneda con la que Dinerance resume tus totales. En este milestone todas tus cuentas usan esa misma moneda.",
+          "Es la moneda con la que Dinerance resume tus totales. Hoy todas tus cuentas usan esa misma moneda.",
         baseCurrencyInvalid:
           "La moneda base debe ser un codigo ISO de 3 letras, por ejemplo COP o USD.",
         timezoneLabel: "Zona horaria",
@@ -687,6 +840,7 @@ const siteTexts = {
       nav: {
         balance: "Overview",
         analysis: "Analysis",
+        obligations: "Obligations",
         transactions: "Transactions",
         categories: "Categories",
         profile: "Profile",
@@ -819,12 +973,13 @@ const siteTexts = {
         adjustmentCreated: "Adjustment created",
         transferDeleted: "Transfer deleted",
         adjustmentDeleted: "Adjustment deleted",
-        failedLoadLedger: "Failed to load current cash",
+        failedLoadLedger: "Failed to load your overview",
         failedCreateTransfer: "Failed to create transfer",
         failedCreateAdjustment: "Failed to create adjustment",
         failedDeleteTransfer: "Failed to delete transfer",
         failedDeleteAdjustment: "Failed to delete adjustment",
-        emptyStateTitle: "Start operating your real cash",
+        failedLoadUpcomingObligations: "Failed to load upcoming obligations",
+        emptyStateTitle: "Start recording your real money",
         emptyStateDescription:
           "This overview is powered by income, expenses, transfers, and adjustments.",
         distinctAccountsRequired: "You must choose two different accounts",
@@ -910,17 +1065,26 @@ const siteTexts = {
           "Latest transactions from the selected month.",
         recentTransactionsEmpty:
           "There is no activity in the selected month to show here.",
-        recurringCandidatesTitle: "Frequent income and expenses",
+        recurringCandidatesTitle: "Detected recurring patterns",
         recurringCandidatesDescription:
-          "Possible repeating movements that help you understand your habits.",
-        recurringCandidatesHelpTitle: "What does frequent mean?",
+          "Inferences from recent history. Expenses can be confirmed as obligations; income stays as analytical context.",
+        recurringCandidatesHelpTitle: "How should I read these patterns?",
         recurringCandidatesHelpDescription:
-          "These are hints based on similar movements we saw repeating. They are not fixed rules or confirmed reminders.",
+          "These are inferences based on similar movements we saw repeating. They are not confirmed commitments until you turn an expense into an obligation.",
         recurringCandidatesEmpty:
-          "We have not found frequent income or expenses with enough evidence yet.",
+          "We have not found recurring patterns with enough evidence yet.",
         recurringCandidatesViewAll: "Open analysis",
         recurringCandidatesIncome: "Frequent income",
         recurringCandidatesExpense: "Frequent expense",
+        recurringCandidatesInferred: "Inferred",
+        recurringCandidatesConfirmed: "Already confirmed",
+        recurringCandidatesExpenseSectionTitle:
+          "Expense candidates for obligations",
+        recurringCandidatesExpenseSectionDescription:
+          "Repeated expenses you can confirm as future commitments.",
+        recurringCandidatesIncomeSectionTitle: "Frequent income",
+        recurringCandidatesIncomeSectionDescription:
+          "Repeated inflows that remain analytical context.",
         recurringCandidatesWeekly: "Every week",
         recurringCandidatesBiweekly: "Every 15 days",
         recurringCandidatesMonthly: "Every month",
@@ -944,6 +1108,31 @@ const siteTexts = {
           `Last seen: ${dateLabel}.`,
         recurringCandidatesCompactLine: (dateLabel: string) =>
           `Last seen: ${dateLabel}.`,
+        upcomingObligationsTitle: "Upcoming obligations",
+        upcomingObligationsDescription:
+          "A compact read of what is due in the next 5 days without mixing it into your current balance.",
+        upcomingObligationsHelpTitle: "How should I read these obligations?",
+        upcomingObligationsHelpDescription:
+          "These are confirmed obligations with a close due date. They do not affect your available money until you mark them as paid.",
+        upcomingObligationsViewAll: "Open obligations",
+        upcomingObligationsSummaryTotal: "Committed in window",
+        upcomingObligationsSummaryUrgent: "Urgent",
+        upcomingObligationsSummaryOverdue: "Overdue",
+        upcomingObligationsSummaryRisk: "Account risk",
+        upcomingObligationsEmpty:
+          "There are no active obligations inside the upcoming window yet.",
+        upcomingObligationsDueDate: (dateLabel: string) =>
+          `Due on ${dateLabel}.`,
+        upcomingObligationsAccountRisk: (
+          accountName: string,
+          shortfallAmount: string,
+        ) =>
+          `The account ${accountName} does not currently cover ${shortfallAmount}.`,
+        upcomingObligationsNoAccount: "No expected account",
+        upcomingObligationsUrgencyOverdue: "Overdue",
+        upcomingObligationsUrgencyToday: "Due today",
+        upcomingObligationsUrgencySoon: "Due soon",
+        upcomingObligationsUrgencyUpcoming: "Later",
         historyPending:
           "Complete your financial profile to start seeing monthly history.",
         noHistory: "There is no activity yet to calculate the balance.",
@@ -966,6 +1155,123 @@ const siteTexts = {
         allAccountsLabel: "All accounts",
         latestMonthHint:
           "Use the same month and account to compare categories and repeating patterns more easily.",
+      },
+      obligations: {
+        title: "Obligations",
+        subtitle:
+          "Confirm future bills, review urgency, and turn them into real expenses only when they are paid.",
+        helpTitle: "What can you do here?",
+        helpDescription:
+          "This view only shows confirmed future commitments. Inferred recurring patterns stay in Analysis until you confirm an expense as an obligation.",
+        summaryActive: "Active",
+        summaryUrgent: "Urgent",
+        summaryRisk: "Account risk",
+        summaryRiskHelpTitle: "What does this risk mean?",
+        summaryRiskHelpDescription:
+          "Here you can see how many active obligations have an expected account whose current balance is not enough to cover the full amount today.",
+        openCreateModal: "New obligation",
+        createFormTitle: "New obligation",
+        createFormDescription:
+          "Create a manual obligation or finish confirming a suggestion from Analysis.",
+        editFormTitle: "Edit obligation",
+        editFormDescription:
+          "Adjust the amount, cadence, next due date, or expected account.",
+        missingProfile:
+          "Complete your base currency and time zone before managing obligations.",
+        missingExpenseCategory:
+          "You need at least one expense category before creating obligations.",
+        prefillApplied:
+          "A prefilled obligation was loaded from Analysis. Review it and save it if it looks right.",
+        prefillAppliedFriendly:
+          "We filled this form with a detected pattern. Review it and save it if it matches what you want.",
+        name: "Name",
+        namePlaceholder: "e.g. Studio rent",
+        amount: "Expected amount",
+        amountPlaceholder: "e.g. 1200000",
+        cadence: "Cadence",
+        cadencePlaceholder: "Select cadence",
+        cadenceMonthly: "Every month",
+        cadenceBiweekly: "Every 15 days",
+        cadenceWeekly: "Every week",
+        nextDueDate: "Next due date",
+        category: "Category",
+        categoryPlaceholder: "Select an expense category",
+        expectedAccount: "Expected account",
+        expectedAccountPlaceholder: "Optional",
+        noExpectedAccount: "No expected account",
+        createAction: "Create obligation",
+        creating: "Creating obligation...",
+        updateAction: "Save changes",
+        updating: "Saving obligation...",
+        cancelEdit: "Cancel edit",
+        activeSectionTitle: "Active",
+        activeSectionDescription:
+          "Your next commitments, ready to review, edit, or mark as paid.",
+        pausedSectionTitle: "Paused",
+        pausedSectionDescription:
+          "Commitments you want to keep around without active urgency for now.",
+        archivedSectionTitle: "Archived",
+        archivedSectionDescription:
+          "Obligations you no longer use, but still want as reference.",
+        emptyActive: "There are no active obligations.",
+        emptyPaused: "There are no paused obligations.",
+        emptyArchived: "There are no archived obligations.",
+        emptyState:
+          "You will only see obligations you already confirmed here. Create a new one or convert a recurring expense from Analysis.",
+        statusActive: "Active",
+        statusPaused: "Paused",
+        statusArchived: "Archived",
+        urgencyOverdue: "Overdue",
+        urgencyToday: "Due today",
+        urgencySoon: "Due soon",
+        urgencyUpcoming: "Later",
+        nextDueLabel: (dateLabel: string) => `Due on ${dateLabel}.`,
+        cadenceLabel: (cadenceLabel: string) => `Cadence: ${cadenceLabel}.`,
+        expectedAccountLabel: (accountName: string) =>
+          `Expected account: ${accountName}.`,
+        accountRiskLabel: (amount: string) =>
+          `This account is currently short by ${amount}.`,
+        markPaid: "Mark paid",
+        confirmMarkPaid: "Confirm payment",
+        markingPaid: "Marking payment...",
+        paymentAccount: "Actual payment account",
+        paymentAccountPlaceholder: "Select an account",
+        paymentDateTime: "Actual date and time",
+        paymentDescription: "Expense description",
+        paymentDescriptionPlaceholder:
+          "Optional. If you leave it empty, the obligation name will be used.",
+        pause: "Pause",
+        reactivate: "Reactivate",
+        archive: "Archive",
+        deleteTitle: "Delete obligation?",
+        deleteDescription: (name: string) =>
+          `The obligation \"${name}\" will stop appearing in upcoming due dates. Any expense you already recorded will stay in Transactions.`,
+        created: "Obligation created",
+        updated: "Obligation updated",
+        paused: "Obligation paused",
+        archived: "Obligation archived",
+        reactivated: "Obligation reactivated",
+        markedPaid: "Obligation marked as paid",
+        deleted: "Obligation deleted",
+        failedLoad: "Failed to load obligations",
+        failedCreate: "Failed to create obligation",
+        failedUpdate: "Failed to update obligation",
+        failedStatusUpdate: "Failed to update obligation status",
+        failedMarkPaid: "Failed to mark the obligation as paid",
+        failedDelete: "Failed to delete obligation",
+        deleting: "Deleting...",
+        overdueNotice: (count: number) =>
+          count === 1
+            ? "You have 1 overdue obligation that is still active."
+            : `You have ${count} overdue obligations that are still active.`,
+        validations: {
+          requiredFields:
+            "Complete the name, amount, next due date, and category.",
+          paymentAccountRequired:
+            "Select the real account you used for this payment.",
+          paymentDateRequired: "Complete the real payment date and time.",
+        },
+        createFromCandidate: "Confirm as obligation",
       },
       categories: {
         title: "Categories",
@@ -1157,12 +1463,12 @@ const siteTexts = {
         baseCurrencyLabel: "Main currency",
         baseCurrencyPlaceholder: "USD",
         baseCurrencyHint:
-          "We use this currency for your totals and for new accounts in this milestone.",
+          "We use this currency for your totals and for new accounts.",
         baseCurrencyLockedHint:
           "Because you already have recorded activity, this currency is now locked to preserve your history.",
         baseCurrencyHelpTitle: "What is the main currency?",
         baseCurrencyHelpDescription:
-          "It is the currency Dinerance uses to summarize your totals. In this milestone all of your accounts use that same currency.",
+          "It is the currency Dinerance uses to summarize your totals. Today all of your accounts use that same currency.",
         baseCurrencyInvalid:
           "Base currency must be a 3-letter ISO code, for example USD or COP.",
         timezoneLabel: "Time zone",

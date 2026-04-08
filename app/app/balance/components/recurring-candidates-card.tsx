@@ -1,7 +1,11 @@
 "use client";
 
+import type { ReactNode } from "react";
 import Link from "next/link";
-import { type AnalyticsRecurringCandidates } from "@/lib/api";
+import {
+  type AnalyticsRecurringCandidate,
+  type AnalyticsRecurringCandidates,
+} from "@/lib/api";
 import { type SiteText } from "@/lib/site";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -27,6 +31,7 @@ type RecurringCandidatesCardProps = {
   maxItems?: number;
   viewAllHref?: string;
   viewAllLabel?: string;
+  renderAction?: (candidate: AnalyticsRecurringCandidate) => ReactNode;
 };
 
 const cadenceBadgeTone = {
@@ -52,9 +57,26 @@ export function RecurringCandidatesCard({
   maxItems,
   viewAllHref,
   viewAllLabel,
+  renderAction,
 }: RecurringCandidatesCardProps) {
   const items = (candidates?.candidates ?? []).slice(0, maxItems);
   const totalItems = candidates?.candidates.length ?? 0;
+  const expenseItems = items.filter((candidate) => candidate.direction === "expense");
+  const incomeItems = items.filter((candidate) => candidate.direction === "income");
+  const groups = [
+    {
+      key: "expense",
+      title: text.recurringCandidatesExpenseSectionTitle,
+      description: text.recurringCandidatesExpenseSectionDescription,
+      items: expenseItems,
+    },
+    {
+      key: "income",
+      title: text.recurringCandidatesIncomeSectionTitle,
+      description: text.recurringCandidatesIncomeSectionDescription,
+      items: incomeItems,
+    },
+  ].filter((group) => group.items.length > 0);
 
   return (
     <Card>
@@ -83,144 +105,174 @@ export function RecurringCandidatesCard({
             {text.recurringCandidatesEmpty}
           </p>
         ) : (
-          <div className="space-y-3">
-            {items.map((candidate) => {
-              const lastSeenFormatter = new Intl.DateTimeFormat(locale, {
-                dateStyle: "medium",
-                timeZone,
-              });
-              const formattedTypicalAmount = formatMoney(
-                candidate.typical_amount,
-                candidate.currency,
-                locale,
-              );
-              const formattedMinAmount = formatMoney(
-                candidate.amount_min,
-                candidate.currency,
-                locale,
-              );
-              const formattedMaxAmount = formatMoney(
-                candidate.amount_max,
-                candidate.currency,
-                locale,
-              );
-
-              return (
-                <div
-                  key={`${candidate.category_id}-${candidate.label}-${candidate.last_occurred_at}`}
-                  className={`rounded-xl border bg-muted/20 shadow-sm ${
-                    compact ? "px-4 py-3" : "px-4 py-4"
-                  }`}
-                >
-                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                    <div className="min-w-0 space-y-2">
-                      <div className="flex flex-wrap gap-2">
-                        <Badge
-                          variant="outline"
-                          className={cadenceBadgeTone[candidate.cadence]}
-                        >
-                          {resolveCadenceLabel(candidate.cadence, text)}
-                        </Badge>
-                        <Badge
-                          variant="outline"
-                          className={directionBadgeTone[candidate.direction]}
-                        >
-                          {candidate.direction === "income"
-                            ? text.recurringCandidatesIncome
-                            : text.recurringCandidatesExpense}
-                        </Badge>
-                        <Badge variant="outline">
-                          {text.recurringCandidatesOccurrences(
-                            candidate.occurrence_count,
-                          )}
-                        </Badge>
-                      </div>
-
-                      <div>
-                        <p className="font-semibold text-foreground">
-                          {candidate.label}
-                        </p>
-                        {compact ? (
-                          <p className="mt-1 text-sm text-muted-foreground">
-                            {resolveCadenceLabel(candidate.cadence, text)} |{" "}
-                            {candidate.category_name} |{" "}
-                            {text.recurringCandidatesOccurrences(
-                              candidate.occurrence_count,
-                            )}
-                          </p>
-                        ) : (
-                          <p className="mt-1 text-sm text-muted-foreground">
-                            {candidate.description &&
-                            candidate.description !== candidate.category_name
-                              ? text.recurringCandidatesCategoryHint(
-                                  candidate.category_name,
-                                )
-                              : candidate.category_name}
-                          </p>
-                        )}
-                      </div>
-
-                      {compact ? (
-                        <p className="text-sm text-muted-foreground">
-                          {text.recurringCandidatesCompactLine(
-                            lastSeenFormatter.format(
-                              new Date(candidate.last_occurred_at),
-                            ),
-                          )}
-                        </p>
-                      ) : (
-                        <div className="space-y-1 text-sm text-muted-foreground">
-                          <p>
-                            {candidate.match_basis === "description"
-                              ? text.recurringCandidatesMatchDescription(
-                                  candidate.occurrence_count,
-                                )
-                              : text.recurringCandidatesMatchCategoryAmount(
-                                  candidate.occurrence_count,
-                                )}
-                          </p>
-                          <p>
-                            {text.recurringCandidatesIntervals(
-                              candidate.interval_days,
-                            )}
-                          </p>
-                          <p>
-                            {candidate.amount_pattern === "exact"
-                              ? text.recurringCandidatesAmountExact(
-                                  formattedTypicalAmount,
-                                )
-                              : text.recurringCandidatesAmountStable(
-                                  formattedMinAmount,
-                                  formattedMaxAmount,
-                                )}
-                          </p>
-                          <p>
-                            {text.recurringCandidatesLastSeen(
-                              lastSeenFormatter.format(
-                                new Date(candidate.last_occurred_at),
-                              ),
-                            )}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="shrink-0 text-left md:text-right">
-                      <p className="text-lg font-bold tabular-nums text-foreground">
-                        {formattedTypicalAmount}
-                      </p>
-                      <p className="mt-1 text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">
-                        {candidate.currency}
-                      </p>
-                    </div>
-                  </div>
+          <div className="space-y-6">
+            {groups.map((group) => (
+              <section key={group.key} className="space-y-3">
+                <div className="space-y-1">
+                  <h3 className="text-sm font-semibold text-foreground">
+                    {group.title}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    {group.description}
+                  </p>
                 </div>
-              );
-            })}
+
+                <div className="space-y-3">
+                  {group.items.map((candidate) => (
+                    <RecurringCandidateItem
+                      key={candidate.recurring_candidate_key}
+                      candidate={candidate}
+                      compact={compact}
+                      formatMoney={formatMoney}
+                      locale={locale}
+                      renderAction={renderAction}
+                      text={text}
+                      timeZone={timeZone}
+                    />
+                  ))}
+                </div>
+              </section>
+            ))}
           </div>
         )}
       </CardContent>
     </Card>
+  );
+}
+
+function RecurringCandidateItem({
+  candidate,
+  compact,
+  formatMoney,
+  locale,
+  renderAction,
+  text,
+  timeZone,
+}: {
+  candidate: AnalyticsRecurringCandidate;
+  compact: boolean;
+  formatMoney: (value: string, currency: string, locale: string) => string;
+  locale: string;
+  renderAction?: (candidate: AnalyticsRecurringCandidate) => ReactNode;
+  text: SiteText["pages"]["balance"];
+  timeZone: string;
+}) {
+  const lastSeenFormatter = new Intl.DateTimeFormat(locale, {
+    dateStyle: "medium",
+    timeZone,
+  });
+  const formattedTypicalAmount = formatMoney(
+    candidate.typical_amount,
+    candidate.currency,
+    locale,
+  );
+  const formattedMinAmount = formatMoney(
+    candidate.amount_min,
+    candidate.currency,
+    locale,
+  );
+  const formattedMaxAmount = formatMoney(
+    candidate.amount_max,
+    candidate.currency,
+    locale,
+  );
+
+  return (
+    <div
+      className={`rounded-xl border bg-muted/20 shadow-sm ${
+        compact ? "px-4 py-3" : "px-4 py-4"
+      }`}
+    >
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div className="min-w-0 space-y-2">
+          <div className="flex flex-wrap gap-2">
+            <Badge
+              variant="outline"
+              className={cadenceBadgeTone[candidate.cadence]}
+            >
+              {resolveCadenceLabel(candidate.cadence, text)}
+            </Badge>
+            <Badge variant="outline">
+              {text.recurringCandidatesInferred}
+            </Badge>
+            <Badge
+              variant="outline"
+              className={directionBadgeTone[candidate.direction]}
+            >
+              {candidate.direction === "income"
+                ? text.recurringCandidatesIncome
+                : text.recurringCandidatesExpense}
+            </Badge>
+            <Badge variant="outline">
+              {text.recurringCandidatesOccurrences(candidate.occurrence_count)}
+            </Badge>
+          </div>
+
+          <div>
+            <p className="font-semibold text-foreground">{candidate.label}</p>
+            {compact ? (
+              <p className="mt-1 text-sm text-muted-foreground">
+                {resolveCadenceLabel(candidate.cadence, text)} |{" "}
+                {candidate.category_name} |{" "}
+                {text.recurringCandidatesOccurrences(candidate.occurrence_count)}
+              </p>
+            ) : (
+              <p className="mt-1 text-sm text-muted-foreground">
+                {candidate.description &&
+                candidate.description !== candidate.category_name
+                  ? text.recurringCandidatesCategoryHint(candidate.category_name)
+                  : candidate.category_name}
+              </p>
+            )}
+          </div>
+
+          {compact ? (
+            <p className="text-sm text-muted-foreground">
+              {text.recurringCandidatesCompactLine(
+                lastSeenFormatter.format(new Date(candidate.last_occurred_at)),
+              )}
+            </p>
+          ) : (
+            <div className="space-y-1 text-sm text-muted-foreground">
+              <p>
+                {candidate.match_basis === "description"
+                  ? text.recurringCandidatesMatchDescription(
+                      candidate.occurrence_count,
+                    )
+                  : text.recurringCandidatesMatchCategoryAmount(
+                      candidate.occurrence_count,
+                    )}
+              </p>
+              <p>{text.recurringCandidatesIntervals(candidate.interval_days)}</p>
+              <p>
+                {candidate.amount_pattern === "exact"
+                  ? text.recurringCandidatesAmountExact(formattedTypicalAmount)
+                  : text.recurringCandidatesAmountStable(
+                      formattedMinAmount,
+                      formattedMaxAmount,
+                    )}
+              </p>
+              <p>
+                {text.recurringCandidatesLastSeen(
+                  lastSeenFormatter.format(new Date(candidate.last_occurred_at)),
+                )}
+              </p>
+            </div>
+          )}
+
+          {renderAction ? <div className="pt-1">{renderAction(candidate)}</div> : null}
+        </div>
+
+        <div className="shrink-0 text-left md:text-right">
+          <p className="text-lg font-bold tabular-nums text-foreground">
+            {formattedTypicalAmount}
+          </p>
+          <p className="mt-1 text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">
+            {candidate.currency}
+          </p>
+        </div>
+      </div>
+    </div>
   );
 }
 
