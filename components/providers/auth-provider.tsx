@@ -4,8 +4,9 @@ import {
   createContext,
   useContext,
   useEffect,
-  useState,
   useCallback,
+  useLayoutEffect,
+  useState,
 } from "react";
 import type { Session } from "@supabase/supabase-js";
 import {
@@ -26,6 +27,9 @@ const AuthContext = createContext<AuthContextValue>({
   signOut: async () => {},
 });
 
+const useIsomorphicLayoutEffect =
+  typeof window === "undefined" ? useEffect : useLayoutEffect;
+
 function handleSessionUser(uid: string) {
   const stored = getStoredUserId();
   if (stored && stored !== uid) {
@@ -36,14 +40,17 @@ function handleSessionUser(uid: string) {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [session, setSession] = useState<Session | null>(() => {
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useIsomorphicLayoutEffect(() => {
     const storedSession = getStoredSessionSnapshot();
     if (storedSession?.user.id) {
       handleSessionUser(storedSession.user.id);
     }
-    return storedSession;
-  });
-  const [loading, setLoading] = useState(() => getStoredSessionSnapshot() == null);
+    setSession(storedSession);
+    setLoading(storedSession == null);
+  }, []);
 
   useEffect(() => {
     const supabase = createClient();
