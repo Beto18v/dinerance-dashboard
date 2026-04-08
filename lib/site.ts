@@ -17,7 +17,7 @@ const mainPageContent = {
     header: {
       brand: "Dinerance",
       subtitle: "Finanzas personales",
-      dashboard: "Dashboard",
+      dashboard: "Panel",
       signIn: "Iniciar sesion",
       logoAlt: "Dinerance",
     },
@@ -26,7 +26,7 @@ const mainPageContent = {
       title: "Controla tus finanzas",
       accent: "con claridad total",
       description: "Ve exactamente en qué se va tu dinero, sin complicaciones.",
-      ctaAuthenticated: "Ir al dashboard",
+      ctaAuthenticated: "Ir al panel",
       ctaGuest: "Empieza a controlar tu dinero hoy",
       supporting: "App para ingresos, gastos y balance en un solo lugar.",
       logoAlt: "Logo de Dinerance",
@@ -104,12 +104,33 @@ const siteTexts = {
       mobileMenuDescription: "Navega por tu panel y administra tu sesion.",
       nav: {
         balance: "Resumen",
+        cashflow: "Caja futura",
         analysis: "Analisis",
         obligations: "Obligaciones",
         transactions: "Transacciones",
         categories: "Categorias",
         profile: "Perfil",
       },
+      obligationsAlertOpen: "Abrir obligaciones",
+      obligationsAlertMixedBanner: (
+        overdueCount: number,
+        dueTodayCount: number,
+      ) =>
+        `Tienes ${overdueCount} ${
+          overdueCount === 1
+            ? "obligacion vencida activa"
+            : "obligaciones vencidas activas"
+        } y ${dueTodayCount} ${
+          dueTodayCount === 1 ? "que vence hoy" : "que vencen hoy"
+        }.`,
+      obligationsAlertOverdueBanner: (count: number) =>
+        count === 1
+          ? "Tienes 1 obligacion vencida que sigue activa."
+          : `Tienes ${count} obligaciones vencidas que siguen activas.`,
+      obligationsAlertTodayBanner: (count: number) =>
+        count === 1
+          ? "Tienes 1 obligacion que vence hoy."
+          : `Tienes ${count} obligaciones que vencen hoy.`,
       signOut: "Cerrar sesion",
     },
     auth: {
@@ -245,6 +266,7 @@ const siteTexts = {
         failedDeleteAdjustment: "No se pudo eliminar el ajuste",
         failedLoadUpcomingObligations:
           "No se pudieron cargar los proximos vencimientos",
+        failedLoadCashflowForecast: "No se pudo cargar tu caja futura",
         emptyStateTitle: "Empieza a registrar tu dinero real",
         emptyStateDescription:
           "Tu resumen se alimenta de ingresos, gastos, transferencias y ajustes.",
@@ -372,6 +394,56 @@ const siteTexts = {
           `Ultima vez visto: ${dateLabel}.`,
         recurringCandidatesCompactLine: (dateLabel: string) =>
           `Ultima vez visto: ${dateLabel}.`,
+        futureCashTitle: "Caja futura",
+        futureCashDescription:
+          "Proyeccion consolidada a 30, 60 y 90 dias basada en tu saldo actual y obligaciones confirmadas. No cambia tu saldo de hoy.",
+        futureCashHelpTitle: "Como se calcula esta lectura?",
+        futureCashHelpDescription:
+          "Partimos de tu saldo actual consolidado registrado y restamos solo obligaciones activas confirmadas dentro de cada horizonte. No usamos inferencias, no cambiamos tu saldo actual y no tocamos Analisis.",
+        futureCashSafeToSpendTitle: "Disponible para gastar en 30 dias",
+        futureCashSafeToSpendDescription: (
+          currentBalance: string,
+          committedAmount: string,
+          dateLabel: string,
+        ) =>
+          `Es lo que te quedaria libre para gastar si tomamos ${currentBalance} de saldo real y restamos ${committedAmount} en obligaciones confirmadas hasta ${dateLabel}.`,
+        futureCashCurrentBalanceLabel: "Saldo al iniciar el periodo",
+        futureCashCurrentBalanceHelpTitle: "De donde sale este saldo?",
+        futureCashCurrentBalanceHelpDescription:
+          "Es el saldo real con el que empieza este periodo. Solo incluye dinero ya registrado.",
+        futureCashCommittedLabel: "Obligaciones de este periodo",
+        futureCashCommittedHelpTitle: "Que incluye este total?",
+        futureCashCommittedHelpDescription:
+          "Es la suma de las obligaciones activas confirmadas que entran en este periodo. No incluye montos estimados ni gastos sin confirmar.",
+        futureCashPerDayLabel: "Disponible por dia",
+        futureCashPerDayHelpTitle: "Como leerlo?",
+        futureCashPerDayHelpDescription:
+          "Es una referencia simple de lo que tendrias disponible para gastar por dia en este periodo.",
+        futureCashHorizonLabel: (days: number) => `${days} dias`,
+        futureCashWindowEndLabel: (dateLabel: string) => `Hasta ${dateLabel}`,
+        futureCashProjectedBalanceLabel: "Saldo proyectado",
+        futureCashProjectedBalanceHelpTitle:
+          "Que significa este saldo proyectado?",
+        futureCashProjectedBalanceHelpDescription:
+          "Es el saldo que te quedaria hasta esa fecha si mantienes tu saldo actual y cumples las obligaciones confirmadas incluidas en ese periodo.",
+        futureCashCommittedLine: (amount: string) =>
+          `Comprometido confirmado: ${amount}.`,
+        futureCashSafeLine: (amount: string) =>
+          `Disponible para gastar en este periodo: ${amount}.`,
+        futureCashShortfallLine: (amount: string) =>
+          `Faltante estimado: ${amount}.`,
+        futureCashScheduledPaymentsLabel: (count: number) =>
+          count === 1 ? "1 pago previsto." : `${count} pagos previstos.`,
+        futureCashStatusCovered: "Cubierto",
+        futureCashStatusTight: "Justo",
+        futureCashStatusShortfall: "Faltante",
+        futureCashTeaserTitle: "Caja futura",
+        futureCashTeaserDescription:
+          "Mantuvimos la proyeccion completa fuera de Resumen. Aqui solo ves una lectura compacta del margen a 30 dias.",
+        futureCashTeaserOpen: "Abrir caja futura",
+        futureCashTeaserLine: (amount: string, dateLabel: string) =>
+          `Tienes ${amount} libres para gastar hasta ${dateLabel}.`,
+        futureCashTeaserStatusLabel: "Disponible para gastar en 30 dias",
         upcomingObligationsTitle: "Proximos vencimientos",
         upcomingObligationsDescription:
           "Una lectura compacta de lo que vence en los proximos 5 dias, sin mezclarlo con tu saldo actual.",
@@ -418,6 +490,17 @@ const siteTexts = {
         allAccountsLabel: "Todas las cuentas",
         latestMonthHint:
           "Usa el mismo mes y cuenta para comparar mejor categorias y patrones repetidos.",
+      },
+      cashflow: {
+        title: "Caja futura",
+        subtitle:
+          "Planea tu gasto con una proyeccion clara de 30, 60 y 90 dias basada en saldo real y obligaciones confirmadas.",
+        helpTitle: "Que veras aqui?",
+        helpDescription:
+          "Esta vista separa caja futura de tu resumen diario. Parte del saldo real ya registrado y descuenta solo obligaciones activas confirmadas en cada ventana.",
+        openObligations: "Abrir obligaciones",
+        missingProfile:
+          "Completa tu moneda base y tu zona horaria antes de usar caja futura.",
       },
       obligations: {
         title: "Obligaciones",
@@ -839,12 +922,31 @@ const siteTexts = {
       mobileMenuDescription: "Navigate your dashboard and manage your session.",
       nav: {
         balance: "Overview",
+        cashflow: "Future cash",
         analysis: "Analysis",
         obligations: "Obligations",
         transactions: "Transactions",
         categories: "Categories",
         profile: "Profile",
       },
+      obligationsAlertOpen: "Open obligations",
+      obligationsAlertMixedBanner: (
+        overdueCount: number,
+        dueTodayCount: number,
+      ) =>
+        `You have ${overdueCount} ${
+          overdueCount === 1
+            ? "active overdue obligation"
+            : "active overdue obligations"
+        } and ${dueTodayCount} due today.`,
+      obligationsAlertOverdueBanner: (count: number) =>
+        count === 1
+          ? "You have 1 overdue obligation that is still active."
+          : `You have ${count} overdue obligations that are still active.`,
+      obligationsAlertTodayBanner: (count: number) =>
+        count === 1
+          ? "You have 1 obligation due today."
+          : `You have ${count} obligations due today.`,
       signOut: "Sign out",
     },
     auth: {
@@ -979,6 +1081,7 @@ const siteTexts = {
         failedDeleteTransfer: "Failed to delete transfer",
         failedDeleteAdjustment: "Failed to delete adjustment",
         failedLoadUpcomingObligations: "Failed to load upcoming obligations",
+        failedLoadCashflowForecast: "Failed to load your future cash view",
         emptyStateTitle: "Start recording your real money",
         emptyStateDescription:
           "This overview is powered by income, expenses, transfers, and adjustments.",
@@ -1108,6 +1211,56 @@ const siteTexts = {
           `Last seen: ${dateLabel}.`,
         recurringCandidatesCompactLine: (dateLabel: string) =>
           `Last seen: ${dateLabel}.`,
+        futureCashTitle: "Future cash",
+        futureCashDescription:
+          "Consolidated 30, 60, and 90 day projection based on your current balance and confirmed obligations. It does not change your money today.",
+        futureCashHelpTitle: "How is this calculated?",
+        futureCashHelpDescription:
+          "We start from the ledger's current consolidated balance and subtract only confirmed active obligations inside each horizon. We do not use inferences, we do not change today's balance, and we do not touch Analysis.",
+        futureCashSafeToSpendTitle: "Safe-to-spend in 30 days",
+        futureCashSafeToSpendDescription: (
+          currentBalance: string,
+          committedAmount: string,
+          dateLabel: string,
+        ) =>
+          `We take ${currentBalance} of real cash and subtract ${committedAmount} in confirmed obligations through ${dateLabel}.`,
+        futureCashCurrentBalanceLabel: "Current real balance",
+        futureCashCurrentBalanceHelpTitle: "What does this balance represent?",
+        futureCashCurrentBalanceHelpDescription:
+          "This is your consolidated balance observed today in the ledger. It only includes money already recorded as real.",
+        futureCashCommittedLabel: "Confirmed obligations",
+        futureCashCommittedHelpTitle: "What is included here?",
+        futureCashCommittedHelpDescription:
+          "This is the sum of confirmed active obligations due inside this horizon. It excludes inferences and unconfirmed future spending.",
+        futureCashPerDayLabel: "Room per day",
+        futureCashPerDayHelpTitle: "How should I read this room?",
+        futureCashPerDayHelpDescription:
+          "It is a simple reference: available-to-spend in this window divided by the horizon days. It is not an automatic budget.",
+        futureCashHorizonLabel: (days: number) => `${days} days`,
+        futureCashWindowEndLabel: (dateLabel: string) => `Through ${dateLabel}`,
+        futureCashProjectedBalanceLabel: "Projected balance",
+        futureCashProjectedBalanceHelpTitle:
+          "What does this projected balance mean?",
+        futureCashProjectedBalanceHelpDescription:
+          "This is the balance you would have left at the end of the window if your current balance holds and the confirmed obligations in that horizon are met.",
+        futureCashCommittedLine: (amount: string) =>
+          `Confirmed committed outflow: ${amount}.`,
+        futureCashSafeLine: (amount: string) =>
+          `Safe-to-spend in this window: ${amount}.`,
+        futureCashShortfallLine: (amount: string) =>
+          `Estimated shortfall: ${amount}.`,
+        futureCashScheduledPaymentsLabel: (count: number) =>
+          count === 1 ? "1 scheduled payment." : `${count} scheduled payments.`,
+        futureCashStatusCovered: "Covered",
+        futureCashStatusTight: "Tight",
+        futureCashStatusShortfall: "Shortfall",
+        futureCashTeaserTitle: "Future cash",
+        futureCashTeaserDescription:
+          "We kept the full projection outside Overview. Here you only see a compact read of your 30 day room.",
+        futureCashTeaserOpen: "Open future cash",
+        futureCashTeaserLine: (amount: string, dateLabel: string) =>
+          `You have ${amount} free to spend through ${dateLabel}.`,
+        futureCashTeaserStatusLabel: "Safe-to-spend in 30 days",
         upcomingObligationsTitle: "Upcoming obligations",
         upcomingObligationsDescription:
           "A compact read of what is due in the next 5 days without mixing it into your current balance.",
@@ -1155,6 +1308,17 @@ const siteTexts = {
         allAccountsLabel: "All accounts",
         latestMonthHint:
           "Use the same month and account to compare categories and repeating patterns more easily.",
+      },
+      cashflow: {
+        title: "Future cash",
+        subtitle:
+          "Plan your spending with a clear 30, 60, and 90 day projection based on real balance and confirmed obligations.",
+        helpTitle: "What do you see here?",
+        helpDescription:
+          "This view separates future cash from your daily overview. It starts from the ledger's real balance and subtracts only confirmed active obligations inside each window.",
+        openObligations: "Open obligations",
+        missingProfile:
+          "Complete your base currency and time zone before using future cash.",
       },
       obligations: {
         title: "Obligations",

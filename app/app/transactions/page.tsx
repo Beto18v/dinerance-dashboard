@@ -40,7 +40,7 @@ import {
   cacheKeys,
   cacheTtls,
   getCache,
-  invalidateCacheKey,
+  invalidateCacheKeys,
   setCache,
   subscribeToCacheKeys,
 } from "@/lib/cache";
@@ -443,7 +443,10 @@ export default function TransactionsPage() {
       });
       toast.success(t.updated);
       setEditingTxn(null);
-      invalidateCacheKey(cacheKeys.transactions);
+      invalidateCacheKeys([
+        cacheKeys.cashflowForecast,
+        cacheKeys.transactions,
+      ]);
     } catch (error) {
       if (error instanceof ApiError) {
         toast.error(error.message);
@@ -463,7 +466,10 @@ export default function TransactionsPage() {
     try {
       await api.deleteTransaction(transactionId);
       toast.success(t.deleted);
-      invalidateCacheKey(cacheKeys.transactions);
+      invalidateCacheKeys([
+        cacheKeys.cashflowForecast,
+        cacheKeys.transactions,
+      ]);
     } catch (error) {
       if (error instanceof ApiError) {
         toast.error(error.message);
@@ -600,7 +606,10 @@ export default function TransactionsPage() {
               timeZone={timeZone}
               onCreated={() => {
                 setCurrentPage(1);
-                invalidateCacheKey(cacheKeys.transactions);
+                invalidateCacheKeys([
+                  cacheKeys.cashflowForecast,
+                  cacheKeys.transactions,
+                ]);
               }}
             />
           ) : null}

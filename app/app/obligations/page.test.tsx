@@ -65,7 +65,9 @@ vi.mock("@/lib/api", () => ({
 
 vi.mock("@/lib/cache", () => ({
   cacheKeys: {
+    cashflowForecast: "cache:cashflow-forecast",
     obligations: "cache:obligations",
+    obligationAlerts: "cache:obligation-alerts",
     upcomingObligations: "cache:upcoming-obligations",
     transactions: "cache:transactions",
     ledgerBalances: "cache:ledger-balances",
@@ -431,7 +433,9 @@ describe("ObligationsPage", () => {
       });
     });
     expect(invalidateCacheKeysMock).toHaveBeenCalledWith([
+      "cache:cashflow-forecast",
       "cache:obligations",
+      "cache:obligation-alerts",
       "cache:upcoming-obligations",
       "cache:transactions",
       "cache:ledger-balances",
@@ -483,7 +487,9 @@ describe("ObligationsPage", () => {
       expect(deleteObligationMock).toHaveBeenCalledWith("obl-1");
     });
     expect(invalidateCacheKeysMock).toHaveBeenCalledWith([
+      "cache:cashflow-forecast",
       "cache:obligations",
+      "cache:obligation-alerts",
       "cache:upcoming-obligations",
     ]);
   });

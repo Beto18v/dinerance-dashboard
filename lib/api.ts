@@ -1,4 +1,7 @@
-import { createClient } from "@/lib/supabase/client";
+import {
+  createClient,
+  getOptimisticAccessToken,
+} from "@/lib/supabase/client";
 
 function getApiBaseUrl() {
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
@@ -19,6 +22,11 @@ export class ApiError extends Error {
 }
 
 async function getAccessToken(): Promise<string> {
+  const optimisticAccessToken = getOptimisticAccessToken();
+  if (optimisticAccessToken) {
+    return optimisticAccessToken;
+  }
+
   const supabase = createClient();
   const {
     data: { session },
@@ -280,6 +288,43 @@ export interface ObligationPaymentResponse {
   transaction: Transaction;
 }
 
+export type ForecastWindowStatus = "covered" | "tight" | "shortfall";
+
+export interface ForecastWindow {
+  horizon_days: number;
+  window_end_date: string;
+  scheduled_payments_count: number;
+  confirmed_obligations_total: string;
+  projected_balance: string;
+  safe_to_spend: string;
+  safe_to_spend_per_day: string;
+  shortfall_amount: string;
+  status: ForecastWindowStatus;
+}
+
+export interface SafeToSpend {
+  reference_date: string;
+  horizon_days: number;
+  window_end_date: string;
+  currency: string;
+  current_balance: string;
+  scheduled_payments_count: number;
+  confirmed_obligations_total: string;
+  projected_balance: string;
+  safe_to_spend: string;
+  safe_to_spend_per_day: string;
+  shortfall_amount: string;
+  status: ForecastWindowStatus;
+}
+
+export interface CashflowForecast {
+  reference_date: string;
+  currency: string;
+  current_balance: string;
+  safe_to_spend: SafeToSpend;
+  horizons: ForecastWindow[];
+}
+
 export interface LedgerBalanceAccount {
   financial_account_id: string;
   financial_account_name: string;
@@ -530,6 +575,18 @@ export const api = {
     if (params?.limit != null) qs.set("limit", String(params.limit));
     const query = qs.toString() ? `?${qs.toString()}` : "";
     return request<UpcomingObligationsResponse>(`/obligations/upcoming${query}`);
+  },
+
+  getCashflowForecast: () =>
+    request<CashflowForecast>("/cashflow/forecast"),
+
+  getSafeToSpend: (params?: { horizon_days?: number }) => {
+    const qs = new URLSearchParams();
+    if (params?.horizon_days != null) {
+      qs.set("horizon_days", String(params.horizon_days));
+    }
+    const query = qs.toString() ? `?${qs.toString()}` : "";
+    return request<SafeToSpend>(`/cashflow/safe-to-spend${query}`);
   },
 
   createObligation: (body: {

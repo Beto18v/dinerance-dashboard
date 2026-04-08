@@ -1,22 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import {
-  api,
-  ApiError,
-  type LedgerMovement,
-  type UpcomingObligationsResponse,
-} from "@/lib/api";
-import {
-  cacheKeys,
-  cacheTtls,
-  getCache,
-  invalidateCacheKeys,
-  setCache,
-  subscribeToCacheKeys,
-} from "@/lib/cache";
+import { api, ApiError, type LedgerMovement } from "@/lib/api";
+import { cacheKeys, invalidateCacheKeys } from "@/lib/cache";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -40,15 +28,12 @@ import { CurrentCashCard } from "./components/current-cash-card";
 import { CreateAdjustmentModal } from "./components/create-adjustment-modal";
 import { CreateTransferModal } from "./components/create-transfer-modal";
 import { RecentActivityCard } from "./components/recent-activity-card";
-import { UpcomingObligationsCard } from "./components/upcoming-obligations-card";
 import { useBalanceOnboardingState } from "./use-balance-onboarding-state";
 import { useLedgerPageState } from "./use-ledger-page-state";
 
 const ALL_ACCOUNTS_FILTER = "__all_accounts__";
-const UPCOMING_OBLIGATIONS_WINDOW_DAYS = 5;
 
 export default function BalancePage() {
-  const cachedUpcomingObligations = getFreshUpcomingObligationsCache();
   const {
     activity,
     balanceCurrency,
@@ -86,11 +71,6 @@ export default function BalancePage() {
   const [currentCashCardHeight, setCurrentCashCardHeight] = useState<
     number | null
   >(null);
-  const [upcomingObligations, setUpcomingObligations] =
-    useState<UpcomingObligationsResponse | null>(() => cachedUpcomingObligations);
-  const [upcomingObligationsLoading, setUpcomingObligationsLoading] = useState(
-    () => !cachedUpcomingObligations,
-  );
 
   const hasLedgerActivity = activity.length > 0;
   const hasAccountBalances = displayedAccountBalances.length > 0;
@@ -105,8 +85,6 @@ export default function BalancePage() {
   const showOperationalActions = !showOnboarding && !isCheckingRequirements;
   const activityScopeLabel =
     selectedFinancialAccountName ?? t.allAccountsActivityLabel;
-  const showUpcomingObligations =
-    (upcomingObligations?.items.length ?? 0) > 0;
 
   useEffect(() => {
     const element = currentCashCardRef.current;
@@ -154,61 +132,6 @@ export default function BalancePage() {
       ),
     };
   }, [movementPendingDelete, t]);
-
-  const loadUpcomingObligations = useCallback(
-    async (silent = false) => {
-      if (!profile?.base_currency || !profile?.timezone) {
-        setUpcomingObligations(null);
-        setUpcomingObligationsLoading(false);
-        return;
-      }
-
-      if (!silent) {
-        setUpcomingObligationsLoading(true);
-      }
-
-      try {
-        const data = await api.getUpcomingObligations({
-          days_ahead: UPCOMING_OBLIGATIONS_WINDOW_DAYS,
-          limit: 4,
-        });
-        setUpcomingObligations(data);
-        setCache(cacheKeys.upcomingObligations, data);
-      } catch (error) {
-        if (!silent) {
-          if (error instanceof ApiError) {
-            toast.error(error.message);
-          } else {
-            toast.error(t.failedLoadUpcomingObligations);
-          }
-        }
-      } finally {
-        setUpcomingObligationsLoading(false);
-      }
-    },
-    [
-      profile?.base_currency,
-      profile?.timezone,
-      t.failedLoadUpcomingObligations,
-    ],
-  );
-
-  useEffect(() => {
-    void loadUpcomingObligations(Boolean(cachedUpcomingObligations));
-  }, [cachedUpcomingObligations, loadUpcomingObligations]);
-
-  useEffect(() => {
-    return subscribeToCacheKeys(
-      [
-        cacheKeys.upcomingObligations,
-        cacheKeys.ledgerBalances,
-        cacheKeys.transactions,
-      ],
-      () => {
-        void loadUpcomingObligations(true);
-      },
-    );
-  }, [loadUpcomingObligations]);
 
   async function handleDeleteConfirmed() {
     if (!movementPendingDelete) {
@@ -384,19 +307,6 @@ export default function BalancePage() {
         timeZone={timeZone}
       />
 
-      {showUpcomingObligations ? (
-        <UpcomingObligationsCard
-          upcoming={upcomingObligations}
-          loading={upcomingObligationsLoading}
-          locale={locale}
-          loadingLabel={site.common.loading}
-          mainAccountLabel={site.common.mainFinancialAccount}
-          timeZone={timeZone}
-          text={t}
-          formatMoney={formatMoney}
-        />
-      ) : null}
-
       <Dialog
         open={movementPendingDelete != null}
         onOpenChange={(open) => !open && setMovementPendingDelete(null)}
@@ -429,40 +339,4 @@ export default function BalancePage() {
 
 function displayLocale(language: string) {
   return language === "en" ? "en-US" : "es-CO";
-}
-
-function getFreshUpcomingObligationsCache() {
-  const cached = getCache<UpcomingObligationsResponse>(
-    cacheKeys.upcomingObligations,
-    {
-      maxAgeMs: cacheTtls.upcomingObligations,
-    },
-  );
-  if (!cached) {
-    return null;
-  }
-
-  const referenceDate = new Date(`${cached.reference_date}T00:00:00Z`);
-  const windowEndDate = new Date(`${cached.window_end_date}T00:00:00Z`);
-  const windowDays = Math.round(
-    (windowEndDate.getTime() - referenceDate.getTime()) / 86_400_000,
-  );
-
-  if (windowDays !== UPCOMING_OBLIGATIONS_WINDOW_DAYS) {
-    return null;
-  }
-
-  return cached;
-}
-
-function formatMoney(value: string, currency: string, locale: string) {
-  return new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency,
-    ...(currency === "COP"
-      ? { minimumFractionDigits: 0, maximumFractionDigits: 0 }
-      : {}),
-  })
-    .format(Number(value || 0))
-    .replace(/\s+/g, "");
 }

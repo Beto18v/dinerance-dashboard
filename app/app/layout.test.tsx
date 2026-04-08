@@ -3,8 +3,8 @@ import type {
   ButtonHTMLAttributes,
   ReactNode,
 } from "react";
-import { render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import AppLayout from "./layout";
 import { getSiteText } from "@/lib/site";
@@ -13,6 +13,7 @@ const {
   cacheProfileMock,
   clearCachedProfileMock,
   getCachedProfileMock,
+  getUpcomingObligationsMock,
   getPreferredSessionNameMock,
   replaceMock,
   resolveAuthenticatedProfileMock,
@@ -23,6 +24,7 @@ const {
   cacheProfileMock: vi.fn(),
   clearCachedProfileMock: vi.fn(),
   getCachedProfileMock: vi.fn(),
+  getUpcomingObligationsMock: vi.fn(),
   getPreferredSessionNameMock: vi.fn(),
   replaceMock: vi.fn(),
   resolveAuthenticatedProfileMock: vi.fn(),
@@ -97,6 +99,9 @@ vi.mock("@/lib/api", () => ({
       super(message);
     }
   },
+  api: {
+    getUpcomingObligations: getUpcomingObligationsMock,
+  },
 }));
 
 vi.mock("@/lib/profile", () => ({
@@ -111,9 +116,11 @@ import { ApiError } from "@/lib/api";
 
 describe("AppLayout", () => {
   beforeEach(() => {
+    window.localStorage.clear();
     cacheProfileMock.mockReset();
     clearCachedProfileMock.mockReset();
     getCachedProfileMock.mockReset();
+    getUpcomingObligationsMock.mockReset();
     getPreferredSessionNameMock.mockReset();
     replaceMock.mockReset();
     resolveAuthenticatedProfileMock.mockReset();
@@ -122,8 +129,28 @@ describe("AppLayout", () => {
     useSessionMock.mockReset();
 
     getCachedProfileMock.mockReturnValue(null);
+    getUpcomingObligationsMock.mockResolvedValue({
+      reference_date: "2026-04-07",
+      window_end_date: "2026-04-14",
+      summary: {
+        currency: "COP",
+        total_active: 3,
+        items_in_window: 3,
+        overdue_count: 0,
+        due_today_count: 0,
+        due_soon_count: 0,
+        expected_account_risk_count: 0,
+        total_expected_amount: "0.00",
+      },
+      items: [],
+    });
     getPreferredSessionNameMock.mockReturnValue("Test User");
     signOutMock.mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    window.localStorage.clear();
+    cleanup();
   });
 
   it("redirects to login when there is no authenticated session", async () => {
@@ -178,6 +205,12 @@ describe("AppLayout", () => {
     expect(await screen.findByText("child")).toBeInTheDocument();
     expect(resolveAuthenticatedProfileMock).toHaveBeenCalledTimes(1);
     expect(cacheProfileMock).toHaveBeenCalledWith(profile);
+    await waitFor(() => {
+      expect(getUpcomingObligationsMock).toHaveBeenCalledWith({
+        days_ahead: 7,
+        limit: 1,
+      });
+    });
 
     rerender(
       <AppLayout>
@@ -188,6 +221,57 @@ describe("AppLayout", () => {
     await waitFor(() => {
       expect(resolveAuthenticatedProfileMock).toHaveBeenCalledTimes(1);
     });
+  });
+
+  it("shows an obligations badge and banner when there are urgent obligations", async () => {
+    useSessionMock.mockReturnValue({
+      session: {
+        user: {
+          id: "user-1",
+          email: "test@example.com",
+          user_metadata: {},
+        },
+      },
+      loading: false,
+      signOut: signOutMock,
+    });
+    resolveAuthenticatedProfileMock.mockResolvedValue({
+      id: "user-1",
+      name: "Test User",
+      email: "test@example.com",
+      base_currency: "COP",
+      timezone: "America/Bogota",
+      created_at: "2026-03-26T12:00:00Z",
+    });
+    getUpcomingObligationsMock.mockResolvedValue({
+      reference_date: "2026-04-07",
+      window_end_date: "2026-04-14",
+      summary: {
+        currency: "COP",
+        total_active: 4,
+        items_in_window: 4,
+        overdue_count: 1,
+        due_today_count: 1,
+        due_soon_count: 2,
+        expected_account_risk_count: 0,
+        total_expected_amount: "0.00",
+      },
+      items: [],
+    });
+
+    render(
+      <AppLayout>
+        <div>child</div>
+      </AppLayout>,
+    );
+
+    expect(
+      await screen.findByText(
+        "Tienes 1 obligacion vencida activa y 1 que vence hoy.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText("4").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Abrir obligaciones").length).toBeGreaterThan(0);
   });
 
   it("signs out and redirects when profile resolution fails with 401", async () => {

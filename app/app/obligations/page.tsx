@@ -369,7 +369,9 @@ export default function ObligationsPage() {
       }
 
       invalidateCacheKeys([
+        cacheKeys.cashflowForecast,
         cacheKeys.obligations,
+        cacheKeys.obligationAlerts,
         cacheKeys.upcomingObligations,
       ]);
       await loadObligationsPage();
@@ -395,7 +397,9 @@ export default function ObligationsPage() {
     try {
       await api.updateObligation(obligationId, { status });
       invalidateCacheKeys([
+        cacheKeys.cashflowForecast,
         cacheKeys.obligations,
+        cacheKeys.obligationAlerts,
         cacheKeys.upcomingObligations,
       ]);
       await loadObligationsPage();
@@ -436,7 +440,9 @@ export default function ObligationsPage() {
         description: paymentForm.description.trim() || null,
       });
       invalidateCacheKeys([
+        cacheKeys.cashflowForecast,
         cacheKeys.obligations,
+        cacheKeys.obligationAlerts,
         cacheKeys.upcomingObligations,
         cacheKeys.transactions,
         cacheKeys.ledgerBalances,
@@ -465,7 +471,9 @@ export default function ObligationsPage() {
     try {
       await api.deleteObligation(deleteTarget.id);
       invalidateCacheKeys([
+        cacheKeys.cashflowForecast,
         cacheKeys.obligations,
+        cacheKeys.obligationAlerts,
         cacheKeys.upcomingObligations,
       ]);
       await loadObligationsPage();

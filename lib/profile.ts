@@ -9,10 +9,15 @@ const RECENT_PROFILE_REUSE_WINDOW_MS = 10_000;
 const inFlightProfileResolutions = new Map<string, Promise<UserProfile>>();
 const recentProfileResolutionTimes = new Map<string, number>();
 
-export function getCachedProfile() {
-  return getCache<UserProfile>(PROFILE_CACHE_KEY, {
-    maxAgeMs: cacheTtls.profile,
-  });
+export function getCachedProfile(options?: { allowStale?: boolean }) {
+  return getCache<UserProfile>(
+    PROFILE_CACHE_KEY,
+    options?.allowStale
+      ? undefined
+      : {
+          maxAgeMs: cacheTtls.profile,
+        },
+  );
 }
 
 export function cacheProfile(profile: UserProfile) {

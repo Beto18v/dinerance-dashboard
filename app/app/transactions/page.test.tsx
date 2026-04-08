@@ -55,6 +55,7 @@ vi.mock("@/components/providers/site-preferences-provider", () => ({
 
 vi.mock("@/lib/cache", () => ({
   cacheKeys: {
+    cashflowForecast: "cache:cashflow-forecast",
     categories: "cache:categories",
     financialAccounts: "cache:financial-accounts",
     transactions: "cache:transactions",

@@ -9,6 +9,8 @@ export const cacheKeys = {
   transactions: "cache:transactions",
   obligations: "cache:obligations",
   upcomingObligations: "cache:upcoming-obligations",
+  obligationAlerts: "cache:obligation-alerts",
+  cashflowForecast: "cache:cashflow-forecast",
   ledgerBalances: "cache:ledger-balances",
   ledgerActivity: "cache:ledger-activity",
 } as const;
@@ -20,6 +22,8 @@ export const cacheTtls = {
   transactions: 30_000,
   obligations: 30_000,
   upcomingObligations: 30_000,
+  obligationAlerts: 30_000,
+  cashflowForecast: 30_000,
   ledgerBalances: 30_000,
   ledgerActivity: 30_000,
 } as const;
