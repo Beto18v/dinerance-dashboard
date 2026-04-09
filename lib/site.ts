@@ -1,4 +1,4 @@
-export type SiteLocale = "es" | "en";
+﻿export type SiteLocale = "es" | "en";
 
 export const defaultSiteLocale: SiteLocale = "es";
 export const siteLocales: SiteLocale[] = ["es", "en"];
@@ -527,7 +527,7 @@ const siteTexts = {
         missingExpenseCategory:
           "Necesitas al menos una categoria de gasto para crear obligaciones.",
         prefillApplied:
-          "Se cargo una obligacion prellenada desde Analisis. Revísala y guardala si te sirve.",
+          "Se cargo una obligacion prellenada desde Analisis. Revisala y guardala si te sirve.",
         prefillAppliedFriendly:
           "Completamos los datos con este patron detectado. Revisa y guardalo si te sirve.",
         name: "Nombre",
@@ -637,7 +637,7 @@ const siteTexts = {
         parentOptional: "Grupo (opcional)",
         parentHelpTitle: "Que es un grupo?",
         parentHelpDescription:
-          "Si eliges un grupo, la nueva categoría creada se convierte en una subcategoría. Esto te ayuda a organizar mejor en qué gastaste tu dinero o de dónde provino, por ejemplo: Grupo: Hogar > Subcategoría: Mercado.",
+          "Si eliges un grupo, la nueva categoria creada se convierte en una subcategoría. Esto te ayuda a organizar mejor en qué gastaste tu dinero o de dónde provino, por ejemplo: Grupo: Hogar > Subcategoría: Mercado.",
         parentHelpDescriptionSimple:
           "Un grupo te ayuda a reunir categorias parecidas. Por ejemplo: Hogar puede agrupar Mercado, Arriendo y Servicios.",
         namePlaceholder: "Ej: Mercado",
@@ -765,6 +765,109 @@ const siteTexts = {
         failedCreate: "No se pudo crear la transaccion",
         failedUpdate: "No se pudo actualizar la transaccion",
         failedDelete: "No se pudo eliminar la transaccion",
+        imports: {
+          title: "Importar movimientos desde CSV",
+          trigger: "Importar CSV",
+          description:
+            "Cada fila debe tener fecha y monto. Si tu archivo trae descripcion, categoria o moneda, tambien intentamos reconocerlas.",
+          detectedColumnsTitle: "Columnas detectadas en este archivo",
+          detectedColumnsEmpty:
+            "Analiza un CSV para ver que columnas pudimos reconocer.",
+          sourceHeadersTitle: "Columnas que trae tu archivo",
+          detectedFieldLabels: {
+            date: "Fecha",
+            amount: "Monto",
+            debit: "Gasto",
+            credit: "Ingreso",
+            description: "Descripcion",
+            currency: "Moneda",
+            category: "Categoria",
+            type: "Tipo",
+          },
+          file: "Archivo CSV",
+          fileHint:
+            "Usa un archivo con encabezados, una sola cuenta destino por importacion y, si puedes, agrega descripcion o categoria.",
+          account: "Cuenta destino",
+          accountPlaceholder: "Selecciona cuenta",
+          accountFallback: "Cuenta",
+          defaultIncomeCategory: "Categoria para ingresos",
+          defaultExpenseCategory: "Categoria para gastos",
+          optionalPlaceholder: "Opcional",
+          analyze: "Analizar CSV",
+          analyzing: "Analizando CSV...",
+          analyzed: "CSV analizado",
+          recentTitle: "Importaciones recientes",
+          activeSessionDescription: (count: number) =>
+            count === 1
+              ? "1 fila detectada en esta importacion."
+              : `${count} filas detectadas en esta importacion.`,
+          summaryReady: "Listas",
+          summaryReview: "Requieren accion",
+          summaryDuplicates: "Duplicadas",
+          summaryImported: "Importadas",
+          summaryIgnored: "Ignoradas",
+          reviewHint:
+            "Solo las filas listas crean transacciones reales cuando confirmas la importacion.",
+          importReady: (count: number) =>
+            count === 1
+              ? "Importar 1 fila lista"
+              : `Importar ${count} filas listas`,
+          importing: "Importando...",
+          imported: (count: number) =>
+            count === 1
+              ? "1 fila se convirtio en transaccion real"
+              : `${count} filas se convirtieron en transacciones reales`,
+          tableRow: "Fila",
+          tableStatus: "Estado",
+          tableReconciliation: "Reconciliacion",
+          categoryPlaceholder: "Asignar categoria",
+          statusReady: "Lista",
+          statusNeedsReview: "Revisar",
+          statusDuplicate: "Duplicada",
+          statusIgnored: "Ignorada",
+          statusImported: "Importada",
+          ignore: "Ignorar",
+          restore: "Restaurar",
+          importedLabel: "Ya importada",
+          noReconciliation: "Sin coincidencia todavia",
+          noDescription: "Sin descripcion",
+          reasonIgnoredByUser: "La ignoraste.",
+          reasonMissingRequiredValues: "Faltan datos obligatorios.",
+          reasonCategoryRequired:
+            "Debes asignar una categoria antes de importar.",
+          reasonMatchesExistingTransaction:
+            "Coincide con una transaccion real existente.",
+          reasonImportedIntoLedger: "Ya se importo como transaccion real.",
+          reasonCurrencyMismatch:
+            "La moneda no coincide con la cuenta destino.",
+          reasonCategoryConflict:
+            "La categoria no coincide con el ingreso o gasto detectado.",
+          reasonDateInvalid: "No pudimos leer la fecha.",
+          reasonAmountInvalid: "El monto debe ser mayor que cero.",
+          reasonCurrencyRequired: "Falta la moneda.",
+          reasonDuplicateWithinImport:
+            "Coincide con otra fila de esta importacion.",
+          reasonCategoryNotFound: (name: string) =>
+            `No encontramos la categoria "${name}".`,
+          reconciliationMatch: (
+            description: string,
+            amount: string,
+            dateLabel: string,
+          ) => `${description} | ${amount} | ${dateLabel}`,
+          emptyState:
+            "Todavia no hay importaciones recientes. Analiza un CSV para revisar coincidencias antes de crear transacciones reales.",
+          missingCategories:
+            "Crea al menos una categoria antes de importar. Cada ingreso o gasto real necesita una categoria.",
+          failedLoad: "No se pudieron cargar las importaciones",
+          failedAnalyze: "No se pudo analizar el CSV",
+          failedUpdateItem: "No se pudo actualizar esta fila importada",
+          failedCommit: "No se pudo confirmar la importacion",
+          validations: {
+            fileRequired: "Selecciona un archivo CSV",
+            accountRequired: "Selecciona la cuenta destino",
+            nothingReady: "No hay filas listas para importar",
+          },
+        },
         validations: {
           accountRequired: "La cuenta es obligatoria",
           categoryRequired: "La categoria es obligatoria",
@@ -1582,6 +1685,107 @@ const siteTexts = {
         failedCreate: "Failed to create transaction",
         failedUpdate: "Failed to update transaction",
         failedDelete: "Failed to delete transaction",
+        imports: {
+          title: "Import transactions from CSV",
+          trigger: "Import CSV",
+          description:
+            "Each row should include a date and an amount. If the file also includes a description, category, or currency, we try to recognize them too.",
+          detectedColumnsTitle: "Columns detected in this file",
+          detectedColumnsEmpty:
+            "Analyze a CSV to see which headers the system recognized.",
+          sourceHeadersTitle: "Original file headers",
+          detectedFieldLabels: {
+            date: "Date",
+            amount: "Amount",
+            debit: "Debit",
+            credit: "Credit",
+            description: "Description",
+            currency: "Currency",
+            category: "Category",
+            type: "Type",
+          },
+          file: "CSV file",
+          fileHint:
+            "Use one file with headers, one destination account per import, and include a description or category when possible.",
+          account: "Destination account",
+          accountPlaceholder: "Select account",
+          accountFallback: "Account",
+          defaultIncomeCategory: "Default income category",
+          defaultExpenseCategory: "Default expense category",
+          optionalPlaceholder: "Optional",
+          analyze: "Analyze CSV",
+          analyzing: "Analyzing CSV...",
+          analyzed: "CSV analyzed",
+          recentTitle: "Recent imports",
+          activeSessionDescription: (count: number) =>
+            count === 1
+              ? "1 row detected in this import."
+              : `${count} rows detected in this import.`,
+          summaryReady: "Ready",
+          summaryReview: "Needs action",
+          summaryDuplicates: "Duplicates",
+          summaryImported: "Imported",
+          summaryIgnored: "Ignored",
+          reviewHint:
+            "Only rows marked as ready create real transactions when you confirm the import.",
+          importReady: (count: number) =>
+            count === 1 ? "Import 1 ready row" : `Import ${count} ready rows`,
+          importing: "Importing...",
+          imported: (count: number) =>
+            count === 1
+              ? "1 row became a real transaction"
+              : `${count} rows became real transactions`,
+          tableRow: "Row",
+          tableStatus: "Status",
+          tableReconciliation: "Reconciliation",
+          categoryPlaceholder: "Assign category",
+          statusReady: "Ready",
+          statusNeedsReview: "Review",
+          statusDuplicate: "Duplicate",
+          statusIgnored: "Ignored",
+          statusImported: "Imported",
+          ignore: "Ignore",
+          restore: "Restore",
+          importedLabel: "Already imported",
+          noReconciliation: "No match yet",
+          noDescription: "No description",
+          reasonIgnoredByUser: "Ignored by you.",
+          reasonMissingRequiredValues: "Required values are missing.",
+          reasonCategoryRequired: "Choose a category before importing.",
+          reasonMatchesExistingTransaction:
+            "Matches an existing real transaction.",
+          reasonImportedIntoLedger:
+            "Already imported as a real transaction.",
+          reasonCurrencyMismatch:
+            "The currency does not match the destination account.",
+          reasonCategoryConflict:
+            "The category does not match the detected income or expense.",
+          reasonDateInvalid: "We could not read the date.",
+          reasonAmountInvalid: "The amount must be greater than zero.",
+          reasonCurrencyRequired: "Currency is required.",
+          reasonDuplicateWithinImport:
+            "Matches another row in this import.",
+          reasonCategoryNotFound: (name: string) =>
+            `We could not find the category "${name}".`,
+          reconciliationMatch: (
+            description: string,
+            amount: string,
+            dateLabel: string,
+          ) => `${description} | ${amount} | ${dateLabel}`,
+          emptyState:
+            "There are no recent imports yet. Analyze a CSV to review matches before creating real transactions.",
+          missingCategories:
+            "Create at least one category before importing. Every real income or expense still needs a category.",
+          failedLoad: "Failed to load imports",
+          failedAnalyze: "Failed to analyze the CSV",
+          failedUpdateItem: "Failed to update this imported row",
+          failedCommit: "Failed to confirm the import",
+          validations: {
+            fileRequired: "Select a CSV file",
+            accountRequired: "Select the destination account",
+            nothingReady: "There are no ready rows to import",
+          },
+        },
         validations: {
           accountRequired: "Account is required",
           categoryRequired: "Category is required",

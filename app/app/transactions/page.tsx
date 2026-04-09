@@ -59,6 +59,7 @@ import {
   resolveTimeZone,
 } from "@/lib/timezone";
 import {
+  CsvImportCard,
   CreateTransactionModal,
   TransactionsFilters,
   TransactionsView,
@@ -589,7 +590,7 @@ export default function TransactionsPage() {
       ) : null}
 
       <div>
-        <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-base font-semibold">
             {t.listTitle}
             {listLoading ? (
@@ -599,19 +600,36 @@ export default function TransactionsPage() {
           {hasFinanceProfile &&
           categories.length > 0 &&
           financialAccounts.length > 0 ? (
-            <CreateTransactionModal
-              categories={categories}
-              defaultCurrency={baseCurrency ?? "COP"}
-              financialAccounts={financialAccounts}
-              timeZone={timeZone}
-              onCreated={() => {
-                setCurrentPage(1);
-                invalidateCacheKeys([
-                  cacheKeys.cashflowForecast,
-                  cacheKeys.transactions,
-                ]);
-              }}
-            />
+            <div className="flex items-center gap-2 self-start sm:self-auto">
+              <CsvImportCard
+                categories={categories}
+                financialAccounts={financialAccounts}
+                displayLocale={displayLocale}
+                timeZone={timeZone}
+                onImported={() => {
+                  setCurrentPage(1);
+                  invalidateCacheKeys([
+                    cacheKeys.cashflowForecast,
+                    cacheKeys.transactions,
+                    cacheKeys.ledgerBalances,
+                    cacheKeys.ledgerActivity,
+                  ]);
+                }}
+              />
+              <CreateTransactionModal
+                categories={categories}
+                defaultCurrency={baseCurrency ?? "COP"}
+                financialAccounts={financialAccounts}
+                timeZone={timeZone}
+                onCreated={() => {
+                  setCurrentPage(1);
+                  invalidateCacheKeys([
+                    cacheKeys.cashflowForecast,
+                    cacheKeys.transactions,
+                  ]);
+                }}
+              />
+            </div>
           ) : null}
         </div>
 

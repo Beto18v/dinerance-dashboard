@@ -58,6 +58,8 @@ vi.mock("@/lib/cache", () => ({
     cashflowForecast: "cache:cashflow-forecast",
     categories: "cache:categories",
     financialAccounts: "cache:financial-accounts",
+    ledgerActivity: "cache:ledger-activity",
+    ledgerBalances: "cache:ledger-balances",
     transactions: "cache:transactions",
   },
   cacheTtls: {
@@ -87,7 +89,10 @@ vi.mock("../profile/components/financial-profile-form", () => ({
 }));
 
 vi.mock("./components", () => ({
-  CreateTransactionModal: () => null,
+  CsvImportCard: () => <button type="button">Importar CSV</button>,
+  CreateTransactionModal: () => (
+    <button type="button">Agregar transaccion</button>
+  ),
   TransactionsFilters: ({
     onFilterFinancialAccountChange,
     onFilterCategoryChange,
@@ -221,6 +226,12 @@ describe("TransactionsPage", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Como leer este resumen?" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Importar CSV" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Agregar transaccion" }),
     ).toBeInTheDocument();
     expect(screen.getByText("Resumen de estos movimientos")).toBeInTheDocument();
     expect(screen.getByTestId("transactions-count")).toHaveTextContent("12");

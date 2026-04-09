@@ -98,7 +98,7 @@ export function InfoHint({
           className={`absolute top-full z-10 mt-2 w-[calc(100vw-1.5rem)] max-w-80 rounded-lg p-3 text-sm shadow-md sm:w-72 sm:max-w-[calc(100vw-4rem)] ${positionClassName} ${resolvedPanelClassName}`}
         >
           <p className="font-medium">{title}</p>
-          <p className="mt-1 opacity-90">{description}</p>
+          <p className="mt-1 whitespace-pre-line opacity-90">{description}</p>
         </div>
       ) : null}
     </div>

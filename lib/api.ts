@@ -369,6 +369,74 @@ export interface TransferResponse {
   destination_transaction: LedgerMovement;
 }
 
+export type ImportItemStatus =
+  | "ready"
+  | "needs_review"
+  | "duplicate"
+  | "ignored"
+  | "imported";
+
+export interface ImportSessionSummary {
+  total_rows: number;
+  ready_count: number;
+  needs_review_count: number;
+  duplicate_count: number;
+  ignored_count: number;
+  imported_count: number;
+}
+
+export interface ImportSessionAnalysis {
+  source_headers: string[];
+  detected_columns: Record<string, string>;
+}
+
+export interface ImportCapabilities {
+  max_rows: number;
+  required_fields: Record<string, string[]>;
+  optional_fields: Record<string, string[]>;
+  type_aliases: string[];
+}
+
+export interface ImportSessionItem {
+  id: string;
+  row_index: number;
+  raw_row: Record<string, string | null>;
+  status: ImportItemStatus;
+  status_reason: string | null;
+  occurred_at: string | null;
+  occurred_on: string | null;
+  amount: string | null;
+  currency: string | null;
+  description: string | null;
+  transaction_type: TransactionType | null;
+  category_id: string | null;
+  category_name: string | null;
+  duplicate_transaction: Transaction | null;
+  imported_transaction: Transaction | null;
+}
+
+export interface ImportSession {
+  id: string;
+  source_type: string;
+  file_name: string;
+  financial_account_id: string;
+  financial_account_name: string | null;
+  analysis: ImportSessionAnalysis | null;
+  created_at: string;
+  summary: ImportSessionSummary;
+  items: ImportSessionItem[];
+}
+
+export interface ImportSessionListItem {
+  id: string;
+  source_type: string;
+  file_name: string;
+  financial_account_id: string;
+  financial_account_name: string | null;
+  created_at: string;
+  summary: ImportSessionSummary;
+}
+
 // ── Endpoints ────────────────────────────────────────────────────────────────
 
 export const api = {
@@ -719,4 +787,47 @@ export const api = {
 
   deleteTransaction: (id: string) =>
     request<void>(`/transactions/${id}`, { method: "DELETE" }),
+
+  getImportSessions: (params?: { limit?: number }) => {
+    const qs = new URLSearchParams();
+    if (params?.limit != null) qs.set("limit", String(params.limit));
+    const query = qs.toString() ? `?${qs.toString()}` : "";
+    return request<ImportSessionListItem[]>(`/ingestion/imports${query}`);
+  },
+
+  getImportCapabilities: () =>
+    request<ImportCapabilities>("/ingestion/import-capabilities"),
+
+  getImportSession: (id: string) =>
+    request<ImportSession>(`/ingestion/imports/${id}`),
+
+  createCsvImport: (body: {
+    file_name: string;
+    csv_content: string;
+    financial_account_id?: string;
+    default_income_category_id?: string | null;
+    default_expense_category_id?: string | null;
+  }) =>
+    request<ImportSession>("/ingestion/imports/csv", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  updateImportItem: (
+    sessionId: string,
+    itemId: string,
+    body: {
+      category_id?: string | null;
+      ignored?: boolean;
+    },
+  ) =>
+    request<ImportSession>(`/ingestion/imports/${sessionId}/items/${itemId}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+
+  commitImportSession: (sessionId: string) =>
+    request<ImportSession>(`/ingestion/imports/${sessionId}/commit`, {
+      method: "POST",
+    }),
 };
