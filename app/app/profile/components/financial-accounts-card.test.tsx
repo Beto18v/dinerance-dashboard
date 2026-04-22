@@ -11,6 +11,7 @@ const {
   createFinancialAccountMock,
   deleteFinancialAccountMock,
   getFinancialAccountsMock,
+  getProfileMock,
   invalidateCacheKeyMock,
   toastErrorMock,
   toastSuccessMock,
@@ -20,6 +21,7 @@ const {
   createFinancialAccountMock: vi.fn(),
   deleteFinancialAccountMock: vi.fn(),
   getFinancialAccountsMock: vi.fn(),
+  getProfileMock: vi.fn(),
   invalidateCacheKeyMock: vi.fn(),
   toastErrorMock: vi.fn(),
   toastSuccessMock: vi.fn(),
@@ -46,6 +48,12 @@ vi.mock("@/lib/api", () => ({
 vi.mock("@/components/providers/site-preferences-provider", () => ({
   useSitePreferences: () => ({
     site: getSiteText("es"),
+  }),
+}));
+
+vi.mock("@/components/providers/profile-provider", () => ({
+  useProfile: () => ({
+    profile: getProfileMock(),
   }),
 }));
 
@@ -96,6 +104,17 @@ describe("FinancialAccountsCard", () => {
     toastErrorMock.mockReset();
     toastSuccessMock.mockReset();
     updateFinancialAccountMock.mockReset();
+    getProfileMock.mockReset();
+
+    getProfileMock.mockReturnValue({
+      id: "user-1",
+      name: "Test User",
+      email: "test@example.com",
+      base_currency: "COP",
+      timezone: "America/Bogota",
+      created_at: "2026-03-01T00:00:00Z",
+      deleted_at: null,
+    });
 
     getFinancialAccountsMock.mockResolvedValue([
       {
@@ -145,6 +164,7 @@ describe("FinancialAccountsCard", () => {
     await waitFor(() => {
       expect(createFinancialAccountMock).toHaveBeenCalledWith({
         name: "Savings",
+        currency: "COP",
       });
     });
 

@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import { api, ApiError, type LedgerMovement } from "@/lib/api";
 import { cacheKeys, invalidateCacheKeys } from "@/lib/cache";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -15,14 +14,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { AccountBalancesCard } from "./components/account-balances-card";
+import { BalanceAdjustmentsCard } from "./components/balance-adjustments-card";
 import { BalanceOnboardingCard } from "./components/balance-onboarding-card";
 import { CurrentCashCard } from "./components/current-cash-card";
 import { CreateAdjustmentModal } from "./components/create-adjustment-modal";
@@ -31,17 +24,16 @@ import { RecentActivityCard } from "./components/recent-activity-card";
 import { useBalanceOnboardingState } from "./use-balance-onboarding-state";
 import { useLedgerPageState } from "./use-ledger-page-state";
 
-const ALL_ACCOUNTS_FILTER = "__all_accounts__";
-
 export default function BalancePage() {
   const {
     activity,
+    adjustments,
     balanceCurrency,
     consolidatedBalance,
     displayedAccountBalances,
     financialAccounts,
     handleSelectedFinancialAccountChange,
-    hasMultipleFinancialAccounts,
+    ledgerSkippedTransactions,
     loading,
     refreshLedger,
     selectedAccountBalance,
@@ -71,9 +63,20 @@ export default function BalancePage() {
   const [currentCashCardHeight, setCurrentCashCardHeight] = useState<
     number | null
   >(null);
+  const skippedNoticeStorageKey =
+    profile?.id && profile.base_currency && ledgerSkippedTransactions > 0
+      ? `balance-skipped-notice:${profile.id}:${profile.base_currency}:${ledgerSkippedTransactions}`
+      : null;
+  const [skippedNoticeHidden, setSkippedNoticeHidden] = useState(() =>
+    skippedNoticeStorageKey
+      ? typeof window !== "undefined" &&
+        window.localStorage.getItem(skippedNoticeStorageKey) === "hidden"
+      : false,
+  );
 
   const hasLedgerActivity = activity.length > 0;
   const hasAccountBalances = displayedAccountBalances.length > 0;
+  const hasAdjustments = adjustments.length > 0;
   const hasNonZeroBalances = displayedAccountBalances.some(
     (account) => Number(account.balance) !== 0,
   );
@@ -107,6 +110,18 @@ export default function BalancePage() {
       observer.disconnect();
     };
   }, [showEmptyState, displayedAccountBalances.length, selectedAccountBalance]);
+
+  useEffect(() => {
+    if (!skippedNoticeStorageKey) {
+      setSkippedNoticeHidden(false);
+      return;
+    }
+
+    setSkippedNoticeHidden(
+      typeof window !== "undefined" &&
+        window.localStorage.getItem(skippedNoticeStorageKey) === "hidden",
+    );
+  }, [skippedNoticeStorageKey]);
 
   const deleteDialog = useMemo(() => {
     if (!movementPendingDelete) {
@@ -154,7 +169,11 @@ export default function BalancePage() {
         toast.success(t.adjustmentDeleted);
       }
 
-      invalidateCacheKeys([cacheKeys.ledgerBalances, cacheKeys.ledgerActivity]);
+      invalidateCacheKeys([
+        cacheKeys.ledgerBalances,
+        cacheKeys.ledgerActivity,
+        cacheKeys.ledgerAdjustments,
+      ]);
       void refreshLedger({ silent: true });
     } catch (error) {
       if (error instanceof ApiError) {
@@ -169,6 +188,13 @@ export default function BalancePage() {
     }
   }
 
+  function handleHideSkippedNotice() {
+    if (skippedNoticeStorageKey && typeof window !== "undefined") {
+      window.localStorage.setItem(skippedNoticeStorageKey, "hidden");
+    }
+    setSkippedNoticeHidden(true);
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
@@ -178,36 +204,6 @@ export default function BalancePage() {
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
-          {showOperationalActions && hasMultipleFinancialAccounts ? (
-            <div className="w-full sm:w-64">
-              <Label htmlFor="balance_account_filter">{t.accountLabel}</Label>
-              <Select
-                value={selectedFinancialAccountId || ALL_ACCOUNTS_FILTER}
-                onValueChange={(value) =>
-                  handleSelectedFinancialAccountChange(
-                    value === ALL_ACCOUNTS_FILTER ? null : value,
-                  )
-                }
-              >
-                <SelectTrigger id="balance_account_filter" className="mt-1.5">
-                  <SelectValue placeholder={t.allAccountsActivityLabel} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={ALL_ACCOUNTS_FILTER}>
-                    {t.allAccountsActivityLabel}
-                  </SelectItem>
-                  {financialAccounts.map((account) => (
-                    <SelectItem key={account.id} value={account.id}>
-                      {displayedAccountBalances.find(
-                        (item) => item.financial_account_id === account.id,
-                      )?.financial_account_name ?? account.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          ) : null}
-
           {showOperationalActions ? (
             <div className="flex flex-wrap gap-2">
               <CreateTransferModal
@@ -229,6 +225,7 @@ export default function BalancePage() {
                   invalidateCacheKeys([
                     cacheKeys.ledgerBalances,
                     cacheKeys.ledgerActivity,
+                    cacheKeys.ledgerAdjustments,
                   ])
                 }
               />
@@ -295,17 +292,53 @@ export default function BalancePage() {
         />
       </div>
 
-      <RecentActivityCard
-        activity={activity}
-        activityScopeLabel={activityScopeLabel}
-        balanceCurrency={balanceCurrency}
-        deletingMovementId={deletingMovementId}
-        loading={loading}
-        locale={locale}
-        onDeleteMovement={setMovementPendingDelete}
-        site={site}
-        timeZone={timeZone}
-      />
+      {ledgerSkippedTransactions > 0 &&
+      profile?.base_currency &&
+      !skippedNoticeHidden ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          <p>
+            {t.consolidatedSkippedNotice(
+              ledgerSkippedTransactions,
+              profile.base_currency,
+            )}
+          </p>
+          <button
+            type="button"
+            className="font-medium underline underline-offset-4 transition-opacity hover:opacity-80"
+            onClick={handleHideSkippedNotice}
+          >
+            {t.consolidatedSkippedNoticeHideAction}
+          </button>
+        </div>
+      ) : null}
+
+      <div
+        className={`grid gap-6 ${hasAdjustments ? "xl:grid-cols-[1.15fr_0.85fr] xl:items-start" : ""}`}
+      >
+        <RecentActivityCard
+          activity={activity}
+          activityScopeLabel={activityScopeLabel}
+          balanceCurrency={balanceCurrency}
+          deletingMovementId={deletingMovementId}
+          loading={loading}
+          locale={locale}
+          onDeleteMovement={setMovementPendingDelete}
+          site={site}
+          timeZone={timeZone}
+        />
+
+        {hasAdjustments ? (
+          <BalanceAdjustmentsCard
+            adjustments={adjustments}
+            deletingMovementId={deletingMovementId}
+            loading={loading}
+            locale={locale}
+            onDeleteAdjustment={setMovementPendingDelete}
+            site={site}
+            timeZone={timeZone}
+          />
+        ) : null}
+      </div>
 
       <Dialog
         open={movementPendingDelete != null}

@@ -13,6 +13,7 @@ export const cacheKeys = {
   cashflowForecast: "cache:cashflow-forecast",
   ledgerBalances: "cache:ledger-balances",
   ledgerActivity: "cache:ledger-activity",
+  ledgerAdjustments: "cache:ledger-adjustments",
 } as const;
 
 export const cacheTtls = {
@@ -26,6 +27,7 @@ export const cacheTtls = {
   cashflowForecast: 30_000,
   ledgerBalances: 30_000,
   ledgerActivity: 30_000,
+  ledgerAdjustments: 30_000,
 } as const;
 
 type CacheKey = (typeof cacheKeys)[keyof typeof cacheKeys];

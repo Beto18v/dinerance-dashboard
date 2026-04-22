@@ -129,6 +129,12 @@ export function CreateAdjustmentModal({
       event.target.value = sanitizeAmountInput(event.target.value);
     },
   });
+  const selectedFinancialAccount =
+    financialAccounts.find(
+      (account) => account.id === (financialAccountId || defaultAccountId),
+    ) ?? financialAccounts[0];
+  const resolvedCurrency =
+    selectedFinancialAccount?.currency ?? defaultCurrency;
 
   useEffect(() => {
     reset({
@@ -147,7 +153,7 @@ export function CreateAdjustmentModal({
         financial_account_id: values.financial_account_id || undefined,
         balance_direction: values.balance_direction,
         amount: normalizeAmountForApi(values.amount),
-        currency: defaultCurrency,
+        currency: resolvedCurrency,
         description: composeAdjustmentDescription(values.kind, values.description, {
           openingLabel: t.adjustmentTypeOpening,
           correctionLabel: t.adjustmentTypeCorrection,
@@ -302,7 +308,7 @@ export function CreateAdjustmentModal({
                 </Label>
                 <Input
                   id="create_adjustment_currency"
-                  value={defaultCurrency}
+                  value={resolvedCurrency}
                   disabled
                   readOnly
                 />

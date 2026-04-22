@@ -8,6 +8,7 @@ import { FiRepeat } from "react-icons/fi";
 import { toast } from "sonner";
 
 import { api, ApiError, type FinancialAccount } from "@/lib/api";
+import { normalizeCurrencyCode } from "@/lib/finance";
 import { useSitePreferences } from "@/components/providers/site-preferences-provider";
 import { getFinancialAccountDisplayName } from "@/lib/financial-accounts";
 import { dateTimeLocalToUtcIso } from "@/lib/timezone";
@@ -128,6 +129,21 @@ export function CreateTransferModal({
       event.target.value = sanitizeAmountInput(event.target.value);
     },
   });
+  const sourceAccount =
+    financialAccounts.find((account) => account.id === sourceAccountId) ??
+    financialAccounts[0];
+  const destinationAccount =
+    financialAccounts.find((account) => account.id === destinationAccountId) ??
+    financialAccounts.find((account) => account.id !== sourceAccount?.id) ??
+    financialAccounts[0];
+  const sourceCurrency = normalizeCurrencyCode(
+    sourceAccount?.currency ?? defaultCurrency,
+  );
+  const destinationCurrency = normalizeCurrencyCode(
+    destinationAccount?.currency ?? defaultCurrency,
+  );
+  const currenciesMatch = sourceCurrency === destinationCurrency;
+  const resolvedTransferCurrency = currenciesMatch ? sourceCurrency : "";
 
   useEffect(() => {
     reset({
@@ -140,12 +156,17 @@ export function CreateTransferModal({
   }, [defaultDestinationAccountId, defaultSourceAccountId, reset]);
 
   async function onSubmit(values: FormValues) {
+    if (!currenciesMatch) {
+      toast.error(t.transferDifferentCurrenciesNotSupported);
+      return;
+    }
+
     try {
       await api.createTransfer({
         source_financial_account_id: values.source_financial_account_id,
         destination_financial_account_id: values.destination_financial_account_id,
         amount: normalizeAmountForApi(values.amount),
-        currency: defaultCurrency,
+        currency: resolvedTransferCurrency,
         description: values.description.trim(),
         occurred_at: dateTimeLocalToUtcIso(values.occurred_at, timeZone),
       });
@@ -286,10 +307,15 @@ export function CreateTransferModal({
                 </Label>
                 <Input
                   id="create_transfer_currency"
-                  value={defaultCurrency}
+                  value={resolvedTransferCurrency}
                   disabled
                   readOnly
                 />
+                {!currenciesMatch ? (
+                  <p className="text-sm text-destructive">
+                    {t.transferDifferentCurrenciesNotSupported}
+                  </p>
+                ) : null}
               </div>
 
               <div className="space-y-1.5">
@@ -332,7 +358,7 @@ export function CreateTransferModal({
               >
                 {site.common.cancel}
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
+              <Button type="submit" disabled={isSubmitting || !currenciesMatch}>
                 {isSubmitting ? t.creatingTransfer : t.createTransfer}
               </Button>
             </DialogFooter>

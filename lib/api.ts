@@ -330,11 +330,13 @@ export interface LedgerBalanceAccount {
   financial_account_name: string;
   currency?: string | null;
   balance: string;
+  balance_in_base_currency?: string | null;
 }
 
 export interface LedgerBalances {
   currency?: string | null;
   consolidated_balance: string;
+  skipped_transactions?: number;
   accounts: LedgerBalanceAccount[];
 }
 
@@ -478,6 +480,7 @@ export const api = {
 
   createFinancialAccount: (body: {
     name: string;
+    currency?: string;
     is_default?: boolean;
   }) =>
     request<FinancialAccount>("/financial-accounts/", {
@@ -489,6 +492,7 @@ export const api = {
     id: string,
     body: {
       name?: string;
+      currency?: string;
       is_default?: boolean;
     },
   ) =>
@@ -720,6 +724,19 @@ export const api = {
     if (params?.limit != null) qs.set("limit", String(params.limit));
     const query = qs.toString() ? `?${qs.toString()}` : "";
     return request<LedgerActivity>(`/ledger/activity${query}`);
+  },
+
+  getLedgerAdjustments: (params?: {
+    financial_account_id?: string;
+    limit?: number;
+  }) => {
+    const qs = new URLSearchParams();
+    if (params?.financial_account_id) {
+      qs.set("financial_account_id", params.financial_account_id);
+    }
+    if (params?.limit != null) qs.set("limit", String(params.limit));
+    const query = qs.toString() ? `?${qs.toString()}` : "";
+    return request<LedgerActivity>(`/ledger/adjustments${query}`);
   },
 
   createTransfer: (body: {

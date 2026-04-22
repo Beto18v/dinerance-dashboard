@@ -206,13 +206,18 @@ const siteTexts = {
           "Una vista rapida de donde esta tu dinero disponible en este momento.",
         currentCashDistributionHelpTitle: "Como leer esta visual?",
         currentCashDistributionHelpDescription:
-          "Cada barra muestra que parte de tu dinero disponible esta en una cuenta hoy. Te ayuda a ubicar rapido donde se concentra el efectivo.",
+          "Cada barra muestra que parte de tu dinero disponible esta en una cuenta hoy. Si mezclas monedas, separamos la reparticion por moneda para comparar solo cuentas equivalentes.",
+        currentCashDistributionMixedCurrenciesHint:
+          "Como mezclas monedas, mostramos un bloque por moneda y calculamos sus porcentajes por separado.",
         currentCashDistributionOtherAccounts: (count: number) =>
           count === 1 ? "+1 cuenta mas" : `+${count} cuentas mas`,
         consolidatedBalanceLabel: "Total entre tus cuentas",
         consolidatedBalanceHelpTitle: "Que significa este total?",
         consolidatedBalanceHelpDescription:
-          "Es la suma del dinero disponible en todas tus cuentas. Mover dinero entre tus propias cuentas no cambia este total.",
+          "Es la suma del dinero disponible en todas tus cuentas llevada a tu moneda base. Mover dinero entre tus propias cuentas no cambia este total.",
+        consolidatedSkippedNotice: (count: number, currency: string) =>
+          `${count} movimientos quedaron fuera del total consolidado porque no se pudieron convertir con seguridad a ${currency}.`,
+        consolidatedSkippedNoticeHideAction: "Ocultar",
         selectedAccountBalanceLabel: (accountName: string) =>
           `Disponible en ${accountName}`,
         selectedAccountBalanceFallback: "Saldo seleccionado",
@@ -229,6 +234,13 @@ const siteTexts = {
         recentActivityHelpDescription:
           "Aqui aparecen ingresos, gastos, movimientos entre cuentas y ajustes manuales, porque todos cambian tu dinero disponible. En Analisis solo veras ingresos y gastos del mes.",
         recentActivityEmpty: "Todavia no hay cuentas para mostrar.",
+        adjustmentsTitle: "Saldos iniciales y ajustes",
+        adjustmentsDescription:
+          "Aqui quedan visibles tus saldos iniciales y correcciones manuales sin perderse entre los ultimos movimientos.",
+        adjustmentsHelpTitle: "Que entra en este historial?",
+        adjustmentsHelpDescription:
+          "Solo mostramos ajustes manuales: saldos iniciales y correcciones. No mezclamos ingresos, gastos ni transferencias.",
+        adjustmentsEmpty: "Todavia no hay saldos iniciales ni ajustes.",
         actionsTitle: "Cuentas activas",
         actionsDescription:
           "Mueve dinero entre cuentas o corrige un saldo sin mezclarlo con el analisis mensual.",
@@ -237,6 +249,8 @@ const siteTexts = {
         transferTitle: "Mover entre cuentas",
         transferDescription:
           "Pasa dinero de una cuenta a otra. Esto no cuenta como ingreso ni como gasto.",
+        transferDifferentCurrenciesNotSupported:
+          "Todavia no puedes mover dinero entre cuentas con monedas distintas.",
         transferFrom: "Cuenta origen",
         transferTo: "Cuenta destino",
         adjustmentTitle: "Ajustar saldo",
@@ -917,12 +931,12 @@ const siteTexts = {
         baseCurrencyLabel: "Moneda principal",
         baseCurrencyPlaceholder: "COP",
         baseCurrencyHint:
-          "Usaremos esta moneda para tus totales y para las cuentas nuevas en esta etapa.",
+          "Usaremos esta moneda para tus totales consolidados y como sugerencia para cuentas nuevas.",
         baseCurrencyLockedHint:
           "Como ya tienes movimientos registrados, esta moneda queda fija para no alterar tu historial.",
         baseCurrencyHelpTitle: "Que es la moneda principal?",
         baseCurrencyHelpDescription:
-          "Es la moneda con la que Dinerance resume tus totales. Hoy todas tus cuentas usan esa misma moneda.",
+          "Es la moneda con la que Dinerance resume tus totales. Tus cuentas pueden usar monedas distintas, pero todo lo consolidado se intenta convertir aqui.",
         baseCurrencyInvalid:
           "La moneda base debe ser un codigo ISO de 3 letras, por ejemplo COP o USD.",
         timezoneLabel: "Zona horaria",
@@ -938,12 +952,12 @@ const siteTexts = {
         timezoneInvalid: "Selecciona una zona horaria IANA valida.",
         financialAccountsTitle: "Cuentas financieras",
         financialAccountsDescription:
-          "Administra los lugares donde guardas o mueves tu dinero, por ejemplo cuenta principal, billetera o ahorro.",
+          "Administra los lugares donde guardas o mueves tu dinero, por ejemplo cuenta principal, billetera o ahorro. Cada cuenta puede tener su propia moneda.",
         financialAccountsDefaultHint:
           "La cuenta por defecto se selecciona automaticamente cuando registras un ingreso o un gasto nuevo.",
         financialAccountsHelpTitle: "Para que sirven las cuentas?",
         financialAccountsHelpDescription:
-          "Te ayudan a separar donde esta tu dinero. Asi puedes ver cuanto tienes en cada lugar y mover dinero entre cuentas sin contarlo como ingreso o gasto.",
+          "Te ayudan a separar donde esta tu dinero. Asi puedes ver cuanto tienes en cada lugar, incluso si usas monedas distintas, y mover dinero entre cuentas sin contarlo como ingreso o gasto.",
         financialAccountsAdd: "Agregar cuenta",
         financialAccountsCreateTitle: "Nueva cuenta",
         financialAccountsEditTitle: "Editar cuenta",
@@ -1128,13 +1142,18 @@ const siteTexts = {
           "A quick view of where your available money is right now.",
         currentCashDistributionHelpTitle: "How should I read this visual?",
         currentCashDistributionHelpDescription:
-          "Each bar shows how much of your available money sits in one account today. It helps you spot where cash is concentrated at a glance.",
+          "Each bar shows how much of your available money sits in one account today. If you mix currencies, we split the distribution by currency so only comparable accounts share percentages.",
+        currentCashDistributionMixedCurrenciesHint:
+          "Because you mix currencies, each block is calculated only against accounts in the same currency.",
         currentCashDistributionOtherAccounts: (count: number) =>
           count === 1 ? "+1 more account" : `+${count} more accounts`,
         consolidatedBalanceLabel: "Total across your accounts",
         consolidatedBalanceHelpTitle: "What does this total mean?",
         consolidatedBalanceHelpDescription:
-          "It is the sum of the money available in all your accounts. Moving money between your own accounts does not change this total.",
+          "It is the sum of the money available in all your accounts mapped into your base currency. Moving money between your own accounts does not change this total.",
+        consolidatedSkippedNotice: (count: number, currency: string) =>
+          `${count} movements were excluded from the consolidated total because they could not be converted safely to ${currency}.`,
+        consolidatedSkippedNoticeHideAction: "Hide",
         selectedAccountBalanceLabel: (accountName: string) =>
           `Available in ${accountName}`,
         selectedAccountBalanceFallback: "Selected balance",
@@ -1151,6 +1170,13 @@ const siteTexts = {
         recentActivityHelpDescription:
           "This list includes income, expenses, moves between accounts, and manual adjustments because they all change your available money. Analysis only shows monthly income and expenses.",
         recentActivityEmpty: "There is no cash activity to show yet.",
+        adjustmentsTitle: "Starting balances and adjustments",
+        adjustmentsDescription:
+          "Your starting balances and manual corrections stay visible here instead of getting lost inside the latest activity list.",
+        adjustmentsHelpTitle: "What belongs in this history?",
+        adjustmentsHelpDescription:
+          "This section only shows manual adjustments: starting balances and corrections. It does not mix in income, expenses, or transfers.",
+        adjustmentsEmpty: "There are no starting balances or adjustments yet.",
         actionsTitle: "Active accounts",
         actionsDescription:
           "Move money between accounts or correct a balance without mixing it into monthly analysis.",
@@ -1159,6 +1185,8 @@ const siteTexts = {
         transferTitle: "Move between accounts",
         transferDescription:
           "Move money from one account to another. This does not count as income or expense.",
+        transferDifferentCurrenciesNotSupported:
+          "Moving money between accounts with different currencies is not supported yet.",
         transferFrom: "Source account",
         transferTo: "Destination account",
         adjustmentTitle: "Adjust balance",
@@ -1837,12 +1865,12 @@ const siteTexts = {
         baseCurrencyLabel: "Main currency",
         baseCurrencyPlaceholder: "USD",
         baseCurrencyHint:
-          "We use this currency for your totals and for new accounts.",
+          "We use this currency for consolidated totals and as the default suggestion for new accounts.",
         baseCurrencyLockedHint:
           "Because you already have recorded activity, this currency is now locked to preserve your history.",
         baseCurrencyHelpTitle: "What is the main currency?",
         baseCurrencyHelpDescription:
-          "It is the currency Dinerance uses to summarize your totals. Today all of your accounts use that same currency.",
+          "It is the currency Dinerance uses to summarize your totals. Your accounts can use different currencies, but everything consolidated is converted here when possible.",
         baseCurrencyInvalid:
           "Base currency must be a 3-letter ISO code, for example USD or COP.",
         timezoneLabel: "Time zone",
@@ -1858,12 +1886,12 @@ const siteTexts = {
         timezoneInvalid: "Select a valid IANA time zone.",
         financialAccountsTitle: "Financial accounts",
         financialAccountsDescription:
-          "Manage the places where your money lives, such as your main account, wallet, or savings.",
+          "Manage the places where your money lives, such as your main account, wallet, or savings. Each account can use its own currency.",
         financialAccountsDefaultHint:
           "The default account is selected automatically when you record a new income or expense.",
         financialAccountsHelpTitle: "What are accounts for?",
         financialAccountsHelpDescription:
-          "They help you separate where your money is. That lets you see how much you have in each place and move money between accounts without counting it as income or expense.",
+          "They help you separate where your money is. That lets you see how much you have in each place, even across different currencies, and move money between accounts without counting it as income or expense.",
         financialAccountsAdd: "Add account",
         financialAccountsCreateTitle: "New account",
         financialAccountsEditTitle: "Edit account",

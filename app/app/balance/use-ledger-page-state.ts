@@ -43,6 +43,11 @@ export function useLedgerPageState() {
       selectedFinancialAccountId === "" ? getFreshLedgerActivityCache() : null,
     [selectedFinancialAccountId],
   );
+  const cachedAdjustments = useMemo(
+    () =>
+      selectedFinancialAccountId === "" ? getFreshLedgerAdjustmentsCache() : null,
+    [selectedFinancialAccountId],
+  );
 
   const [financialAccounts, setFinancialAccounts] = useState<FinancialAccount[]>(
     () => cachedFinancialAccounts ?? [],
@@ -53,11 +58,17 @@ export function useLedgerPageState() {
   const [activity, setActivity] = useState<LedgerActivity | null>(
     () => cachedActivity,
   );
+  const [adjustments, setAdjustments] = useState<LedgerActivity | null>(
+    () => cachedAdjustments,
+  );
   const [financialAccountsReady, setFinancialAccountsReady] = useState(
     () => cachedFinancialAccounts !== null,
   );
   const [loading, setLoading] = useState(
-    () => cachedBalances == null || cachedActivity == null,
+    () =>
+      cachedBalances == null ||
+      cachedActivity == null ||
+      cachedAdjustments == null,
   );
 
   const hasBaseCurrency = Boolean(profile?.base_currency);
@@ -105,6 +116,7 @@ export function useLedgerPageState() {
       if (!hasBaseCurrency || !hasTimeZone) {
         setBalances(null);
         setActivity(null);
+        setAdjustments(null);
         setLoading(false);
         return;
       }
@@ -114,7 +126,7 @@ export function useLedgerPageState() {
       }
 
       try {
-        const [nextBalances, nextActivity] = await Promise.all([
+        const [nextBalances, nextActivity, nextAdjustments] = await Promise.all([
           api.getLedgerBalances(),
           api.getLedgerActivity({
             limit: 8,
@@ -122,18 +134,27 @@ export function useLedgerPageState() {
               ? { financial_account_id: selectedFinancialAccountId }
               : {}),
           }),
+          api.getLedgerAdjustments({
+            limit: 12,
+            ...(selectedFinancialAccountId
+              ? { financial_account_id: selectedFinancialAccountId }
+              : {}),
+          }),
         ]);
         setBalances(nextBalances);
         setActivity(nextActivity);
+        setAdjustments(nextAdjustments);
         setCache(cacheKeys.ledgerBalances, nextBalances);
         if (!selectedFinancialAccountId) {
           setCache(cacheKeys.ledgerActivity, nextActivity);
+          setCache(cacheKeys.ledgerAdjustments, nextAdjustments);
         }
       } catch (error) {
         if (error instanceof ApiError) {
           if (error.status === 409) {
             setBalances(null);
             setActivity(null);
+            setAdjustments(null);
           } else {
             toast.error(error.message);
           }
@@ -157,8 +178,10 @@ export function useLedgerPageState() {
   }, [cachedFinancialAccounts, loadFinancialAccounts]);
 
   useEffect(() => {
-    void loadLedger({ silent: Boolean(cachedBalances && cachedActivity) });
-  }, [cachedActivity, cachedBalances, loadLedger]);
+    void loadLedger({
+      silent: Boolean(cachedBalances && cachedActivity && cachedAdjustments),
+    });
+  }, [cachedActivity, cachedAdjustments, cachedBalances, loadLedger]);
 
   useEffect(() => {
     return subscribeToCacheKeys(
@@ -166,6 +189,7 @@ export function useLedgerPageState() {
         cacheKeys.financialAccounts,
         cacheKeys.ledgerBalances,
         cacheKeys.ledgerActivity,
+        cacheKeys.ledgerAdjustments,
       ],
       (changedKeys) => {
         if (changedKeys.includes(cacheKeys.financialAccounts)) {
@@ -173,7 +197,8 @@ export function useLedgerPageState() {
         }
         if (
           changedKeys.includes(cacheKeys.ledgerBalances) ||
-          changedKeys.includes(cacheKeys.ledgerActivity)
+          changedKeys.includes(cacheKeys.ledgerActivity) ||
+          changedKeys.includes(cacheKeys.ledgerAdjustments)
         ) {
           void loadLedger({ silent: true });
         }
@@ -228,6 +253,7 @@ export function useLedgerPageState() {
 
   return {
     activity: activity?.items ?? [],
+    adjustments: adjustments?.items ?? [],
     balanceCurrency: balances?.currency ?? profile?.base_currency ?? "COP",
     consolidatedBalance: balances?.consolidated_balance ?? "0.00",
     displayedAccountBalances,
@@ -236,6 +262,7 @@ export function useLedgerPageState() {
     hasBaseCurrency,
     hasMultipleFinancialAccounts: financialAccounts.length > 1,
     hasTimeZone,
+    ledgerSkippedTransactions: balances?.skipped_transactions ?? 0,
     loading,
     profile,
     refreshLedger: loadLedger,
@@ -257,5 +284,11 @@ function getFreshLedgerBalancesCache() {
 function getFreshLedgerActivityCache() {
   return getCache<LedgerActivity>(cacheKeys.ledgerActivity, {
     maxAgeMs: cacheTtls.ledgerActivity,
+  });
+}
+
+function getFreshLedgerAdjustmentsCache() {
+  return getCache<LedgerActivity>(cacheKeys.ledgerAdjustments, {
+    maxAgeMs: cacheTtls.ledgerAdjustments,
   });
 }

@@ -115,6 +115,15 @@ export function CreateTransactionModal({
     },
   });
   const normalizedDefaultCurrency = normalizeCurrencyCode(defaultCurrency || "COP");
+  const selectedFinancialAccount =
+    resolvedFinancialAccounts.find(
+      (account) =>
+        account.id ===
+        (financialAccountIdValue || defaultFinancialAccountId),
+    ) ?? resolvedFinancialAccounts[0];
+  const resolvedCurrency = normalizeCurrencyCode(
+    selectedFinancialAccount?.currency ?? normalizedDefaultCurrency,
+  );
 
   const loadFinancialAccounts = useCallback(async () => {
     if (usesProvidedFinancialAccounts) {
@@ -169,7 +178,7 @@ export function CreateTransactionModal({
           : undefined,
         category_id: values.category_id,
         amount: normalizeAmountForApi(values.amount),
-        currency: normalizedDefaultCurrency,
+        currency: resolvedCurrency,
         occurred_at: dateTimeLocalToUtcIso(values.occurred_at, timeZone),
         description: values.description || null,
       });
@@ -284,7 +293,7 @@ export function CreateTransactionModal({
                 <Label htmlFor="create_currency">{t.currency}</Label>
                 <Input
                   id="create_currency"
-                  value={normalizedDefaultCurrency}
+                  value={resolvedCurrency}
                   disabled
                   readOnly
                 />

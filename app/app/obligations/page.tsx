@@ -63,7 +63,7 @@ import {
   getFinancialAccountDisplayName,
   resolveDefaultFinancialAccountId,
 } from "@/lib/financial-accounts";
-import { formatCurrencyAmount } from "@/lib/finance";
+import { formatCurrencyAmount, normalizeCurrencyCode } from "@/lib/finance";
 import {
   dateTimeLocalToUtcIso,
   formatDateTimeLocalInTimeZone,
@@ -128,6 +128,7 @@ export default function ObligationsPage() {
   const timeZone = resolveTimeZone(profile?.timezone);
   const locale = site.metadata.htmlLang === "en" ? "en-US" : "es-CO";
   const t = site.pages.obligations;
+  const baseCurrency = normalizeCurrencyCode(profile?.base_currency ?? "");
   const [obligationsResponse, setObligationsResponse] =
     useState<ObligationsResponse | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -190,6 +191,15 @@ export default function ObligationsPage() {
     profile?.base_currency && profile?.timezone,
   );
   const canSubmit = hasFinancialProfile && expenseCategories.length > 0;
+  const eligibleExpectedFinancialAccounts = useMemo(
+    () =>
+      financialAccounts.filter(
+        (account) =>
+          normalizeCurrencyCode(account.currency ?? (baseCurrency || "COP")) ===
+          baseCurrency,
+      ),
+    [baseCurrency, financialAccounts],
+  );
 
   useEffect(() => {
     void loadObligationsPage();
@@ -318,10 +328,15 @@ export default function ObligationsPage() {
 
     setEditingObligationId(null);
     setPaymentObligationId(obligation.id);
+    const eligiblePaymentAccounts = financialAccounts.filter(
+      (account) =>
+        normalizeCurrencyCode(account.currency ?? (baseCurrency || "COP")) ===
+        normalizeCurrencyCode(obligation.currency),
+    );
     setPaymentForm({
       financial_account_id:
         obligation.expected_financial_account_id ||
-        resolveDefaultFinancialAccountId(financialAccounts) ||
+        resolveDefaultFinancialAccountId(eligiblePaymentAccounts) ||
         "",
       paid_at: getCurrentDateTimeInputValue(timeZone),
       description: obligation.name,
@@ -553,7 +568,7 @@ export default function ObligationsPage() {
       <ObligationFormModal
         canSubmit={canSubmit}
         expenseCategories={expenseCategories}
-        financialAccounts={financialAccounts}
+        financialAccounts={eligibleExpectedFinancialAccounts}
         form={form}
         hasFinancialProfile={hasFinancialProfile}
         mainFinancialAccountLabel={site.common.mainFinancialAccount}
@@ -844,6 +859,11 @@ function ObligationCard({
     timeZone,
   });
   const isPaymentFormOpen = paymentObligationId === obligation.id;
+  const eligibleFinancialAccounts = financialAccounts.filter(
+    (account) =>
+      normalizeCurrencyCode(account.currency ?? obligation.currency) ===
+      normalizeCurrencyCode(obligation.currency),
+  );
 
   return (
     <div className="rounded-2xl border bg-muted/15 p-4 shadow-sm">
@@ -1006,7 +1026,7 @@ function ObligationCard({
                   <SelectItem value="__placeholder__">
                     {t.paymentAccountPlaceholder}
                   </SelectItem>
-                  {financialAccounts.map((account) => (
+                  {eligibleFinancialAccounts.map((account) => (
                     <SelectItem key={account.id} value={account.id}>
                       {getFinancialAccountDisplayName(
                         account,

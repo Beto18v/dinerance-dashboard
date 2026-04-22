@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
+import { useProfile } from "@/components/providers/profile-provider";
 import { api, ApiError, type FinancialAccount } from "@/lib/api";
 import { useSitePreferences } from "@/components/providers/site-preferences-provider";
 import { CreateFinancialAccountModal } from "@/components/financial-accounts/create-financial-account-modal";
@@ -16,6 +17,11 @@ import {
   getFinancialAccountDisplayName,
   getFreshFinancialAccountsCache,
 } from "@/lib/financial-accounts";
+import {
+  currencyOptions,
+  isValidCurrencyCode,
+  normalizeCurrencyCode,
+} from "@/lib/finance";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,8 +37,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export function FinancialAccountsCard() {
+  const { profile } = useProfile();
   const { site } = useSitePreferences();
   const t = site.pages.profile;
+  const defaultCurrency = normalizeCurrencyCode(profile?.base_currency ?? "COP");
   const cachedAccounts = getFreshFinancialAccountsCache();
   const [accounts, setAccounts] = useState<FinancialAccount[]>(
     () => cachedAccounts ?? [],
@@ -40,6 +48,7 @@ export function FinancialAccountsCard() {
   const [loading, setLoading] = useState(() => !cachedAccounts);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [draftName, setDraftName] = useState("");
+  const [draftCurrency, setDraftCurrency] = useState(defaultCurrency);
   const [editingAccount, setEditingAccount] = useState<FinancialAccount | null>(
     null,
   );
@@ -89,6 +98,9 @@ export function FinancialAccountsCard() {
   function openEditDialog(account: FinancialAccount) {
     setEditingAccount(account);
     setDraftName(getAccountDisplayName(account));
+    setDraftCurrency(
+      normalizeCurrencyCode(account.currency ?? defaultCurrency),
+    );
     setDialogOpen(true);
   }
 
@@ -102,8 +114,13 @@ export function FinancialAccountsCard() {
     }
 
     const normalizedName = draftName.trim();
+    const normalizedCurrency = normalizeCurrencyCode(draftCurrency);
     if (!normalizedName) {
       toast.error(t.financialAccountsNameRequired);
+      return;
+    }
+    if (!isValidCurrencyCode(normalizedCurrency)) {
+      toast.error(t.baseCurrencyInvalid);
       return;
     }
 
@@ -111,11 +128,13 @@ export function FinancialAccountsCard() {
     try {
       await api.updateFinancialAccount(editingAccount.id, {
         name: normalizedName,
+        currency: normalizedCurrency,
       });
       toast.success(t.financialAccountsUpdated);
 
       setDialogOpen(false);
       setDraftName("");
+      setDraftCurrency(defaultCurrency);
       setEditingAccount(null);
       invalidateCacheKey(cacheKeys.financialAccounts);
     } catch (error) {
@@ -269,6 +288,7 @@ export function FinancialAccountsCard() {
           if (!open) {
             setEditingAccount(null);
             setDraftName("");
+            setDraftCurrency(defaultCurrency);
           }
           setDialogOpen(open);
         }}
@@ -292,6 +312,29 @@ export function FinancialAccountsCard() {
               placeholder={t.financialAccountsNamePlaceholder}
               autoFocus
             />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="financial_account_currency">
+              {site.pages.transactions.currency}
+            </Label>
+            <Input
+              id="financial_account_currency"
+              value={draftCurrency}
+              onChange={(event) => setDraftCurrency(event.target.value)}
+              placeholder={site.pages.transactions.currencyPlaceholder}
+              list="edit-financial-account-currency-options"
+              autoCapitalize="characters"
+              autoComplete="off"
+              spellCheck={false}
+            />
+            <datalist id="edit-financial-account-currency-options">
+              {currencyOptions.map((option) => (
+                <option key={option.code} value={option.code}>
+                  {option.label}
+                </option>
+              ))}
+            </datalist>
           </div>
 
           <DialogFooter>

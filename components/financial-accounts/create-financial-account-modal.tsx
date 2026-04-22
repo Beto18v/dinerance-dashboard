@@ -3,9 +3,15 @@
 import { useState, type ComponentProps } from "react";
 import { toast } from "sonner";
 
+import { useProfile } from "@/components/providers/profile-provider";
 import { api, ApiError } from "@/lib/api";
 import { cacheKeys, invalidateCacheKey } from "@/lib/cache";
 import { useSitePreferences } from "@/components/providers/site-preferences-provider";
+import {
+  currencyOptions,
+  isValidCurrencyCode,
+  normalizeCurrencyCode,
+} from "@/lib/finance";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -34,27 +40,39 @@ export function CreateFinancialAccountModal({
   variant = "default",
 }: CreateFinancialAccountModalProps) {
   const { site } = useSitePreferences();
+  const { profile } = useProfile();
   const t = site.pages.profile;
   const triggerLabel = label ?? t.financialAccountsAdd;
+  const defaultCurrency = normalizeCurrencyCode(profile?.base_currency ?? "COP");
   const [draftName, setDraftName] = useState("");
+  const [draftCurrency, setDraftCurrency] = useState(defaultCurrency);
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   function resetDialog() {
     setDraftName("");
+    setDraftCurrency(defaultCurrency);
     setSubmitting(false);
   }
 
   async function handleCreateAccount() {
     const normalizedName = draftName.trim();
+    const normalizedCurrency = normalizeCurrencyCode(draftCurrency);
     if (!normalizedName) {
       toast.error(t.financialAccountsNameRequired);
+      return;
+    }
+    if (!isValidCurrencyCode(normalizedCurrency)) {
+      toast.error(t.baseCurrencyInvalid);
       return;
     }
 
     setSubmitting(true);
     try {
-      await api.createFinancialAccount({ name: normalizedName });
+      await api.createFinancialAccount({
+        name: normalizedName,
+        currency: normalizedCurrency,
+      });
       toast.success(t.financialAccountsCreated);
       setOpen(false);
       resetDialog();
@@ -110,6 +128,29 @@ export function CreateFinancialAccountModal({
               placeholder={t.financialAccountsNamePlaceholder}
               autoFocus
             />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="create_financial_account_currency">
+              {site.pages.transactions.currency}
+            </Label>
+            <Input
+              id="create_financial_account_currency"
+              value={draftCurrency}
+              onChange={(event) => setDraftCurrency(event.target.value)}
+              placeholder={site.pages.transactions.currencyPlaceholder}
+              list="financial-account-currency-options"
+              autoCapitalize="characters"
+              autoComplete="off"
+              spellCheck={false}
+            />
+            <datalist id="financial-account-currency-options">
+              {currencyOptions.map((option) => (
+                <option key={option.code} value={option.code}>
+                  {option.label}
+                </option>
+              ))}
+            </datalist>
           </div>
 
           <DialogFooter>

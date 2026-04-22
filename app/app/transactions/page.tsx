@@ -194,6 +194,20 @@ export default function TransactionsPage() {
     },
   });
   const hasMultipleAccounts = financialAccounts.length > 1;
+  const editableFinancialAccounts = useMemo(() => {
+    if (!editingTxn) {
+      return financialAccounts;
+    }
+
+    const transactionCurrency = normalizeCurrencyCode(
+      editingTxn.currency ?? baseCurrency ?? "COP",
+    );
+    return financialAccounts.filter(
+      (account) =>
+        normalizeCurrencyCode(account.currency ?? baseCurrency ?? "COP") ===
+        transactionCurrency,
+    );
+  }, [baseCurrency, editingTxn, financialAccounts]);
 
   const parentCategories = useMemo(
     () =>
@@ -447,6 +461,8 @@ export default function TransactionsPage() {
       invalidateCacheKeys([
         cacheKeys.cashflowForecast,
         cacheKeys.transactions,
+        cacheKeys.ledgerBalances,
+        cacheKeys.ledgerActivity,
       ]);
     } catch (error) {
       if (error instanceof ApiError) {
@@ -470,6 +486,8 @@ export default function TransactionsPage() {
       invalidateCacheKeys([
         cacheKeys.cashflowForecast,
         cacheKeys.transactions,
+        cacheKeys.ledgerBalances,
+        cacheKeys.ledgerActivity,
       ]);
     } catch (error) {
       if (error instanceof ApiError) {
@@ -626,6 +644,8 @@ export default function TransactionsPage() {
                   invalidateCacheKeys([
                     cacheKeys.cashflowForecast,
                     cacheKeys.transactions,
+                    cacheKeys.ledgerBalances,
+                    cacheKeys.ledgerActivity,
                   ]);
                 }}
               />
@@ -700,16 +720,16 @@ export default function TransactionsPage() {
                     setEditValue("financial_account_id", value)
                   }
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder={t.accountPlaceholder} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {financialAccounts.map((account) => (
-                      <SelectItem key={account.id} value={account.id}>
-                        {getFinancialAccountDisplayName(
-                          account,
-                          site.common.mainFinancialAccount,
-                        )}
+                    <SelectTrigger>
+                      <SelectValue placeholder={t.accountPlaceholder} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {editableFinancialAccounts.map((account) => (
+                        <SelectItem key={account.id} value={account.id}>
+                          {getFinancialAccountDisplayName(
+                            account,
+                            site.common.mainFinancialAccount,
+                          )}
                       </SelectItem>
                     ))}
                   </SelectContent>

@@ -15,6 +15,7 @@ const {
   deleteAdjustmentMock,
   deleteTransferMock,
   getFinancialAccountsMock,
+  getLedgerAdjustmentsMock,
   getLedgerActivityMock,
   getLedgerBalancesMock,
   getProfileMock,
@@ -30,6 +31,7 @@ const {
   deleteAdjustmentMock: vi.fn(),
   deleteTransferMock: vi.fn(),
   getFinancialAccountsMock: vi.fn(),
+  getLedgerAdjustmentsMock: vi.fn(),
   getLedgerActivityMock: vi.fn(),
   getLedgerBalancesMock: vi.fn(),
   getProfileMock: vi.fn(),
@@ -59,6 +61,7 @@ vi.mock("@/lib/api", () => ({
     deleteAdjustment: deleteAdjustmentMock,
     deleteTransfer: deleteTransferMock,
     getFinancialAccounts: getFinancialAccountsMock,
+    getLedgerAdjustments: getLedgerAdjustmentsMock,
     getLedgerActivity: getLedgerActivityMock,
     getLedgerBalances: getLedgerBalancesMock,
     getProfile: getProfileMock,
@@ -243,6 +246,7 @@ describe("BalancePage", () => {
     deleteTransferMock.mockReset();
     getCategoriesMock.mockReset();
     getFinancialAccountsMock.mockReset();
+    getLedgerAdjustmentsMock.mockReset();
     getLedgerActivityMock.mockReset();
     getLedgerBalancesMock.mockReset();
     getProfileMock.mockReset();
@@ -283,6 +287,7 @@ describe("BalancePage", () => {
     getLedgerBalancesMock.mockResolvedValue({
       currency: "COP",
       consolidated_balance: "1500000.00",
+      skipped_transactions: 0,
       accounts: [
         {
           financial_account_id: "acc-1",
@@ -312,6 +317,23 @@ describe("BalancePage", () => {
           description: "Nomina",
           occurred_at: "2026-03-10T12:00:00Z",
           created_at: "2026-03-10T12:00:00Z",
+        },
+      ],
+    });
+    getLedgerAdjustmentsMock.mockResolvedValue({
+      limit: 12,
+      items: [
+        {
+          id: "adj-1",
+          financial_account_id: "acc-2",
+          financial_account_name: "Wallet",
+          transaction_type: "adjustment",
+          balance_direction: "in",
+          amount: "300000.00",
+          currency: "COP",
+          description: "Saldo inicial: Fondo inicial",
+          occurred_at: "2026-03-11T12:00:00Z",
+          created_at: "2026-03-11T12:00:00Z",
         },
       ],
     });
@@ -357,7 +379,9 @@ describe("BalancePage", () => {
     expect(screen.getAllByText(/Cuenta principal/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText("Wallet").length).toBeGreaterThan(0);
     expect(screen.getByText("Ultimos movimientos")).toBeInTheDocument();
+    expect(screen.getByText("Saldos iniciales y ajustes")).toBeInTheDocument();
     expect(screen.getByText("Nomina")).toBeInTheDocument();
+    expect(screen.getByText("Saldo inicial: Fondo inicial")).toBeInTheDocument();
     expect(
       await screen.findByRole("button", { name: "Mover entre cuentas" }),
     ).toBeInTheDocument();
@@ -380,7 +404,7 @@ describe("BalancePage", () => {
     expect(screen.queryByText("Arriendo")).not.toBeInTheDocument();
   });
 
-  it("filters recent activity by financial account", async () => {
+  it("filters recent activity by financial account from the account list", async () => {
     getLedgerActivityMock
       .mockResolvedValueOnce({
         limit: 8,
@@ -428,11 +452,45 @@ describe("BalancePage", () => {
           },
         ],
       });
+    getLedgerAdjustmentsMock
+      .mockResolvedValueOnce({
+        limit: 12,
+        items: [
+          {
+            id: "mov-2",
+            financial_account_id: "acc-2",
+            financial_account_name: "Wallet",
+            transaction_type: "adjustment",
+            balance_direction: "in",
+            amount: "300000.00",
+            currency: "COP",
+            description: "Saldo inicial: Fondo inicial",
+            occurred_at: "2026-03-11T12:00:00Z",
+            created_at: "2026-03-11T12:00:00Z",
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        limit: 12,
+        items: [
+          {
+            id: "mov-2",
+            financial_account_id: "acc-2",
+            financial_account_name: "Wallet",
+            transaction_type: "adjustment",
+            balance_direction: "in",
+            amount: "300000.00",
+            currency: "COP",
+            description: "Saldo inicial: Fondo inicial",
+            occurred_at: "2026-03-11T12:00:00Z",
+            created_at: "2026-03-11T12:00:00Z",
+          },
+        ],
+      });
 
     render(<BalancePage />);
 
-    const accountFilter = await screen.findByLabelText("Cuenta");
-    fireEvent.change(accountFilter, { target: { value: "acc-2" } });
+    fireEvent.click(await screen.findByRole("button", { name: /Wallet/i }));
 
     await waitFor(() => {
       expect(pushMock).toHaveBeenCalledWith(
@@ -448,7 +506,67 @@ describe("BalancePage", () => {
         financial_account_id: "acc-2",
       });
     });
+    await waitFor(() => {
+      expect(getLedgerAdjustmentsMock).toHaveBeenNthCalledWith(2, {
+        limit: 12,
+        financial_account_id: "acc-2",
+      });
+    });
     expect(screen.getByText("Apertura: Fondo inicial")).toBeInTheDocument();
+  });
+
+  it("hides the adjustments card when there are no starting balances or manual adjustments", async () => {
+    getLedgerAdjustmentsMock.mockResolvedValue({
+      limit: 12,
+      items: [],
+    });
+
+    render(<BalancePage />);
+
+    await waitFor(() => {
+      expect(getLedgerAdjustmentsMock).toHaveBeenCalledTimes(1);
+    });
+    expect(
+      screen.queryByText("Saldos iniciales y ajustes"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("lets the user hide the skipped conversion notice", async () => {
+    getLedgerBalancesMock.mockResolvedValue({
+      currency: "COP",
+      consolidated_balance: "1500000.00",
+      skipped_transactions: 2,
+      accounts: [
+        {
+          financial_account_id: "acc-1",
+          financial_account_name: "Main account",
+          currency: "COP",
+          balance: "1200000.00",
+        },
+        {
+          financial_account_id: "acc-2",
+          financial_account_name: "Wallet",
+          currency: "COP",
+          balance: "300000.00",
+        },
+      ],
+    });
+
+    render(<BalancePage />);
+
+    expect(
+      await screen.findByText(
+        "2 movimientos quedaron fuera del total consolidado porque no se pudieron convertir con seguridad a COP.",
+      ),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Ocultar" }));
+
+    expect(
+      screen.queryByText(
+        "2 movimientos quedaron fuera del total consolidado porque no se pudieron convertir con seguridad a COP.",
+      ),
+    ).not.toBeInTheDocument();
   });
 
   it("shows onboarding and keeps the summary visible when the financial profile is incomplete", async () => {
