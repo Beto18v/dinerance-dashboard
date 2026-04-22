@@ -7,7 +7,7 @@ import { formatCurrencyAmount } from "@/lib/finance";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { InfoHint } from "@/components/ui/info-hint";
-import { AnalyticsFiltersBar } from "../components/analytics-filters-bar";
+import { AnalyticsFiltersBar } from "./components/analytics-filters-bar";
 import { useBalancePageState } from "../balance/use-balance-page-state";
 import { CategoryBreakdownCard } from "../balance/components/category-breakdown-card";
 import { RecurringCandidatesCard } from "../balance/components/recurring-candidates-card";

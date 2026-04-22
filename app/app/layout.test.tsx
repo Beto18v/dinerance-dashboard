@@ -3,7 +3,13 @@ import type {
   ButtonHTMLAttributes,
   ReactNode,
 } from "react";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import AppLayout from "./layout";
@@ -17,6 +23,7 @@ const {
   getPreferredSessionNameMock,
   replaceMock,
   resolveAuthenticatedProfileMock,
+  setThemeMock,
   signOutMock,
   toastErrorMock,
   useSessionMock,
@@ -28,6 +35,7 @@ const {
   getPreferredSessionNameMock: vi.fn(),
   replaceMock: vi.fn(),
   resolveAuthenticatedProfileMock: vi.fn(),
+  setThemeMock: vi.fn(),
   signOutMock: vi.fn(),
   toastErrorMock: vi.fn(),
   useSessionMock: vi.fn(),
@@ -62,6 +70,23 @@ vi.mock("@/components/providers/site-preferences-provider", () => ({
   }),
 }));
 
+vi.mock("next-themes", () => ({
+  useTheme: () => ({
+    theme: "system",
+    setTheme: setThemeMock,
+  }),
+}));
+
+vi.mock("@/components/ui/avatar", () => ({
+  Avatar: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  AvatarImage: ({ alt, src }: { alt?: string; src?: string }) => (
+    <div aria-label={alt ?? ""} data-src={src} />
+  ),
+  AvatarFallback: ({ children }: { children: ReactNode }) => (
+    <div>{children}</div>
+  ),
+}));
+
 vi.mock("@/components/ui/button", () => ({
   Button: ({
     children,
@@ -69,6 +94,50 @@ vi.mock("@/components/ui/button", () => ({
   }: ButtonHTMLAttributes<HTMLButtonElement>) => (
     <button {...props}>{children}</button>
   ),
+}));
+
+vi.mock("@/components/ui/dropdown-menu", () => ({
+  DropdownMenu: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  DropdownMenuTrigger: ({ children }: { children: ReactNode }) => (
+    <div>{children}</div>
+  ),
+  DropdownMenuContent: ({ children }: { children: ReactNode }) => (
+    <div>{children}</div>
+  ),
+  DropdownMenuLabel: ({ children }: { children: ReactNode }) => (
+    <div>{children}</div>
+  ),
+  DropdownMenuSeparator: () => <div />,
+  DropdownMenuSub: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  DropdownMenuSubContent: ({ children }: { children: ReactNode }) => (
+    <div>{children}</div>
+  ),
+  DropdownMenuSubTrigger: ({ children }: { children: ReactNode }) => (
+    <div>{children}</div>
+  ),
+  DropdownMenuRadioGroup: ({ children }: { children: ReactNode }) => (
+    <div>{children}</div>
+  ),
+  DropdownMenuRadioItem: ({ children }: { children: ReactNode }) => (
+    <button type="button">{children}</button>
+  ),
+  DropdownMenuItem: ({
+    asChild,
+    children,
+    onSelect,
+    ...props
+  }: {
+    asChild?: boolean;
+    children: ReactNode;
+    onSelect?: () => void;
+  }) =>
+    asChild ? (
+      <div {...props}>{children}</div>
+    ) : (
+      <button type="button" onClick={onSelect} {...props}>
+        {children}
+      </button>
+    ),
 }));
 
 vi.mock("@/components/ui/sheet", () => ({
@@ -80,6 +149,7 @@ vi.mock("@/components/ui/sheet", () => ({
     <div>{children}</div>
   ),
   SheetHeader: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  SheetFooter: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   SheetTitle: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   SheetTrigger: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
@@ -124,6 +194,7 @@ describe("AppLayout", () => {
     getPreferredSessionNameMock.mockReset();
     replaceMock.mockReset();
     resolveAuthenticatedProfileMock.mockReset();
+    setThemeMock.mockReset();
     signOutMock.mockReset();
     toastErrorMock.mockReset();
     useSessionMock.mockReset();
@@ -272,6 +343,43 @@ describe("AppLayout", () => {
     ).toBeInTheDocument();
     expect(screen.getAllByText("4").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Abrir obligaciones").length).toBeGreaterThan(0);
+  });
+
+  it("offers a quick sign out action from the user menu", async () => {
+    useSessionMock.mockReturnValue({
+      session: {
+        user: {
+          id: "user-1",
+          email: "test@example.com",
+          user_metadata: {},
+        },
+      },
+      loading: false,
+      signOut: signOutMock,
+    });
+    resolveAuthenticatedProfileMock.mockResolvedValue({
+      id: "user-1",
+      name: "Test User",
+      email: "test@example.com",
+      base_currency: "COP",
+      timezone: "America/Bogota",
+      created_at: "2026-03-26T12:00:00Z",
+    });
+
+    render(
+      <AppLayout>
+        <div>child</div>
+      </AppLayout>,
+    );
+
+    fireEvent.click(
+      (await screen.findAllByRole("button", { name: "Cerrar sesion" }))[0],
+    );
+
+    await waitFor(() => {
+      expect(signOutMock).toHaveBeenCalledTimes(1);
+    });
+    expect(replaceMock).toHaveBeenCalledWith("/auth/login");
   });
 
   it("signs out and redirects when profile resolution fails with 401", async () => {

@@ -5,7 +5,7 @@ import { toast } from "sonner";
 
 import { api, ApiError, type FinancialAccount } from "@/lib/api";
 import { useSitePreferences } from "@/components/providers/site-preferences-provider";
-import { CreateFinancialAccountModal } from "@/app/app/components/create-financial-account-modal";
+import { CreateFinancialAccountModal } from "@/components/financial-accounts/create-financial-account-modal";
 import {
   cacheKeys,
   invalidateCacheKey,

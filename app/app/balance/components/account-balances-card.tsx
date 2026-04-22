@@ -3,7 +3,7 @@
 import { type CSSProperties } from "react";
 
 import { type LedgerBalanceAccount } from "@/lib/api";
-import { CreateFinancialAccountModal } from "@/app/app/components/create-financial-account-modal";
+import { CreateFinancialAccountModal } from "@/components/financial-accounts/create-financial-account-modal";
 import { formatCurrencyAmount } from "@/lib/finance";
 import { type SiteText } from "@/lib/site";
 import { InfoHint } from "@/components/ui/info-hint";

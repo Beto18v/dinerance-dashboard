@@ -102,6 +102,9 @@ const siteTexts = {
     appLayout: {
       mobileMenuTitle: "Menu",
       mobileMenuDescription: "Navega por tu panel y administra tu sesion.",
+      userMenuLabel: "Abrir menu de usuario",
+      themeMenuLabel: "Tema",
+      quickActionsTitle: "Accesos rapidos",
       nav: {
         balance: "Resumen",
         cashflow: "Caja futura",
@@ -1023,6 +1026,9 @@ const siteTexts = {
     appLayout: {
       mobileMenuTitle: "Menu",
       mobileMenuDescription: "Navigate your dashboard and manage your session.",
+      userMenuLabel: "Open user menu",
+      themeMenuLabel: "Theme",
+      quickActionsTitle: "Quick actions",
       nav: {
         balance: "Overview",
         cashflow: "Future cash",

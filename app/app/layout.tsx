@@ -3,22 +3,19 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Menu } from "lucide-react";
+import { useTheme } from "next-themes";
 import { toast } from "sonner";
 
+import { AppHeader } from "@/components/app-shell/app-header";
+import {
+  formatAlertCount,
+  getUserAvatarUrl,
+  getUserInitials,
+} from "@/components/app-shell/helpers";
+import type { AppNavLink, AppTheme } from "@/components/app-shell/types";
 import { useSession } from "@/components/providers/auth-provider";
 import { ProfileProvider } from "@/components/providers/profile-provider";
 import { useSitePreferences } from "@/components/providers/site-preferences-provider";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
 import { api, ApiError, type UpcomingObligationsResponse } from "@/lib/api";
 import {
   cacheKeys,
@@ -38,13 +35,6 @@ import {
 const OBLIGATION_ALERT_WINDOW_DAYS = 7;
 const OBLIGATION_ALERT_LIMIT = 1;
 
-type AppNavLink = {
-  href: string;
-  label: string;
-  badgeCount?: string | null;
-  badgeTone?: "overdue" | "today" | "soon";
-};
-
 async function getInitialProfileState(sessionUserId: string) {
   const cachedProfile = getCachedProfile({ allowStale: true });
   if (cachedProfile?.id === sessionUserId) {
@@ -63,6 +53,7 @@ async function getInitialProfileState(sessionUserId: string) {
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { session, loading, signOut } = useSession();
   const { site } = useSitePreferences();
+  const { theme, setTheme } = useTheme();
   const router = useRouter();
   const pathname = usePathname();
   const [profile, setProfileState] = useState(() =>
@@ -84,6 +75,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const hasFinancialProfile = Boolean(
     profile?.base_currency && profile?.timezone,
   );
+  const selectedTheme = (theme ?? "system") as AppTheme;
   const obligationAlertSummary =
     session && hasFinancialProfile ? obligationAlerts?.summary ?? null : null;
   const overdueCount = obligationAlertSummary?.overdue_count ?? 0;
@@ -100,7 +92,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           ? site.appLayout.obligationsAlertTodayBanner(dueTodayCount)
           : null;
   const obligationBadgeTone =
-    overdueCount > 0 ? "overdue" : dueTodayCount > 0 ? "today" : "soon";
+    overdueCount > 0 ? "danger" : dueTodayCount > 0 ? "warning" : "info";
   const navLinks: AppNavLink[] = [
     { href: "/app/balance", label: site.appLayout.nav.balance },
     { href: "/app/cashflow", label: site.appLayout.nav.cashflow },
@@ -116,8 +108,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     },
     { href: "/app/transactions", label: site.appLayout.nav.transactions },
     { href: "/app/categories", label: site.appLayout.nav.categories },
-    { href: "/app/profile", label: site.appLayout.nav.profile },
   ];
+  const displayName =
+    profile?.name?.trim() || getPreferredSessionName(session) || "User";
+  const userEmail = profile?.email?.trim() || session?.user.email?.trim() || "";
+  const avatarUrl = getUserAvatarUrl(session?.user.user_metadata);
+  const userInitials = getUserInitials(displayName || userEmail);
 
   const loadObligationAlerts = useCallback(async () => {
     if (!session || !profile?.base_currency || !profile?.timezone) {
@@ -145,6 +141,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
     clearCachedProfile();
   }, []);
+
+  const handleSignOut = useCallback(async () => {
+    setMobileNavOpen(false);
+    await signOut();
+    router.replace("/auth/login");
+  }, [router, signOut]);
 
   useEffect(() => {
     if (!loading && !session) {
@@ -259,119 +261,20 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <ProfileProvider value={{ profile, setProfile }}>
       <div className="flex min-h-screen flex-col bg-muted/40">
-        <header className="sticky top-0 z-20 border-b bg-background shadow-sm">
-          <div className="mx-auto flex h-14 max-w-6xl items-center gap-4 px-4 sm:px-6">
-            <Link
-              href="/app/balance"
-              className="flex shrink-0 items-center gap-1.5"
-            >
-              <span className="text-base font-bold tracking-tight text-green-600">
-                Dine<span className="text-primary">rance</span>
-              </span>
-            </Link>
-
-            <nav className="hidden flex-1 items-center gap-1 md:flex">
-              {navLinks.map((link) => {
-                const active = pathname === link.href;
-                return (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                      active
-                        ? "bg-primary text-primary-foreground"
-                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                    }`}
-                  >
-                    <span className="flex items-center gap-2">
-                      <span>{link.label}</span>
-                      {link.badgeCount ? (
-                        <Badge
-                          variant="outline"
-                          className={resolveNavBadgeClassName(
-                            link.badgeTone ?? "soon",
-                            active,
-                          )}
-                        >
-                          {link.badgeCount}
-                        </Badge>
-                      ) : null}
-                    </span>
-                  </Link>
-                );
-              })}
-            </nav>
-
-            <div className="hidden shrink-0 items-center gap-3 md:flex">
-              <span className="max-w-45 truncate text-xs text-cyan-500">
-                {session.user.email}
-              </span>
-            </div>
-
-            <div className="ml-auto md:hidden">
-              <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
-                <SheetTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    aria-label="Open menu"
-                  >
-                    <Menu className="size-5" />
-                  </Button>
-                </SheetTrigger>
-
-                <SheetContent side="right" className="w-[85vw] sm:max-w-sm">
-                  <SheetHeader className="space-y-2 border-b pb-4">
-                    <SheetTitle>{site.appLayout.mobileMenuTitle}</SheetTitle>
-                    <SheetDescription className="space-y-1">
-                      <span className="block">
-                        {site.appLayout.mobileMenuDescription}
-                      </span>
-                      <span className="block truncate text-cyan-500">
-                        {session.user.email}
-                      </span>
-                    </SheetDescription>
-                  </SheetHeader>
-
-                  <nav className="flex flex-1 flex-col gap-2 px-4 py-6">
-                    {navLinks.map((link) => {
-                      const active = pathname === link.href;
-
-                      return (
-                        <Link
-                          key={link.href}
-                          href={link.href}
-                          onClick={() => setMobileNavOpen(false)}
-                          className={`rounded-lg px-4 py-3 text-sm font-medium transition-colors ${
-                            active
-                              ? "bg-primary text-primary-foreground"
-                              : "text-foreground hover:bg-muted"
-                          }`}
-                        >
-                          <span className="flex items-center justify-between gap-3">
-                            <span>{link.label}</span>
-                            {link.badgeCount ? (
-                              <Badge
-                                variant="outline"
-                                className={resolveNavBadgeClassName(
-                                  link.badgeTone ?? "soon",
-                                  active,
-                                )}
-                              >
-                                {link.badgeCount}
-                              </Badge>
-                            ) : null}
-                          </span>
-                        </Link>
-                      );
-                    })}
-                  </nav>
-                </SheetContent>
-              </Sheet>
-            </div>
-          </div>
-        </header>
+        <AppHeader
+          avatarUrl={avatarUrl}
+          displayName={displayName}
+          mobileNavOpen={mobileNavOpen}
+          navLinks={navLinks}
+          onMobileNavOpenChange={setMobileNavOpen}
+          onSignOut={handleSignOut}
+          onThemeChange={setTheme}
+          pathname={pathname}
+          selectedTheme={selectedTheme}
+          site={site}
+          userEmail={userEmail}
+          userInitials={userInitials}
+        />
 
         <main className="mx-auto flex-1 w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
           <div className="space-y-6">
@@ -423,27 +326,4 @@ function getFreshObligationAlertsCache() {
   }
 
   return cached;
-}
-
-function formatAlertCount(count: number) {
-  return count > 99 ? "99+" : String(count);
-}
-
-function resolveNavBadgeClassName(
-  tone: "overdue" | "today" | "soon",
-  active: boolean,
-) {
-  if (active) {
-    return "border-transparent bg-background/95 text-foreground";
-  }
-
-  if (tone === "overdue") {
-    return "border-rose-200 bg-rose-50 text-rose-800";
-  }
-
-  if (tone === "today") {
-    return "border-amber-200 bg-amber-50 text-amber-900";
-  }
-
-  return "border-sky-200 bg-sky-50 text-sky-800";
 }
