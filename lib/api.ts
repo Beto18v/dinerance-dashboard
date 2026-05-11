@@ -115,6 +115,7 @@ export interface Transaction {
   id: string;
   category_id: string | null;
   financial_account_id?: string;
+  financial_account_name?: string | null;
   transaction_type?: TransactionType | null;
   transfer_group_id?: string | null;
   amount: string;

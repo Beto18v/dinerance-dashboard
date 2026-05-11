@@ -212,6 +212,10 @@ export function TransactionsView({
   }
 
   function getFinancialAccountName(transaction: Transaction) {
+    if (transaction.financial_account_name) {
+      return transaction.financial_account_name;
+    }
+
     return resolveFinancialAccountName(
       financialAccounts,
       transaction.financial_account_id,
