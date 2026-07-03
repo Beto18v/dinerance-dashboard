@@ -413,17 +413,18 @@ const siteTexts = {
           `Ultima vez visto: ${dateLabel}.`,
         futureCashTitle: "Caja futura",
         futureCashDescription:
-          "Proyeccion consolidada a 30, 60 y 90 dias basada en tu saldo actual y obligaciones confirmadas. No cambia tu saldo de hoy.",
+          "Proyeccion mensual consolidada del mes en curso y los dos siguientes, basada en tu saldo actual y obligaciones confirmadas. No cambia tu saldo de hoy.",
         futureCashHelpTitle: "Como se calcula esta lectura?",
         futureCashHelpDescription:
-          "Partimos de tu saldo actual consolidado registrado y restamos solo obligaciones activas confirmadas dentro de cada horizonte. No usamos inferencias, no cambiamos tu saldo actual y no tocamos Analisis.",
-        futureCashSafeToSpendTitle: "Disponible para gastar en 30 dias",
+          "Partimos de tu saldo actual consolidado registrado y restamos solo obligaciones activas confirmadas dentro de cada mes. No usamos inferencias, no cambiamos tu saldo actual y no tocamos Analisis.",
+        futureCashSafeToSpendTitle: (monthLabel: string) =>
+          `Disponible para gastar en ${monthLabel}`,
         futureCashSafeToSpendDescription: (
           currentBalance: string,
           committedAmount: string,
-          dateLabel: string,
+          monthLabel: string,
         ) =>
-          `Es lo que te quedaria libre para gastar si tomamos ${currentBalance} de saldo real y restamos ${committedAmount} en obligaciones confirmadas hasta ${dateLabel}.`,
+          `Es lo que te quedaria libre para gastar si tomamos ${currentBalance} de saldo real y restamos ${committedAmount} en obligaciones confirmadas para ${monthLabel}.`,
         futureCashCurrentBalanceLabel: "Saldo al iniciar el periodo",
         futureCashCurrentBalanceHelpTitle: "De donde sale este saldo?",
         futureCashCurrentBalanceHelpDescription:
@@ -435,9 +436,10 @@ const siteTexts = {
         futureCashPerDayLabel: "Disponible por dia",
         futureCashPerDayHelpTitle: "Como leerlo?",
         futureCashPerDayHelpDescription:
-          "Es una referencia simple de lo que tendrias disponible para gastar por dia en este periodo.",
-        futureCashHorizonLabel: (days: number) => `${days} dias`,
-        futureCashWindowEndLabel: (dateLabel: string) => `Hasta ${dateLabel}`,
+          "Es una referencia simple: dividimos lo disponible para gastar en este mes por la cantidad de dias del periodo.",
+        futureCashMonthLabel: (monthLabel: string) => monthLabel,
+        futureCashDaysInWindowLabel: (count: number) =>
+          `${count} dias en este periodo`,
         futureCashProjectedBalanceLabel: "Saldo proyectado",
         futureCashProjectedBalanceHelpTitle:
           "Que significa este saldo proyectado?",
@@ -511,10 +513,10 @@ const siteTexts = {
       cashflow: {
         title: "Caja futura",
         subtitle:
-          "Planea tu gasto con una proyeccion clara de 30, 60 y 90 dias basada en saldo real y obligaciones confirmadas.",
+          "Planea tu gasto con una proyeccion clara del mes en curso y los dos siguientes, basada en saldo real y obligaciones confirmadas.",
         helpTitle: "Que veras aqui?",
         helpDescription:
-          "Esta vista separa caja futura de tu resumen diario. Parte del saldo real ya registrado y descuenta solo obligaciones activas confirmadas en cada ventana.",
+          "Esta vista separa caja futura de tu resumen diario. Parte del saldo real ya registrado y descuenta solo obligaciones activas confirmadas en cada mes.",
         openObligations: "Abrir obligaciones",
         missingProfile:
           "Completa tu moneda base y tu zona horaria antes de usar caja futura.",
@@ -1350,17 +1352,18 @@ const siteTexts = {
           `Last seen: ${dateLabel}.`,
         futureCashTitle: "Future cash",
         futureCashDescription:
-          "Consolidated 30, 60, and 90 day projection based on your current balance and confirmed obligations. It does not change your money today.",
+          "Consolidated monthly projection of the current month plus the next two, based on your current balance and confirmed obligations. It does not change your money today.",
         futureCashHelpTitle: "How is this calculated?",
         futureCashHelpDescription:
-          "We start from the ledger's current consolidated balance and subtract only confirmed active obligations inside each horizon. We do not use inferences, we do not change today's balance, and we do not touch Analysis.",
-        futureCashSafeToSpendTitle: "Safe-to-spend in 30 days",
+          "We start from the ledger's current consolidated balance and subtract only confirmed active obligations inside each month. We do not use inferences, we do not change today's balance, and we do not touch Analysis.",
+        futureCashSafeToSpendTitle: (monthLabel: string) =>
+          `Safe-to-spend in ${monthLabel}`,
         futureCashSafeToSpendDescription: (
           currentBalance: string,
           committedAmount: string,
-          dateLabel: string,
+          monthLabel: string,
         ) =>
-          `We take ${currentBalance} of real cash and subtract ${committedAmount} in confirmed obligations through ${dateLabel}.`,
+          `We take ${currentBalance} of real cash and subtract ${committedAmount} in confirmed obligations for ${monthLabel}.`,
         futureCashCurrentBalanceLabel: "Current real balance",
         futureCashCurrentBalanceHelpTitle: "What does this balance represent?",
         futureCashCurrentBalanceHelpDescription:
@@ -1372,9 +1375,10 @@ const siteTexts = {
         futureCashPerDayLabel: "Room per day",
         futureCashPerDayHelpTitle: "How should I read this room?",
         futureCashPerDayHelpDescription:
-          "It is a simple reference: available-to-spend in this window divided by the horizon days. It is not an automatic budget.",
-        futureCashHorizonLabel: (days: number) => `${days} days`,
-        futureCashWindowEndLabel: (dateLabel: string) => `Through ${dateLabel}`,
+          "It is a simple reference: we divide the available-to-spend in this month by the number of days in the period.",
+        futureCashMonthLabel: (monthLabel: string) => monthLabel,
+        futureCashDaysInWindowLabel: (count: number) =>
+          `${count} days in this period`,
         futureCashProjectedBalanceLabel: "Projected balance",
         futureCashProjectedBalanceHelpTitle:
           "What does this projected balance mean?",
@@ -1449,10 +1453,10 @@ const siteTexts = {
       cashflow: {
         title: "Future cash",
         subtitle:
-          "Plan your spending with a clear 30, 60, and 90 day projection based on real balance and confirmed obligations.",
+          "Plan your spending with a clear projection of the current month plus the next two, based on real balance and confirmed obligations.",
         helpTitle: "What do you see here?",
         helpDescription:
-          "This view separates future cash from your daily overview. It starts from the ledger's real balance and subtracts only confirmed active obligations inside each window.",
+          "This view separates future cash from your daily overview. It starts from the ledger's real balance and subtracts only confirmed active obligations inside each month.",
         openObligations: "Open obligations",
         missingProfile:
           "Complete your base currency and time zone before using future cash.",

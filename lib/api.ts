@@ -292,8 +292,9 @@ export interface ObligationPaymentResponse {
 export type ForecastWindowStatus = "covered" | "tight" | "shortfall";
 
 export interface ForecastWindow {
-  horizon_days: number;
-  window_end_date: string;
+  month_offset: number;
+  month_label: string;
+  days_in_window: number;
   scheduled_payments_count: number;
   confirmed_obligations_total: string;
   projected_balance: string;
@@ -305,8 +306,9 @@ export interface ForecastWindow {
 
 export interface SafeToSpend {
   reference_date: string;
-  horizon_days: number;
-  window_end_date: string;
+  month_offset: number;
+  month_label: string;
+  days_in_window: number;
   currency: string;
   current_balance: string;
   scheduled_payments_count: number;
@@ -653,10 +655,10 @@ export const api = {
   getCashflowForecast: () =>
     request<CashflowForecast>("/cashflow/forecast"),
 
-  getSafeToSpend: (params?: { horizon_days?: number }) => {
+  getSafeToSpend: (params?: { month_offset?: number }) => {
     const qs = new URLSearchParams();
-    if (params?.horizon_days != null) {
-      qs.set("horizon_days", String(params.horizon_days));
+    if (params?.month_offset != null) {
+      qs.set("month_offset", String(params.month_offset));
     }
     const query = qs.toString() ? `?${qs.toString()}` : "";
     return request<SafeToSpend>(`/cashflow/safe-to-spend${query}`);

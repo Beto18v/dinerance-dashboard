@@ -80,6 +80,65 @@ vi.mock("sonner", () => ({
   },
 }));
 
+const mockForecast = {
+  reference_date: "2026-07-15",
+  currency: "COP",
+  current_balance: "1500000.00",
+  safe_to_spend: {
+    reference_date: "2026-07-15",
+    month_offset: 0,
+    month_label: "Jul 2026",
+    days_in_window: 17,
+    currency: "COP",
+    current_balance: "1500000.00",
+    scheduled_payments_count: 3,
+    confirmed_obligations_total: "1380000.00",
+    projected_balance: "120000.00",
+    safe_to_spend: "120000.00",
+    safe_to_spend_per_day: "7058.82",
+    shortfall_amount: "0.00",
+    status: "covered",
+  },
+  horizons: [
+    {
+      month_offset: 0,
+      month_label: "Jul 2026",
+      days_in_window: 17,
+      scheduled_payments_count: 3,
+      confirmed_obligations_total: "1380000.00",
+      projected_balance: "120000.00",
+      safe_to_spend: "120000.00",
+      safe_to_spend_per_day: "7058.82",
+      shortfall_amount: "0.00",
+      status: "covered",
+    },
+    {
+      month_offset: 1,
+      month_label: "Ago 2026",
+      days_in_window: 31,
+      scheduled_payments_count: 6,
+      confirmed_obligations_total: "2760000.00",
+      projected_balance: "-1260000.00",
+      safe_to_spend: "0.00",
+      safe_to_spend_per_day: "0.00",
+      shortfall_amount: "1260000.00",
+      status: "shortfall",
+    },
+    {
+      month_offset: 2,
+      month_label: "Sep 2026",
+      days_in_window: 30,
+      scheduled_payments_count: 9,
+      confirmed_obligations_total: "4140000.00",
+      projected_balance: "-2640000.00",
+      safe_to_spend: "0.00",
+      safe_to_spend_per_day: "0.00",
+      shortfall_amount: "2640000.00",
+      status: "shortfall",
+    },
+  ],
+};
+
 describe("CashflowPage", () => {
   beforeEach(() => {
     getCacheMock.mockReset();
@@ -106,61 +165,8 @@ describe("CashflowPage", () => {
     cleanup();
   });
 
-  it("renders the dedicated future cash view and links to obligations", async () => {
-    getCashflowForecastMock.mockResolvedValue({
-      reference_date: "2026-03-10",
-      currency: "COP",
-      current_balance: "1500000.00",
-      safe_to_spend: {
-        reference_date: "2026-03-10",
-        horizon_days: 30,
-        window_end_date: "2026-04-09",
-        currency: "COP",
-        current_balance: "1500000.00",
-        scheduled_payments_count: 3,
-        confirmed_obligations_total: "1380000.00",
-        projected_balance: "120000.00",
-        safe_to_spend: "120000.00",
-        safe_to_spend_per_day: "4000.00",
-        shortfall_amount: "0.00",
-        status: "covered",
-      },
-      horizons: [
-        {
-          horizon_days: 30,
-          window_end_date: "2026-04-09",
-          scheduled_payments_count: 3,
-          confirmed_obligations_total: "1380000.00",
-          projected_balance: "120000.00",
-          safe_to_spend: "120000.00",
-          safe_to_spend_per_day: "4000.00",
-          shortfall_amount: "0.00",
-          status: "covered",
-        },
-        {
-          horizon_days: 60,
-          window_end_date: "2026-05-09",
-          scheduled_payments_count: 6,
-          confirmed_obligations_total: "2760000.00",
-          projected_balance: "-1260000.00",
-          safe_to_spend: "0.00",
-          safe_to_spend_per_day: "0.00",
-          shortfall_amount: "1260000.00",
-          status: "shortfall",
-        },
-        {
-          horizon_days: 90,
-          window_end_date: "2026-06-08",
-          scheduled_payments_count: 9,
-          confirmed_obligations_total: "4140000.00",
-          projected_balance: "-2640000.00",
-          safe_to_spend: "0.00",
-          safe_to_spend_per_day: "0.00",
-          shortfall_amount: "2640000.00",
-          status: "shortfall",
-        },
-      ],
-    });
+  it("renders the dedicated future cash view with monthly labels and links to obligations", async () => {
+    getCashflowForecastMock.mockResolvedValue(mockForecast);
 
     render(<CashflowPage />);
 
@@ -170,13 +176,16 @@ describe("CashflowPage", () => {
     expect(await screen.findByText("Caja futura")).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Planea tu gasto con una proyeccion clara de 30, 60 y 90 dias basada en saldo real y obligaciones confirmadas.",
+        "Planea tu gasto con una proyeccion clara del mes en curso y los dos siguientes, basada en saldo real y obligaciones confirmadas.",
       ),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("Disponible para gastar en 30 dias"),
+      screen.getByText("Disponible para gastar en Jul 2026"),
     ).toBeInTheDocument();
-    expect(screen.getAllByText("$120.000").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Jul 2026").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText("Ago 2026")).toBeInTheDocument();
+    expect(screen.getByText("Sep 2026")).toBeInTheDocument();
+    expect(screen.queryByText("30 dias")).not.toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: "Abrir obligaciones" }),
     ).toHaveAttribute("href", "/app/obligations");

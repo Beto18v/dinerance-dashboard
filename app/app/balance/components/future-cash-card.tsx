@@ -35,17 +35,16 @@ export function FutureCashCard({
   locale,
   loadingLabel,
   showHeader = true,
-  timeZone,
   text,
   formatMoney,
 }: FutureCashCardProps) {
   const safeToSpend = forecast?.safe_to_spend ?? null;
   const horizons = forecast?.horizons ?? [];
   const forecastCurrency = forecast?.currency ?? safeToSpend?.currency ?? "COP";
-  const dateFormatter = new Intl.DateTimeFormat(locale, {
-    dateStyle: "medium",
-    timeZone,
-  });
+
+  const safeToSpendMonthLabel =
+    safeToSpend?.month_label ??
+    `${(safeToSpend as unknown as { horizon_days?: number })?.horizon_days ?? "?"} días`;
 
   return (
     <Card>
@@ -77,12 +76,12 @@ export function FutureCashCard({
                       {resolveStatusLabel(safeToSpend.status, text)}
                     </Badge>
                     <span className="text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">
-                      {text.futureCashHorizonLabel(safeToSpend.horizon_days)}
+                      {safeToSpendMonthLabel}
                     </span>
                   </div>
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">
-                      {text.futureCashSafeToSpendTitle}
+                      {text.futureCashSafeToSpendTitle(safeToSpendMonthLabel)}
                     </p>
                     <p className="mt-2 text-4xl font-semibold tracking-tight tabular-nums">
                       {formatMoney(
@@ -104,9 +103,7 @@ export function FutureCashCard({
                         safeToSpend.currency,
                         locale,
                       ),
-                      dateFormatter.format(
-                        new Date(`${safeToSpend.window_end_date}T12:00:00Z`),
-                      ),
+                      safeToSpendMonthLabel,
                     )}
                   </p>
                 </div>
@@ -136,10 +133,12 @@ export function FutureCashCard({
                     label={text.futureCashPerDayLabel}
                     helpTitle={text.futureCashPerDayHelpTitle}
                     helpDescription={text.futureCashPerDayHelpDescription}
-                    value={formatMoney(
-                      safeToSpend.safe_to_spend_per_day,
+                    value={formatPerDay(
+                      safeToSpend.safe_to_spend,
+                      safeToSpend.days_in_window,
                       safeToSpend.currency,
                       locale,
+                      formatMoney,
                     )}
                   />
                 </div>
@@ -150,11 +149,10 @@ export function FutureCashCard({
               {horizons.map((window) => (
                 <ForecastWindowCard
                   currency={forecastCurrency}
-                  key={window.horizon_days}
+                  key={window.month_offset}
                   formatMoney={formatMoney}
                   locale={locale}
                   text={text}
-                  timeZone={timeZone}
                   window={window}
                 />
               ))}
@@ -171,32 +169,30 @@ function ForecastWindowCard({
   formatMoney,
   locale,
   text,
-  timeZone,
   window,
 }: {
   currency: string;
   formatMoney: (value: string, currency: string, locale: string) => string;
   locale: string;
   text: SiteText["pages"]["balance"];
-  timeZone: string;
   window: ForecastWindow;
 }) {
   const projectedTone =
     window.status === "shortfall" ? "text-rose-700" : "text-foreground";
-  const dateFormatter = new Intl.DateTimeFormat(locale, {
-    dateStyle: "medium",
-    timeZone,
-  });
+
+  const monthLabel =
+    window.month_label ??
+    `${(window as unknown as { horizon_days?: number })?.horizon_days ?? "?"} días`;
 
   return (
     <div className="rounded-2xl border bg-muted/10 p-4 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold">{text.futureCashHorizonLabel(window.horizon_days)}</p>
+          <p className="text-sm font-semibold">
+            {text.futureCashMonthLabel(monthLabel)}
+          </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            {text.futureCashWindowEndLabel(
-              dateFormatter.format(new Date(`${window.window_end_date}T12:00:00Z`)),
-            )}
+            {text.futureCashDaysInWindowLabel(window.days_in_window)}
           </p>
         </div>
         <Badge variant="outline" className={statusTone[window.status]}>
@@ -289,4 +285,17 @@ function resolveStatusLabel(
     return text.futureCashStatusTight;
   }
   return text.futureCashStatusShortfall;
+}
+
+function formatPerDay(
+  amount: string,
+  days: number,
+  currency: string,
+  locale: string,
+  formatMoney: (value: string, currency: string, locale: string) => string,
+): string {
+  if (!days) {
+    return formatMoney("0", currency, locale);
+  }
+  return formatMoney((Number(amount || 0) / days).toFixed(2), currency, locale);
 }
