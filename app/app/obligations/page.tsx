@@ -244,6 +244,7 @@ export default function ObligationsPage() {
       expected_financial_account_id:
         searchParams.get("prefill_expected_financial_account_id") ?? "",
       source_recurring_candidate_key: prefillRecurringCandidateKey ?? "",
+      cadence_months: null,
     });
     setFormModalOpen(true);
   }, [searchParams]);
@@ -307,6 +308,7 @@ export default function ObligationsPage() {
         obligation.expected_financial_account_id ?? "",
       source_recurring_candidate_key:
         obligation.source_recurring_candidate_key ?? "",
+      cadence_months: obligation.cadence_months ?? null,
     });
     setFormModalOpen(true);
   }
@@ -369,6 +371,7 @@ export default function ObligationsPage() {
         category_id: form.category_id,
         expected_financial_account_id:
           form.expected_financial_account_id || null,
+        cadence_months: form.cadence_months,
       };
 
       if (editingObligationId) {
@@ -892,7 +895,7 @@ function ObligationCard({
               )}
             </p>
             <p className="mt-1 text-sm text-muted-foreground">
-              {t.cadenceLabel(resolveCadenceLabel(obligation.cadence, t))}
+              {t.cadenceLabel(resolveCadenceLabel(obligation.cadence, obligation.cadence_months, t))}
             </p>
           </div>
 
@@ -1191,9 +1194,12 @@ function resolveUrgencyLabel(
 
 function resolveCadenceLabel(
   cadence: Obligation["cadence"],
+  cadenceMonths: Obligation["cadence_months"],
   text: ReturnType<typeof useSitePreferences>["site"]["pages"]["obligations"],
 ) {
-  if (cadence === "monthly") return text.cadenceMonthly;
   if (cadence === "biweekly") return text.cadenceBiweekly;
-  return text.cadenceWeekly;
+  if (cadence === "weekly") return text.cadenceWeekly;
+  if (cadenceMonths != null && cadenceMonths > 1)
+    return text.cadenceEveryNMonths(cadenceMonths);
+  return text.cadenceMonthly;
 }

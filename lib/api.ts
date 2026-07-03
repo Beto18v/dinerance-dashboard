@@ -251,6 +251,7 @@ export interface Obligation {
   days_until_due: number;
   expected_account_current_balance?: string | null;
   expected_account_shortfall_amount?: string | null;
+  cadence_months?: number | null;
   created_at: string;
   updated_at?: string | null;
 }
@@ -674,6 +675,7 @@ export const api = {
     expected_financial_account_id?: string | null;
     source_recurring_candidate_key?: string | null;
     status?: ObligationStatus;
+    cadence_months?: number | null;
   }) =>
     request<Obligation>("/obligations/", {
       method: "POST",
@@ -691,6 +693,7 @@ export const api = {
       category_id?: string;
       expected_financial_account_id?: string | null;
       status?: ObligationStatus;
+      cadence_months?: number | null;
     },
   ) =>
     request<Obligation>(`/obligations/${id}`, {

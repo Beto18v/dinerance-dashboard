@@ -402,6 +402,7 @@ describe("ObligationsPage", () => {
         category_id: "cat-expense",
         expected_financial_account_id: null,
         source_recurring_candidate_key: "candidate-expense-1",
+        cadence_months: null,
       });
     });
   });

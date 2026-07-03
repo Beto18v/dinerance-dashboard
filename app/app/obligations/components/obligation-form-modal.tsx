@@ -36,6 +36,7 @@ export type ObligationFormState = {
   category_id: string;
   expected_financial_account_id: string;
   source_recurring_candidate_key: string;
+  cadence_months: number | null;
 };
 
 export const EMPTY_OBLIGATION_FORM: ObligationFormState = {
@@ -46,6 +47,7 @@ export const EMPTY_OBLIGATION_FORM: ObligationFormState = {
   category_id: "",
   expected_financial_account_id: "",
   source_recurring_candidate_key: "",
+  cadence_months: null,
 };
 
 type ObligationFormModalProps = {
@@ -174,6 +176,42 @@ export function ObligationFormModal({
                   </SelectContent>
                 </Select>
               </div>
+
+              {form.cadence === "monthly" ? (
+                <div className="space-y-1.5">
+                  <Label htmlFor="obligation_cadence_months">
+                    {t.cadenceEveryLabel}
+                  </Label>
+                  <Select
+                    value={String(form.cadence_months ?? 1)}
+                    onValueChange={(value) =>
+                      onFormChange({
+                        cadence_months:
+                          value === "1" ? null : Number(value),
+                      })
+                    }
+                  >
+                    <SelectTrigger id="obligation_cadence_months">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">{t.cadenceEveryMonth}</SelectItem>
+                      {[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(
+                        (n) => (
+                          <SelectItem key={n} value={String(n)}>
+                            {t.cadenceEveryNMonths(n)}
+                          </SelectItem>
+                        ),
+                      )}
+                      {[24, 36, 48, 60, 72].map((n) => (
+                        <SelectItem key={n} value={String(n)}>
+                          {t.cadenceEveryNMonths(n)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : null}
 
               <div className="space-y-1.5">
                 <Label htmlFor="obligation_category">{t.category}</Label>
